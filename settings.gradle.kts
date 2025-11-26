@@ -2,7 +2,7 @@ pluginManagement {
   repositories {
     mavenLocal()
     gradlePluginPortal()
-    val frcYear = "2025"
+    val frcYear = "2026beta"
     val frcHome = if (System.getProperty("os.name").contains("windows", ignoreCase = true)) {
       file(System.getenv("PUBLIC") ?: """C:\Users\Public""")
     } else {
