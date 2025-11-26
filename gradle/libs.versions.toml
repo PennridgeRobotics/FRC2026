@@ -1,0 +1,17 @@
+[versions]
+caffeine = "3.2.3"
+gradle-rio = "2025.3.2"
+jetbrains-annotations = "26.0.2-1"
+junit = "6.0.1"
+spotless = "8.1.0"
+
+[plugins]
+gradle-rio = { id = "edu.wpi.first.GradleRIO", version.ref = "gradle-rio" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
+
+[libraries]
+caffeine = { group = "com.github.ben-manes.caffeine", name = "caffeine", version.ref = "caffeine" }
+jetbrains-annotations = { group = "org.jetbrains", name = "annotations", version.ref = "jetbrains-annotations" }
+junit-bom = { group = "org.junit", name = "junit-bom", version.ref = "junit" }
+junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter" }
+junit-platform-launcher = { group = "org.junit.platform", name = "junit-platform-launcher" }
