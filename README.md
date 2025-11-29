@@ -1,0 +1,36 @@
+# FRC2026
+Welcome to Ridge Robotics' repository for the FRC 2026 season!
+
+## Development
+Here are some things to keep in mind while working on this codebase:
+
+### Git & GitHub Usage
+- Before working on code, **always pull** with `git pull` to ensure you have the latest changes
+- Likewise, after working on code, **always push** with `git push` to upload your changes
+- You should be committing your changes frequently and with descriptive commit names
+- All new code must be developed on a new branch
+  - When merging back into the `main` branch, make sure that your branch is up-to-date with `main`, then open a new PR!
+  - All PRs must be approved by the programming lead in order to be merged
+
+### Spotless
+- We use Spotless to maintain code formatting consistency
+- Please ensure that you run Spotless before committing any code changes (otherwise the workflow will fail)
+- You can do this by executing the `spotlessApply` Gradle task
+
+### Error Prone
+- We use Error Prone (by Google) to catch common Java mistakes at compile time
+- Unlike Spotless, Error Prone is executed whenever the code is compiled
+- Note that some checks will only show as a warning, but others will fail the compilation
+
+### JSpecify/NullAway
+- We use JSpecify annotations along with NullAway to enforce null-safety in our codebase
+- Note that NullAway uses Error Prone to check nullability annotations at compile time
+
+> [!IMPORTANT]
+> - When adding new classes, make sure you annotate them with `@NullMarked`
+> - This annotation means that all types within that class are non-nullable by default,
+so you must use `@Nullable` explicitly for any nullable types
+> - This annotation also tells NullAway to enforce null-safety checks within that class,
+so it is important to add this annotation to every class that you create
+
+Please check our document for more details: https://docs.google.com/document/d/1nnzGnt42i6uPzOHwAwAfORLo0D7Oy1VpVn8Up7hVth0/edit?tab=t.deskc5r0e8y9#heading=h.8nrizm8intq2
