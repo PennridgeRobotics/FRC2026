@@ -2,17 +2,16 @@ package org.pennridge.robotics.frc.util.trigger;
 
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import java.util.function.DoubleSupplier;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.pennridge.robotics.frc.util.enums.Direction;
 
+@NullMarked
 public class JoystickDirectionTrigger extends Trigger {
     private static final double JOYSTICK_MIN = 0.6;
 
     public JoystickDirectionTrigger(
-            final @NotNull DoubleSupplier xInput,
-            final @NotNull DoubleSupplier yInput,
-            final @NotNull Direction direction) {
+            final DoubleSupplier xInput, final DoubleSupplier yInput, final Direction direction) {
         super(() -> direction == getDirection(xInput.getAsDouble(), -yInput.getAsDouble()));
     }
 

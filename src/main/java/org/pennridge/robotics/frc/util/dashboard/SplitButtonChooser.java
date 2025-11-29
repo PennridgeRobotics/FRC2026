@@ -12,25 +12,27 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
+@NullMarked
 public class SplitButtonChooser<T> implements Sendable {
-    private final @NotNull Function<@NotNull String, @NotNull T> stringToType;
-    private final @NotNull Function<@NotNull T, @NotNull String> typeToString;
-    private final @NotNull Supplier<@Nullable T> active;
-    private final @NotNull Collection<@NotNull String> options;
-    private final @NotNull Set<@NotNull Consumer<@NotNull T>> listeners;
+    private final Function<String, T> stringToType;
+    private final Function<T, String> typeToString;
+    private final Supplier<@Nullable T> active;
+    private final Collection<String> options;
+    private final Set<Consumer<T>> listeners;
     private @Nullable String defaultOption;
     private @Nullable String selected;
 
     public SplitButtonChooser(
             final @Nullable Supplier<@Nullable T> active,
-            final @Nullable Collection<@NotNull T> options,
-            final @Nullable Set<@NotNull Consumer<@NotNull T>> listeners,
+            final @Nullable Collection<T> options,
+            final @Nullable Set<Consumer<T>> listeners,
             final @Nullable T defaultOption,
-            final @NotNull Function<@NotNull String, @NotNull T> stringToType,
-            final @NotNull Function<@NotNull T, @NotNull String> typeToString) {
+            final Function<String, T> stringToType,
+            final Function<T, String> typeToString) {
         this.active = Objects.requireNonNullElse(active, this::getSelected);
         this.options = Objects.requireNonNullElse(options, new ArrayList<T>()).stream()
                 .map(typeToString)
@@ -41,23 +43,23 @@ public class SplitButtonChooser<T> implements Sendable {
         this.typeToString = typeToString;
     }
 
-    public static @NotNull SplitButtonChooser<String> withStrings(
+    public static SplitButtonChooser<String> withStrings(
             final @Nullable Supplier<@Nullable String> active,
-            final @Nullable Collection<@NotNull String> options,
-            final @Nullable Set<@NotNull Consumer<@NotNull String>> listeners,
+            final @Nullable Collection<String> options,
+            final @Nullable Set<Consumer<String>> listeners,
             final @Nullable String defaultOption) {
         return new SplitButtonChooser<>(
                 active, options, listeners, defaultOption, Function.identity(), Function.identity());
     }
 
-    public void addOption(final @NotNull T option) {
+    public void addOption(final @NonNull T option) {
         final String string = typeToString.apply(option);
         if (!options.contains(string)) {
             options.add(string);
         }
     }
 
-    public void setDefaultOption(final @NotNull T defaultOption) {
+    public void setDefaultOption(final @NonNull T defaultOption) {
         this.defaultOption = typeToString.apply(defaultOption);
         addOption(defaultOption);
     }
@@ -69,7 +71,7 @@ public class SplitButtonChooser<T> implements Sendable {
         return defaultOption == null ? null : stringToType.apply(defaultOption);
     }
 
-    public void onChange(final @NotNull Consumer<@NotNull T> listener) {
+    public void onChange(final Consumer<T> listener) {
         listeners.add(listener);
     }
 

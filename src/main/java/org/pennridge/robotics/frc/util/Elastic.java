@@ -12,7 +12,9 @@ import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.PubSubOption;
 import edu.wpi.first.networktables.StringPublisher;
 import edu.wpi.first.networktables.StringTopic;
+import org.jspecify.annotations.NullMarked;
 
+@NullMarked
 public final class Elastic {
     private static final StringTopic notificationTopic =
             NetworkTableInstance.getDefault().getStringTopic("/Elastic/RobotNotifications");

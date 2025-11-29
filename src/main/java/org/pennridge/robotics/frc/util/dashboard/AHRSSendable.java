@@ -3,12 +3,13 @@ package org.pennridge.robotics.frc.util.dashboard;
 import com.studica.frc.AHRS;
 import edu.wpi.first.util.sendable.Sendable;
 import edu.wpi.first.util.sendable.SendableBuilder;
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NullMarked;
 
+@NullMarked
 public class AHRSSendable implements Sendable {
-    private final @NotNull AHRS ahrs;
+    private final AHRS ahrs;
 
-    public AHRSSendable(@NotNull AHRS ahrs) {
+    public AHRSSendable(AHRS ahrs) {
         this.ahrs = ahrs;
     }
 

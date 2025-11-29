@@ -68,7 +68,7 @@ val includeDesktopSupport = true
 
 dependencies {
     implementation(libs.caffeine)
-    implementation(libs.jetbrains.annotations)
+    implementation(libs.jspecify)
 
     annotationProcessor(wpi.java.deps.wpilibAnnotations())
     implementation(wpi.java.deps.wpilib())

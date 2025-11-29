@@ -1,9 +1,10 @@
 package org.pennridge.robotics.frc.util.enums;
 
 import edu.wpi.first.math.geometry.Rotation2d;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
+@NullMarked
 public enum Direction {
     NORTH(0, 0),
     NORTHEAST(60, 45),
@@ -17,7 +18,7 @@ public enum Direction {
     private final int angle;
     private final int compassAngle;
     private final boolean enabled = true; // might need?
-    private final @NotNull Rotation2d compassRotation2d;
+    private final Rotation2d compassRotation2d;
 
     Direction(int angle, int compassAngle) {
         this.angle = angle;
@@ -45,11 +46,11 @@ public enum Direction {
         return WEST;
     }
 
-    public static @NotNull Direction getClosestDirection(final @NotNull Rotation2d angle) {
+    public static Direction getClosestDirection(final Rotation2d angle) {
         return getClosestDirection(-angle.getDegrees());
     }
 
-    public static @NotNull Direction getClosestDirection(final double angle) {
+    public static Direction getClosestDirection(final double angle) {
         final int normalizedAngle = Math.floorMod(Math.round(angle), 360);
         Direction closest = NORTH;
         int closestDiff = Integer.MAX_VALUE;
@@ -68,8 +69,7 @@ public enum Direction {
         return closest;
     }
 
-    public static @NotNull Direction getClosestCompassDirection(
-            final @NotNull Rotation2d angle, final boolean enabledOnly) {
+    public static Direction getClosestCompassDirection(final Rotation2d angle, final boolean enabledOnly) {
         final double degrees = -angle.getDegrees();
         final int normalizedAngle = Math.floorMod(Math.round(degrees), 360);
         Direction closest = NORTH;
@@ -89,7 +89,7 @@ public enum Direction {
         return closest;
     }
 
-    public @NotNull Direction getClockwise(final boolean enabledOnly) {
+    public Direction getClockwise(final boolean enabledOnly) {
         final var nextDir = values()[(ordinal() + 1) % values().length];
         if (enabledOnly && !nextDir.isEnabled()) {
             return nextDir.getClockwise(true);
@@ -98,7 +98,7 @@ public enum Direction {
         }
     }
 
-    public @NotNull Direction getCounterClockwise(final boolean enabledOnly) {
+    public Direction getCounterClockwise(final boolean enabledOnly) {
         final var nextDir = values()[(ordinal() - 1 + values().length) % values().length];
         if (enabledOnly && !nextDir.isEnabled()) {
             return nextDir.getCounterClockwise(true);
@@ -111,7 +111,7 @@ public enum Direction {
         return angle;
     }
 
-    public @NotNull Rotation2d getCompassRotation2d() {
+    public Rotation2d getCompassRotation2d() {
         return compassRotation2d;
     }
 

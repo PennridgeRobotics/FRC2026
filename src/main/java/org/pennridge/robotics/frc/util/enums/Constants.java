@@ -13,7 +13,7 @@ import com.pathplanner.lib.path.PathConstraints;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.units.measure.Time;
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NullMarked;
 
 /**
  * The Constants class provides a convenient place for teams to hold robot-wide numerical or boolean constants. This
@@ -23,16 +23,17 @@ import org.jetbrains.annotations.NotNull;
  * <p>It is advised to statically import this class (or one of its inner classes) wherever the constants are needed, to
  * reduce verbosity.
  */
+@NullMarked
 public final class Constants {
 
     public static final class PhysicalConstants {
-        public static final @NotNull Distance ROBOT_LENGTH = Inches.of(38);
-        public static final @NotNull Distance ROBOT_WIDTH = Inches.of(32.5);
-        public static final @NotNull Distance LIMELIGHT_OFFSET_X = Inches.of(10.0); // offset from center
+        public static final Distance ROBOT_LENGTH = Inches.of(38);
+        public static final Distance ROBOT_WIDTH = Inches.of(32.5);
+        public static final Distance LIMELIGHT_OFFSET_X = Inches.of(10.0); // offset from center
     }
 
     public static final class PathPlannerConstants {
-        public static final @NotNull PathConstraints PATH_CONSTRAINTS = new PathConstraints(
+        public static final PathConstraints PATH_CONSTRAINTS = new PathConstraints(
                 MetersPerSecond.of(2),
                 MetersPerSecondPerSecond.of(1.75),
                 RadiansPerSecond.of(0.5 * Math.PI),
@@ -40,12 +41,12 @@ public final class Constants {
     }
 
     public static final class VisionConstants {
-        public static final @NotNull String LIMELIGHT_NAME = "limelight";
+        public static final String LIMELIGHT_NAME = "limelight";
     }
 
     public static final class NavXConstants {
-        public static final @NotNull Distance SENSOR_OFFSET_X = Meters.of(0.1);
-        public static final @NotNull Distance SENSOR_OFFSET_Y = Meters.of(0.1);
+        public static final Distance SENSOR_OFFSET_X = Meters.of(0.1);
+        public static final Distance SENSOR_OFFSET_Y = Meters.of(0.1);
     }
 
     public static final class DriveConstants {
@@ -61,12 +62,12 @@ public final class Constants {
 
         public static final int ENCODER_CPR = 1024;
         public static final double GEAR_RATIO = 8.45;
-        public static final @NotNull Time CAN_TIMEOUT = Milliseconds.of(250);
-        public static final @NotNull Current DRIVE_MOTOR_CURRENT_LIMIT = Amps.of(40);
-        public static final @NotNull Distance WHEEL_DIAMETER = Inches.of(6);
-        public static final @NotNull Distance DISTANCE_PER_REV =
+        public static final Time CAN_TIMEOUT = Milliseconds.of(250);
+        public static final Current DRIVE_MOTOR_CURRENT_LIMIT = Amps.of(40);
+        public static final Distance WHEEL_DIAMETER = Inches.of(6);
+        public static final Distance DISTANCE_PER_REV =
                 WHEEL_DIAMETER.times(Math.PI).div(GEAR_RATIO);
-        public static final @NotNull Distance TRACK_WIDTH = Inches.of(21.5);
+        public static final Distance TRACK_WIDTH = Inches.of(21.5);
     }
 
     public static final class ControllerConstants {
