@@ -9,13 +9,11 @@ import edu.wpi.first.units.measure.MutAngle;
 import edu.wpi.first.units.measure.MutDistance;
 import edu.wpi.first.units.measure.MutLinearVelocity;
 import edu.wpi.first.units.measure.MutVoltage;
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NullMarked;
 
+@NullMarked
 public record SysIdMutData(
-        @NotNull MutVoltage appliedVoltage,
-        @NotNull MutDistance distance,
-        @NotNull MutLinearVelocity velocity,
-        @NotNull MutAngle rotations) {
+        MutVoltage appliedVoltage, MutDistance distance, MutLinearVelocity velocity, MutAngle rotations) {
     public SysIdMutData() {
         this(Volts.mutable(0), Meters.mutable(0), MetersPerSecond.mutable(0), Rotations.mutable(0));
     }

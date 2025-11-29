@@ -7,18 +7,19 @@ import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import org.jetbrains.annotations.NotNull;
-import org.pennridge.robotics.frc.util.LimelightHelpers;
+import org.jspecify.annotations.NullMarked;
 import org.pennridge.robotics.frc.util.enums.Constants.PhysicalConstants;
 import org.pennridge.robotics.frc.util.enums.Constants.VisionConstants;
+import org.pennridge.robotics.frc.util.lib.LimelightHelpers;
 
+@NullMarked
 public class VisionSubsystem extends SubsystemBase {
-    private final @NotNull AHRS ahrs;
-    private final @NotNull AprilTagFieldLayout field;
-    private final @NotNull Transform2d limelightOffset =
+    private final AHRS ahrs;
+    private final AprilTagFieldLayout field;
+    private final Transform2d limelightOffset =
             new Transform2d(PhysicalConstants.LIMELIGHT_OFFSET_X.unaryMinus(), Meters.zero(), Rotation2d.kZero);
 
-    public VisionSubsystem(@NotNull AHRS ahrs, @NotNull AprilTagFieldLayout field) {
+    public VisionSubsystem(AHRS ahrs, AprilTagFieldLayout field) {
         this.ahrs = ahrs;
         this.field = field;
     }
