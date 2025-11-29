@@ -2,9 +2,11 @@ package org.pennridge.robotics.frc.util.dashboard;
 
 import edu.wpi.first.util.sendable.Sendable;
 import edu.wpi.first.util.sendable.SendableBuilder;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.photonvision.targeting.PhotonTrackedTarget;
 
+@NullMarked
 public class PhotonTrackedTargetSendable implements Sendable {
     private final @Nullable PhotonTrackedTarget target;
 

@@ -3,12 +3,13 @@ package org.pennridge.robotics.frc.util.dashboard;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.util.sendable.Sendable;
 import edu.wpi.first.util.sendable.SendableBuilder;
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NullMarked;
 
+@NullMarked
 public class Pose3dSendable implements Sendable {
-    private final @NotNull Pose3d pose;
+    private final Pose3d pose;
 
-    public Pose3dSendable(@NotNull Pose3d pose) {
+    public Pose3dSendable(Pose3d pose) {
         this.pose = pose;
     }
 

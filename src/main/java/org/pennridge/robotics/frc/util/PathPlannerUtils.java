@@ -5,10 +5,11 @@ import edu.wpi.first.math.trajectory.Trajectory;
 import edu.wpi.first.units.Units;
 import edu.wpi.first.units.measure.LinearAcceleration;
 import java.util.Arrays;
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NullMarked;
 
+@NullMarked
 public class PathPlannerUtils {
-    public static Trajectory pathPlannerTrajectoryToWPILib(final @NotNull PathPlannerTrajectory trajectory) {
+    public static Trajectory pathPlannerTrajectoryToWPILib(final PathPlannerTrajectory trajectory) {
         return new Trajectory(trajectory.getStates().stream()
                 .map(state -> new Trajectory.State(
                         state.timeSeconds,
