@@ -1,6 +1,6 @@
 // LimelightHelpers v1.12 (REQUIRES LLOS 2025.0 OR LATER)
 
-package org.pennridge.robotics.frc.util;
+package org.pennridge.robotics.frc.util.lib;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonFormat.Shape;
