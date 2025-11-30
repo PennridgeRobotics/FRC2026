@@ -4,6 +4,16 @@ Welcome to Ridge Robotics' repository for the FRC 2026 season!
 ## Development
 Here are some things to keep in mind while working on this codebase:
 
+### Code Conventions/Best Practices
+- In general, look at other code in this repository to see what to do
+- At the very least:
+    - Java naming conventions: https://www.geeksforgeeks.org/java/java-naming-conventions/
+    - FRC-specific best practices: https://bovlb.github.io/frc-tips/commands/best-practices.html
+- Some conventions are (at least partially) enforced:
+    - Nullability: check out [JSpecify/NullAway](#jspecifynullaway)
+    - Code style (indentation/spacing/etc): strictly enforced by [Spotless](#spotless)
+    - Common possible points of error: checked by [Error Prone](#error-prone)
+
 ### Working on Tasks
 - Check out the [Project](https://github.com/orgs/PennridgeRobotics/projects/1)
 - Select an issue in the "Ready" category
