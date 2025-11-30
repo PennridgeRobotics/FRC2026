@@ -23,7 +23,7 @@ Here are some things to keep in mind while working on this codebase:
     - Make sure the branch name contains that issue #
 - When you're finished:
     - Move the issue from "In progress" to "In review"
-    - Open a PR and ask the programming lead to review & merge!
+    - Open a PR (with the issue #) and ask the programming lead to review & merge!
 
 ### Git & GitHub Usage
 - Before working on code, **always pull** with `git pull` to ensure you have the latest changes
