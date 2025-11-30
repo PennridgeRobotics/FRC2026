@@ -32,6 +32,7 @@ Here are some things to keep in mind while working on this codebase:
 - All new code must be developed on a new branch
   - When merging back into the `main` branch, make sure that your branch is up-to-date with `main`, then open a new PR!
   - All PRs must be approved by the programming lead in order to be merged
+- Force pushes (`git push --force`) are **not** allowed (this will be enforced by GitHub)
 
 ### Spotless
 - We use Spotless to maintain code formatting consistency
