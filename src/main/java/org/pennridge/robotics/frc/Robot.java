@@ -4,9 +4,10 @@ import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import java.util.Objects;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
+@NullMarked
 public class Robot extends TimedRobot {
     private @Nullable Command autonomousCommand;
     private @Nullable RobotContainer robotContainer;
@@ -99,7 +100,7 @@ public class Robot extends TimedRobot {
         super.close();
     }
 
-    private @NotNull RobotContainer getRobotContainer() {
+    private RobotContainer getRobotContainer() {
         if (Objects.isNull(robotContainer)) {
             throw new IllegalStateException("RobotContainer is not yet initialized");
         }

@@ -3,7 +3,7 @@
 // defined by the Elastic license:
 // https://github.com/Gold872/elastic-dashboard/blob/main/LICENSE
 
-package org.pennridge.robotics.frc.util;
+package org.pennridge.robotics.frc.util.lib;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -12,7 +12,9 @@ import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.PubSubOption;
 import edu.wpi.first.networktables.StringPublisher;
 import edu.wpi.first.networktables.StringTopic;
+import org.jspecify.annotations.NullMarked;
 
+@NullMarked
 public final class Elastic {
     private static final StringTopic notificationTopic =
             NetworkTableInstance.getDefault().getStringTopic("/Elastic/RobotNotifications");

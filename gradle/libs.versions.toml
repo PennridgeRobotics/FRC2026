@@ -1,17 +1,25 @@
 [versions]
 caffeine = "3.2.3"
+error-prone = "2.45.0"
+error-prone-plugin = "4.3.0"
 gradle-rio = "2026.1.1-beta-1"
-jetbrains-annotations = "26.0.2-1"
+jspecify = "1.0.0"
 junit = "6.0.1"
+null-away = "0.12.12"
 spotless = "8.1.0"
 
 [plugins]
+error-prone = { id = "net.ltgt.errorprone", version.ref = "error-prone-plugin" }
 gradle-rio = { id = "edu.wpi.first.GradleRIO", version.ref = "gradle-rio" }
+#noinspection UnusedVersionCatalogEntry
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
 
 [libraries]
 caffeine = { group = "com.github.ben-manes.caffeine", name = "caffeine", version.ref = "caffeine" }
-jetbrains-annotations = { group = "org.jetbrains", name = "annotations", version.ref = "jetbrains-annotations" }
+error-prone-core = { group = "com.google.errorprone", name = "error_prone_core", version.ref = "error-prone" }
+jspecify = { group = "org.jspecify", name = "jspecify", version.ref = "jspecify" }
 junit-bom = { group = "org.junit", name = "junit-bom", version.ref = "junit" }
 junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter" }
 junit-platform-launcher = { group = "org.junit.platform", name = "junit-platform-launcher" }
+#noinspection UnusedVersionCatalogEntry
+null-away = { group = "com.uber.nullaway", name = "nullaway", version.ref = "null-away" }

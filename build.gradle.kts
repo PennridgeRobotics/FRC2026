@@ -3,18 +3,17 @@ import edu.wpi.first.gradlerio.GradleRIOPlugin
 import edu.wpi.first.gradlerio.deploy.roborio.FRCJavaArtifact
 import edu.wpi.first.gradlerio.deploy.roborio.RoboRIO
 import edu.wpi.first.toolchain.NativePlatforms
+import net.ltgt.gradle.errorprone.CheckSeverity
+import net.ltgt.gradle.errorprone.errorprone
 import org.gradle.plugins.ide.idea.model.IdeaLanguageLevel
 
 plugins {
     idea
     java
+    alias(libs.plugins.error.prone)
     alias(libs.plugins.gradle.rio)
     alias(libs.plugins.spotless)
 }
-
-val javaVersion: JavaVersion = JavaVersion.VERSION_17
-val javaLanguageVersion: JavaLanguageVersion = JavaLanguageVersion.of(javaVersion.toString())
-val jvmVendor: JvmVendorSpec = JvmVendorSpec.ADOPTIUM
 
 val robotMainClass = "org.pennridge.robotics.frc.Main"
 
@@ -67,8 +66,11 @@ wpi {
 val includeDesktopSupport = true
 
 dependencies {
+    errorprone(libs.error.prone.core)
+    errorprone(libs.`null`.away)
+
     implementation(libs.caffeine)
-    implementation(libs.jetbrains.annotations)
+    implementation(libs.jspecify)
 
     annotationProcessor(wpi.java.deps.wpilibAnnotations())
     implementation(wpi.java.deps.wpilib())
@@ -95,8 +97,8 @@ dependencies {
 
 java {
     toolchain {
-        languageVersion = javaLanguageVersion
-        vendor = jvmVendor
+        languageVersion = JavaLanguageVersion.of(21)
+        vendor = JvmVendorSpec.ADOPTIUM
     }
 }
 
@@ -108,9 +110,19 @@ tasks {
     }
 
     compileJava {
+        options.release.set(17)
         options.encoding = Charsets.UTF_8.name()
         // Configure string concat to always inline compile
         options.compilerArgs.add("-XDstringConcat=inline")
+
+        options.errorprone {
+            allErrorsAsWarnings.set(false) // set to true if needed - temporarily!
+            disable("EnumOrdinal", "MissingSummary", "MutablePublicArray")
+            excludedPaths.set(".*/frc/util/lib/.*")
+
+            check("NullAway", CheckSeverity.ERROR)
+            option("NullAway:OnlyNullMarked", "true")
+        }
     }
 
     // Setting up my Jar File. In this case, adding all libraries into the main jar ('fat jar')
@@ -132,7 +144,7 @@ tasks {
 idea {
     project {
         // The project.sourceCompatibility setting is not always picked up, so we set explicitly
-        languageLevel = IdeaLanguageLevel(javaVersion)
+        languageLevel = IdeaLanguageLevel(JavaVersion.VERSION_21)
     }
     module {
         // Improve development & (especially) debugging experience (and IDEA's capabilities) by having libraries' source & javadoc attached

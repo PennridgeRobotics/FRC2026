@@ -1,38 +1,39 @@
 package org.pennridge.robotics.frc;
 
-import com.studica.frc.AHRS;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import java.io.IOException;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
+import org.pennridge.robotics.frc.subsystems.SwerveSubsystem;
 import org.pennridge.robotics.frc.util.enums.Constants.ControllerConstants;
 
+@NullMarked
 public class RobotContainer {
     // Initializes subsystems
+    private final SwerveSubsystem swerveSubsystem;
 
     // Initializes controllers
-    private final @NotNull CommandXboxController driverController =
+    private final CommandXboxController driverController =
             new CommandXboxController(ControllerConstants.DRIVER_CONTROLLER_PORT);
-    private final @NotNull CommandXboxController operatorController =
+    private final CommandXboxController operatorController =
             new CommandXboxController(ControllerConstants.OPERATOR_CONTROLLER_PORT);
 
-    private final @NotNull SendableChooser<@NotNull Command> autoChooser;
-    private final @NotNull AHRS ahrs;
+    private final SendableChooser<Command> autoChooser;
 
     /** The container for the robot. Contains subsystems, I/O devices, and commands. */
     public RobotContainer() {
-        // Creates new AHRS NavX object for gyro
         try {
-            ahrs = new AHRS(AHRS.NavXComType.kUSB1);
-            ahrs.enableLogging(true);
-            ahrs.zeroYaw();
-            System.out.println("====== SETTING UP NAVX ======");
-        } catch (RuntimeException ex) {
-            DriverStation.reportError("Error instantiating navX MXP: " + ex.getMessage(), true);
-            throw ex;
+            swerveSubsystem = new SwerveSubsystem();
+        } catch (IOException ex) {
+            final var finalException =
+                    new RuntimeException("Error instantiating Swerve Subsystem: " + ex.getMessage(), ex);
+            DriverStation.reportError(
+                    "Error instantiating Swerve Subsystem: " + ex.getMessage(), finalException.getStackTrace());
+            throw finalException;
         }
 
         // autoChooser = AutoBuilder.buildAutoChooser("Epic Auto");
@@ -51,13 +52,14 @@ public class RobotContainer {
         return autoChooser.getSelected();
     }
 
-    public @NotNull AHRS getAHRS() {
-        return ahrs;
-    }
-
     public void periodic() {}
 
-    private void configureBindings() {}
+    private void configureBindings() {
+        swerveSubsystem.setDefaultCommand(swerveSubsystem.driveFieldOrientedCommand(
+                driverController::getLeftY, () -> -driverController.getLeftX(), () -> -driverController.getRightX()));
+
+        driverController.start().onTrue(swerveSubsystem.resetYaw());
+    }
 
     public void initSmartDashboard() {}
 }

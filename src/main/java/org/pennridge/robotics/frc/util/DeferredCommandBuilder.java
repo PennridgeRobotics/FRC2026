@@ -11,65 +11,62 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
+@NullMarked
 public class DeferredCommandBuilder {
-    private @NotNull Supplier<@Nullable Command> backingCommand = () -> null;
-    private @NotNull Function<@NotNull Command, @NotNull Set<@NotNull Subsystem>> getRequirements = (cmd) -> Set.of();
-    private @NotNull Consumer<@NotNull Command> initialize = (cmd) -> {};
-    private @NotNull Consumer<@NotNull Command> execute = (cmd) -> {};
-    private @NotNull Function<@NotNull Command, @NotNull Boolean> isFinished = (cmd) -> false;
-    private @NotNull BiConsumer<@NotNull Command, @NotNull Boolean> end = (cmd, interrupted) -> {};
-    private @NotNull BiConsumer<@NotNull Command, @NotNull SendableBuilder> initSendable = (cmd, sendable) -> {};
+    private Supplier<@Nullable Command> backingCommand = () -> null;
+    private Function<Command, Set<Subsystem>> getRequirements = (cmd) -> Set.of();
+    private Consumer<Command> initialize = (cmd) -> {};
+    private Consumer<Command> execute = (cmd) -> {};
+    private Function<Command, Boolean> isFinished = (cmd) -> false;
+    private BiConsumer<Command, Boolean> end = (cmd, interrupted) -> {};
+    private BiConsumer<Command, SendableBuilder> initSendable = (cmd, sendable) -> {};
 
-    public @NotNull DeferredCommandBuilder setBackingCommand(
-            final @NotNull Supplier<@Nullable Command> backingCommand) {
+    public DeferredCommandBuilder setBackingCommand(final Supplier<@Nullable Command> backingCommand) {
         this.backingCommand = backingCommand;
         return this;
     }
 
-    public @NotNull DeferredCommandBuilder setInitialize(final @NotNull Consumer<@NotNull Command> initialize) {
+    public DeferredCommandBuilder setInitialize(final Consumer<Command> initialize) {
         this.initialize = initialize;
         return this;
     }
 
-    public @NotNull DeferredCommandBuilder setExecute(final @NotNull Consumer<@NotNull Command> execute) {
+    public DeferredCommandBuilder setExecute(final Consumer<Command> execute) {
         this.execute = execute;
         return this;
     }
 
-    public @NotNull DeferredCommandBuilder setIsFinished(
-            final @NotNull Function<@NotNull Command, @NotNull Boolean> isFinished) {
+    public DeferredCommandBuilder setIsFinished(final Function<Command, Boolean> isFinished) {
         this.isFinished = isFinished;
         return this;
     }
 
-    public @NotNull DeferredCommandBuilder setEnd(final @NotNull BiConsumer<@NotNull Command, @NotNull Boolean> end) {
+    public DeferredCommandBuilder setEnd(final BiConsumer<Command, Boolean> end) {
         this.end = end;
         return this;
     }
 
-    public @NotNull DeferredCommandBuilder setInitSendable(
-            final @NotNull BiConsumer<@NotNull Command, @NotNull SendableBuilder> initSendable) {
+    public DeferredCommandBuilder setInitSendable(final BiConsumer<Command, SendableBuilder> initSendable) {
         this.initSendable = initSendable;
         return this;
     }
 
-    public @NotNull DeferredCommandBuilder setSubsystems(final @NotNull Set<@NotNull Subsystem> subsystems) {
+    public DeferredCommandBuilder setSubsystems(final Set<Subsystem> subsystems) {
         this.getRequirements = (cmd) -> subsystems;
         return this;
     }
 
-    public @NotNull DeferredCommandBuilder setGetRequirements(
-            final @NotNull Function<@NotNull Command, @NotNull Set<@NotNull Subsystem>> getRequirements) {
+    public DeferredCommandBuilder setGetRequirements(final Function<Command, Set<Subsystem>> getRequirements) {
         this.getRequirements = getRequirements;
         return this;
     }
 
-    public @NotNull Command buildCommand() {
+    public Command buildCommand() {
         return new Command() {
-            private @NotNull Command currentBackingCommand = Commands.none();
+            private Command currentBackingCommand = Commands.none();
 
             @Override
             public void initialize() {

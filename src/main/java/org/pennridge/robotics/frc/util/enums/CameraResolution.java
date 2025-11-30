@@ -1,5 +1,8 @@
 package org.pennridge.robotics.frc.util.enums;
 
+import org.jspecify.annotations.NullMarked;
+
+@NullMarked
 public enum CameraResolution {
     W_1920_H_1440(1920, 1440),
     W_1280_H_960(1280, 960),
