@@ -10,8 +10,10 @@ import static edu.wpi.first.units.Units.RadiansPerSecond;
 import static edu.wpi.first.units.Units.RadiansPerSecondPerSecond;
 
 import com.pathplanner.lib.path.PathConstraints;
+import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Distance;
+import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.units.measure.Time;
 import org.jspecify.annotations.NullMarked;
 
@@ -26,9 +28,11 @@ import org.jspecify.annotations.NullMarked;
 @NullMarked
 public final class Constants {
 
-    public static final class PhysicalConstants {
+    public static final class PhysicalConstants { // TODO update these numbers
         public static final Distance ROBOT_LENGTH = Inches.of(38);
         public static final Distance ROBOT_WIDTH = Inches.of(32.5);
+        public static final Distance WHEEL_CENTERS_DISTANCE_WIDTH = Inches.of(36);
+        public static final Distance WHEEL_CENTERS_DISTANCE_LENGTH = Inches.of(30);
         public static final Distance LIMELIGHT_OFFSET_X = Inches.of(10.0); // offset from center
     }
 
@@ -60,6 +64,11 @@ public final class Constants {
         public static final boolean LEFT_ENCODER_REVERSED = false;
         public static final boolean RIGHT_ENCODER_REVERSED = true;
 
+        public static final String SWERVE_CONFIG_DIRECTORY = "swerve"; // + deploy
+
+        public static final LinearVelocity MAX_LINEAR_SPEED = MetersPerSecond.of(0.5);
+        public static final AngularVelocity MAX_ANGULAR_SPEED = RadiansPerSecond.of(Math.PI / 2);
+
         public static final int ENCODER_CPR = 1024;
         public static final double GEAR_RATIO = 8.45;
         public static final Time CAN_TIMEOUT = Milliseconds.of(250);
@@ -73,5 +82,8 @@ public final class Constants {
     public static final class ControllerConstants {
         public static final int DRIVER_CONTROLLER_PORT = 0;
         public static final int OPERATOR_CONTROLLER_PORT = 1;
+
+        public static final double DRIVE_MIN_INPUT = 0.01; // deadband
+        public static final double DRIVE_MAX_INPUT = 0.98;
     }
 }
