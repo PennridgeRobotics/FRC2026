@@ -1,5 +1,6 @@
 # FRC2026
 Welcome to Ridge Robotics' repository for the FRC 2026 season!
+ethan says "hi," "hi" says ethan
 
 ## Development
 Here are some things to keep in mind while working on this codebase:
