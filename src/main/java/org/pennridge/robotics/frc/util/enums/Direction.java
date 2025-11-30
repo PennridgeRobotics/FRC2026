@@ -18,6 +18,8 @@ public enum Direction {
     private final int angle;
     private final int compassAngle;
     private final boolean enabled = true; // might need?
+
+    @SuppressWarnings("ImmutableEnumChecker")
     private final Rotation2d compassRotation2d;
 
     Direction(int angle, int compassAngle) {
