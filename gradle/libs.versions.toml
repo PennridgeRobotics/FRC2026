@@ -4,7 +4,7 @@ error-prone = "2.45.0"
 error-prone-plugin = "4.3.0"
 gradle-rio = "2025.3.2"
 jspecify = "1.0.0"
-junit = "6.0.1"
+junit = "6.0.2"
 null-away = "0.12.15"
 spotless = "8.1.0"
 
