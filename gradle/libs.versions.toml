@@ -2,7 +2,7 @@
 caffeine = "3.2.3"
 error-prone = "2.45.0"
 error-prone-plugin = "4.3.0"
-gradle-rio = "2026.1.1-beta-1"
+gradle-rio = "2026.1.1"
 jspecify = "1.0.0"
 junit = "6.0.1"
 null-away = "0.12.12"
