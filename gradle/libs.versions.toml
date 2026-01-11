@@ -1,7 +1,7 @@
 [versions]
 caffeine = "3.2.3"
 error-prone = "2.46.0"
-error-prone-plugin = "4.3.0"
+error-prone-plugin = "4.4.0"
 gradle-rio = "2025.3.2"
 jspecify = "1.0.0"
 junit = "6.0.2"
