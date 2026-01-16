@@ -5,7 +5,6 @@ import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-import java.io.IOException;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.pennridge.robotics.frc.subsystems.SwerveSubsystem;
@@ -28,7 +27,7 @@ public class RobotContainer {
     public RobotContainer() {
         try {
             swerveSubsystem = new SwerveSubsystem();
-        } catch (IOException ex) {
+        } catch (/*IO*/ Exception ex) {
             final var finalException =
                     new RuntimeException("Error instantiating Swerve Subsystem: " + ex.getMessage(), ex);
             DriverStation.reportError(
@@ -55,10 +54,10 @@ public class RobotContainer {
     public void periodic() {}
 
     private void configureBindings() {
-        swerveSubsystem.setDefaultCommand(swerveSubsystem.driveFieldOrientedCommand(
+        /*swerveSubsystem.setDefaultCommand(swerveSubsystem.driveFieldOrientedCommand(
                 driverController::getLeftY, () -> -driverController.getLeftX(), () -> -driverController.getRightX()));
 
-        driverController.start().onTrue(swerveSubsystem.resetYaw());
+        driverController.start().onTrue(swerveSubsystem.resetYaw());*/
     }
 
     public void initSmartDashboard() {}

@@ -1,35 +1,15 @@
 package org.pennridge.robotics.frc.subsystems;
 
-import static edu.wpi.first.units.Units.DegreesPerSecond;
-import static edu.wpi.first.units.Units.MetersPerSecond;
-
-import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.VecBuilder;
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.kinematics.ChassisSpeeds;
-import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
-import edu.wpi.first.units.measure.AngularVelocity;
-import edu.wpi.first.units.measure.LinearVelocity;
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.Filesystem;
-import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import java.io.File;
-import java.io.IOException;
-import java.util.function.DoubleSupplier;
-import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
-import org.pennridge.robotics.frc.util.enums.Constants.ControllerConstants;
-import org.pennridge.robotics.frc.util.enums.Constants.DriveConstants;
-import org.pennridge.robotics.frc.util.enums.Constants.VisionConstants;
-import org.pennridge.robotics.frc.util.lib.LimelightHelpers;
-import swervelib.SwerveDrive;
+
+/*import swervelib.SwerveDrive;
 import swervelib.parser.SwerveParser;
-import swervelib.telemetry.SwerveDriveTelemetry;
+import swervelib.telemetry.SwerveDriveTelemetry;*/
 
 @NullMarked
 public class SwerveSubsystem extends SubsystemBase {
-    private final SwerveDrive swerveDrive;
+    /*private final SwerveDrive swerveDrive;
 
     @SuppressWarnings("StaticAssignmentInConstructor")
     public SwerveSubsystem() throws IOException {
@@ -52,11 +32,13 @@ public class SwerveSubsystem extends SubsystemBase {
         return runOnce(() -> swerveDrive.resetOdometry(resetPose.get()));
     }
 
+    */
     /**
      * @param xVelocity Positive = towards other alliance
      * @param yVelocity Positive = towards left wall
      * @param angularVelocity Positive = CCW
      */
+    /*
     public Command driveFieldOrientedCommand(
             final Supplier<LinearVelocity> xVelocity,
             final Supplier<LinearVelocity> yVelocity,
@@ -64,11 +46,13 @@ public class SwerveSubsystem extends SubsystemBase {
         return run(() -> driveFieldOriented(xVelocity.get(), yVelocity.get(), angularVelocity.get()));
     }
 
+    */
     /**
      * @param xInput Positive = towards other alliance
      * @param yInput Positive = towards left wall
      * @param angularInput Positive = CCW
      */
+    /*
     public Command driveFieldOrientedCommand(
             final DoubleSupplier xInput, final DoubleSupplier yInput, final DoubleSupplier angularInput) {
         return driveFieldOrientedCommand(
@@ -129,5 +113,5 @@ public class SwerveSubsystem extends SubsystemBase {
 
     public Command resetYaw() {
         return runOnce(swerveDrive::zeroGyro);
-    }
+    }*/
 }
