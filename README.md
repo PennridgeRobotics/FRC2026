@@ -4,6 +4,27 @@ Welcome to Ridge Robotics' repository for the FRC 2026 season!
 ## Development
 Here are some things to keep in mind while working on this codebase:
 
+### Code Conventions/Best Practices
+- In general, look at other code in this repository to see what to do
+- At the very least:
+    - Java naming conventions: https://www.geeksforgeeks.org/java/java-naming-conventions/
+    - FRC-specific best practices: https://bovlb.github.io/frc-tips/commands/best-practices.html
+- Some conventions are (at least partially) enforced:
+    - Nullability: check out [JSpecify/NullAway](#jspecifynullaway)
+    - Code style (indentation/spacing/etc): strictly enforced by [Spotless](#spotless)
+    - Common possible points of error: checked by [Error Prone](#error-prone)
+
+### Working on Tasks
+- Check out the [Project](https://github.com/orgs/PennridgeRobotics/projects/1)
+- Select an issue in the "Ready" category
+    - Assign the issue to yourself
+    - Move the issue from "Ready" to "In progress"
+- Create a new branch
+    - Make sure the branch name contains that issue #
+- When you're finished:
+    - Move the issue from "In progress" to "In review"
+    - Open a PR (with the issue #) and ask the programming lead to review & merge!
+
 ### Git & GitHub Usage
 - Before working on code, **always pull** with `git pull` to ensure you have the latest changes
 - Likewise, after working on code, **always push** with `git push` to upload your changes
@@ -11,6 +32,7 @@ Here are some things to keep in mind while working on this codebase:
 - All new code must be developed on a new branch
   - When merging back into the `main` branch, make sure that your branch is up-to-date with `main`, then open a new PR!
   - All PRs must be approved by the programming lead in order to be merged
+- Force pushes (`git push --force`) are **not** allowed (this will be enforced by GitHub)
 
 ### Spotless
 - We use Spotless to maintain code formatting consistency
