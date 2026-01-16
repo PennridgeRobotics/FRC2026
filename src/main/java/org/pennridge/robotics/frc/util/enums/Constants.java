@@ -1,20 +1,9 @@
 package org.pennridge.robotics.frc.util.enums;
 
-import static edu.wpi.first.units.Units.Amps;
-import static edu.wpi.first.units.Units.Inches;
-import static edu.wpi.first.units.Units.Meters;
-import static edu.wpi.first.units.Units.MetersPerSecond;
-import static edu.wpi.first.units.Units.MetersPerSecondPerSecond;
-import static edu.wpi.first.units.Units.Milliseconds;
-import static edu.wpi.first.units.Units.RadiansPerSecond;
-import static edu.wpi.first.units.Units.RadiansPerSecondPerSecond;
+import static edu.wpi.first.units.Units.*;
 
 import com.pathplanner.lib.path.PathConstraints;
-import edu.wpi.first.units.measure.AngularVelocity;
-import edu.wpi.first.units.measure.Current;
-import edu.wpi.first.units.measure.Distance;
-import edu.wpi.first.units.measure.LinearVelocity;
-import edu.wpi.first.units.measure.Time;
+import edu.wpi.first.units.measure.*;
 import org.jspecify.annotations.NullMarked;
 
 /**
@@ -77,6 +66,21 @@ public final class Constants {
         public static final Distance DISTANCE_PER_REV =
                 WHEEL_DIAMETER.times(Math.PI).div(GEAR_RATIO);
         public static final Distance TRACK_WIDTH = Inches.of(21.5);
+    }
+
+    public static final class FuelConstants {
+        public static final int INTAKE_LAUNCHER_MOTOR_ID = 5;
+        public static final int FEEDER_MOTOR_ID = 6;
+
+        public static final Current LAUNCHER_MOTOR_CURRENT_LIMIT = Amps.of(40);
+        public static final Current FEEDER_MOTOR_CURRENT_LIMIT = Amps.of(40);
+
+        public static final Voltage INTAKE_FEEDER_VOLTAGE = Volts.of(-12);
+        public static final Voltage INTAKE_INTAKE_VOLTAGE = Volts.of(10);
+        public static final Voltage LAUNCHING_FEEDER_VOLTAGE = Volts.of(9);
+        public static final Voltage LAUNCHING_LAUNCHER_VOLTAGE = Volts.of(10.6);
+        public static final Voltage SPIN_UP_FEEDER_VOLTAGE = Volts.of(-6);
+        public static final Time SPIN_UP_SECONDS = Seconds.of(1);
     }
 
     public static final class ControllerConstants {
