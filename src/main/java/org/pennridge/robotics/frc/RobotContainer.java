@@ -1,19 +1,17 @@
 package org.pennridge.robotics.frc;
 
-import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
-import org.pennridge.robotics.frc.subsystems.SwerveSubsystem;
 import org.pennridge.robotics.frc.util.enums.Constants.ControllerConstants;
 
 @NullMarked
 public class RobotContainer {
     // Initializes subsystems
-    private final SwerveSubsystem swerveSubsystem;
+    // private final SwerveSubsystem swerveSubsystem;
 
     // Initializes controllers
     private final CommandXboxController driverController =
@@ -25,15 +23,15 @@ public class RobotContainer {
 
     /** The container for the robot. Contains subsystems, I/O devices, and commands. */
     public RobotContainer() {
-        try {
+        /*try {
             swerveSubsystem = new SwerveSubsystem();
-        } catch (/*IO*/ Exception ex) {
+        } catch (IOException ex) {
             final var finalException =
                     new RuntimeException("Error instantiating Swerve Subsystem: " + ex.getMessage(), ex);
             DriverStation.reportError(
                     "Error instantiating Swerve Subsystem: " + ex.getMessage(), finalException.getStackTrace());
             throw finalException;
-        }
+        }*/
 
         // autoChooser = AutoBuilder.buildAutoChooser("Epic Auto");
         autoChooser = new SendableChooser<>();
