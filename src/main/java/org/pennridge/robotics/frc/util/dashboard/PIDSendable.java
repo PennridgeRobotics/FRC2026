@@ -13,6 +13,7 @@ import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.util.sendable.Sendable;
 import edu.wpi.first.util.sendable.SendableBuilder;
 import java.util.List;
+import java.util.Objects;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
@@ -242,7 +243,8 @@ public class PIDSendable implements Sendable {
         }
 
         if (config != null) {
-            sparkMax.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kPersistParameters);
+            Objects.requireNonNull(sparkMax) // NullAway false positive
+                    .configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kPersistParameters);
         }
     }
 
