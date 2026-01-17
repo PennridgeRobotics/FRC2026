@@ -28,8 +28,11 @@ test-reports
 *.iml
 *.ipr
 *.iws
-.idea/
+.idea/**
 out/
+
+!/.idea/dictionaries/
+!/.idea/dictionaries/project.xml
 
 # Fleet
 .fleet
