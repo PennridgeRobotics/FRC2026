@@ -117,7 +117,7 @@ tasks {
 
         options.errorprone {
             allErrorsAsWarnings.set(false) // set to true if needed - temporarily!
-            disable("EnumOrdinal", "MissingSummary", "MutablePublicArray")
+            disable("EnumOrdinal", "MissingSummary", "MutablePublicArray", "UnusedVariable", "UnusedMethod")
             excludedPaths.set(".*/frc/util/lib/.*")
 
             check("NullAway", CheckSeverity.ERROR)
