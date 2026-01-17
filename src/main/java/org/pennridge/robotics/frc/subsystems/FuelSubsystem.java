@@ -2,6 +2,7 @@ package org.pennridge.robotics.frc.subsystems;
 
 import static edu.wpi.first.units.Units.Volts;
 
+import com.ctre.phoenix.motorcontrol.NeutralMode;
 import com.ctre.phoenix.motorcontrol.VictorSPXControlMode;
 import com.ctre.phoenix.motorcontrol.can.VictorSPX;
 import com.ctre.phoenix.motorcontrol.can.VictorSPXConfiguration;
@@ -31,8 +32,10 @@ public class FuelSubsystem extends SubsystemBase {
         victorConfig.voltageCompSaturation = FuelConstants.VOLTAGE_COMPENSATION.in(Volts);
         intakeLauncherRoller.configAllSettings(victorConfig);
         intakeLauncherRoller.enableVoltageCompensation(true);
+        intakeLauncherRoller.setNeutralMode(NeutralMode.Brake);
         feederRoller.configAllSettings(victorConfig);
         feederRoller.enableVoltageCompensation(true);
+        feederRoller.setNeutralMode(NeutralMode.Brake);
 
         setDefaultCommand(runRollers().onlyWhile(rollersActive()));
 
