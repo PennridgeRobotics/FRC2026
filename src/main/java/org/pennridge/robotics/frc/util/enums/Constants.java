@@ -69,13 +69,11 @@ public final class Constants {
     }
 
     public static final class FuelConstants {
-        public static final int INTAKE_LAUNCHER_MOTOR_ID = 5;
-        public static final int FEEDER_MOTOR_ID = 6;
+        public static final int INTAKE_LAUNCHER_MOTOR_ID = 11;
+        public static final int FEEDER_MOTOR_ID = 12;
 
-        public static final Voltage VOLTAGE_COMPENSATION = Volts.of(11);
-
-        public static final Current LAUNCHER_MOTOR_CURRENT_LIMIT = Amps.of(40);
-        public static final Current FEEDER_MOTOR_CURRENT_LIMIT = Amps.of(40);
+        public static final Voltage VOLTAGE_COMPENSATION = Volts.of(12);
+        public static final Current MOTOR_CURRENT_LIMIT = Amps.of(40);
 
         public static final Voltage INTAKE_FEEDER_VOLTAGE = Volts.of(-12);
         public static final Voltage INTAKE_INTAKE_VOLTAGE = Volts.of(10);
