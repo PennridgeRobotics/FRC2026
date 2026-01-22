@@ -95,13 +95,6 @@ dependencies {
     testRuntimeOnly(libs.junit.platform.launcher)
 }
 
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
-        vendor = JvmVendorSpec.ADOPTIUM
-    }
-}
-
 tasks {
 
     test {
@@ -144,7 +137,7 @@ tasks {
 idea {
     project {
         // The project.sourceCompatibility setting is not always picked up, so we set explicitly
-        languageLevel = IdeaLanguageLevel(JavaVersion.VERSION_21)
+        languageLevel = IdeaLanguageLevel(JavaVersion.VERSION_17)
     }
     module {
         // Improve development & (especially) debugging experience (and IDEA's capabilities) by having libraries' source & javadoc attached
