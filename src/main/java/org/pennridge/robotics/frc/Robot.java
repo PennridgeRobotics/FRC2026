@@ -6,6 +6,7 @@ import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import java.util.Objects;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import swervelib.simulation.ironmaple.simulation.SimulatedArena;
 
 @NullMarked
 public class Robot extends TimedRobot {
@@ -93,7 +94,9 @@ public class Robot extends TimedRobot {
 
     /** This function is called periodically whilst in simulation. */
     @Override
-    public void simulationPeriodic() {}
+    public void simulationPeriodic() {
+        SimulatedArena.getInstance().simulationPeriodic();
+    }
 
     @Override
     public void close() {

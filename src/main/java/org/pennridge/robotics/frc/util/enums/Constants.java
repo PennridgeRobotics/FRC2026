@@ -18,10 +18,8 @@ import org.jspecify.annotations.NullMarked;
 public final class Constants {
 
     public static final class PhysicalConstants { // TODO update these numbers
-        public static final Distance ROBOT_LENGTH = Inches.of(38);
-        public static final Distance ROBOT_WIDTH = Inches.of(32.5);
-        public static final Distance WHEEL_CENTERS_DISTANCE_WIDTH = Inches.of(36);
-        public static final Distance WHEEL_CENTERS_DISTANCE_LENGTH = Inches.of(30);
+        public static final Distance ROBOT_LENGTH = Inches.of(33.5);
+        public static final Distance ROBOT_WIDTH = Inches.of(33.5);
         public static final Distance LIMELIGHT_OFFSET_X = Inches.of(10.0); // offset from center
     }
 
@@ -62,10 +60,15 @@ public final class Constants {
         public static final double GEAR_RATIO = 8.45;
         public static final Time CAN_TIMEOUT = Milliseconds.of(250);
         public static final Current DRIVE_MOTOR_CURRENT_LIMIT = Amps.of(40);
-        public static final Distance WHEEL_DIAMETER = Inches.of(6);
+        public static final double WHEEL_COEFFICIENT = 1.0;
+        public static final Distance TRACK_WIDTH = Inches.of(21.5);
+        public static final Distance WHEEL_RADIUS = Inches.of(3);
+        public static final Distance WHEEL_DIAMETER = WHEEL_RADIUS.times(2);
         public static final Distance DISTANCE_PER_REV =
                 WHEEL_DIAMETER.times(Math.PI).div(GEAR_RATIO);
-        public static final Distance TRACK_WIDTH = Inches.of(21.5);
+        public static final int SWERVE_GEAR_RATIO_LEVEL = 1;
+        public static final double DRIVE_MOTOR_REDUCTION = 8.14;
+        public static final double TURN_MOTOR_REDUCTION = 12.8;
     }
 
     public static final class FuelConstants {

@@ -33,6 +33,17 @@ deploy {
         roborio.artifacts {
             register<FRCJavaArtifact>("frcJava") {
                 setJarTask(tasks.jar)
+
+                jvmArgs.add("-XX:+UnlockExperimentalVMOptions")
+                jvmArgs.add("-XX:GCTimeRatio=5")
+                jvmArgs.add("-XX:+UseSerialGC")
+                jvmArgs.add("-XX:MaxGCPauseMillis=50")
+
+                // The options below may improve performance, but should only be enabled on the RIO 2
+                val maxJavaHeapSizeMB = 100
+                jvmArgs.add("-Xmx" + maxJavaHeapSizeMB + "M")
+                jvmArgs.add("-Xms" + maxJavaHeapSizeMB + "M")
+                jvmArgs.add("-XX:+AlwaysPreTouch")
             }
 
             register<FileTreeArtifact>("frcStaticFileDeploy") {
@@ -56,7 +67,7 @@ wpi {
     // Simulation configuration (e.g. environment variables).
     with(sim) {
         addGui().apply {
-            defaultEnabled = true
+            defaultEnabled = false
         }
         addDriverstation()
     }
