@@ -3,6 +3,8 @@
 // the WPILib BSD license file in the root directory of this project.
 package org.pennridge.robotics.frc.subsystems;
 
+import static edu.wpi.first.units.Units.Volts;
+import static edu.wpi.first.units.Units.DegreesPerSecond;
 import static edu.wpi.first.units.Units.Amps;
 import static edu.wpi.first.units.Units.Inches;
 import static edu.wpi.first.units.Units.Pounds;
@@ -12,6 +14,7 @@ import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.units.measure.AngularVelocity;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import org.jspecify.annotations.NullMarked;
@@ -41,6 +44,7 @@ public class FeederSubsystem extends SubsystemBase {
             .withGearing(new MechanismGearing(GearBox.fromReductionStages(3, 4)))
             // Motor properties to prevent over currenting.
             .withMotorInverted(false)
+            .withVoltageCompensation(Volts.of(12))
             .withIdleMode(MotorMode.BRAKE)
             .withStatorCurrentLimit(Amps.of(40));
 
@@ -49,49 +53,60 @@ public class FeederSubsystem extends SubsystemBase {
     private SparkMax spark = new SparkMax(FuelConstants.FEEDER_MOTOR_ID, MotorType.kBrushless);
     // Create our SmartMotorController from our Spark and config with the NEO.
     private SmartMotorController motorController = new SparkWrapper(spark, DCMotor.getNEO(1), smcConfig);
-    private final FlyWheelConfig shooterConfig = new FlyWheelConfig(motorController)
+    private final FlyWheelConfig feederConfig = new FlyWheelConfig(motorController)
             .withDiameter(Inches.of(4))
             .withMass(Pounds.of(1))
             .withUpperSoftLimit(RPM.of(1000))
             .withTelemetry("FeederMotor", TelemetryVerbosity.HIGH);
 
-    private FlyWheel shooter = new FlyWheel(shooterConfig);
+    private FlyWheel feederMotor = new FlyWheel(feederConfig);
 
-    /**
-     * Gets the current velocity of the shooter.
-     *
-     * @return Shooter velocity.
-     */
-    public AngularVelocity getVelocity() {
-        return shooter.getSpeed();
+    /** Creates a new FeederSubsystem. */
+    public FeederSubsystem() {
+        setDefaultCommand(set(0));
+        setupSmartDashboard();
+    }
+
+    private void setupSmartDashboard() {
+        SmartDashboard.putData("Feeder", (builder) -> {
+            builder.addDoubleProperty("Velocity", () -> getAngularVelocity().in(DegreesPerSecond), null);
+            builder.addDoubleProperty(" Input", () -> motorController.getDutyCycle(), (f) -> motorController.setDutyCycle(f));
+        });
     }
 
     /**
-     * Set the shooter velocity.
+     * Gets the current velocity of the feeder.
+     *
+     * @return feeder velocity.
+     */
+    public AngularVelocity getAngularVelocity() {
+        return feederMotor.getSpeed();
+    }
+
+    /**
+     * Set the feeder velocity.
      *
      * @param speed Speed to set.
      * @return {@link edu.wpi.first.wpilibj2.command.RunCommand}
      */
-    public Command setVelocity(AngularVelocity speed) {
-        return shooter.setSpeed(speed);
+    public Command setAngularVelocity(AngularVelocity speed) {
+        return feederMotor.setSpeed(speed);
     }
 
     /**
-     * Set the dutycycle of the shooter.
+     * Set the dutycycle of the feeder.
      *
      * @param dutyCycle DutyCycle to set.
      * @return {@link edu.wpi.first.wpilibj2.command.RunCommand}
      */
     public Command set(double dutyCycle) {
-        return shooter.set(dutyCycle);
+        return feederMotor.set(dutyCycle);
     }
 
-    /** Creates a new FeederSubsystem. */
-    public FeederSubsystem() {}
 
     /**
      * Example command factory method.
-     *
+     
      * @return a command
      */
     public Command exampleMethodCommand() {
@@ -115,12 +130,12 @@ public class FeederSubsystem extends SubsystemBase {
     @Override
     public void periodic() {
         // This method will be called once per scheduler run
-        shooter.updateTelemetry();
+        feederMotor.updateTelemetry();
     }
 
     @Override
     public void simulationPeriodic() {
         // This method will be called once per scheduler run during simulation
-        shooter.simIterate();
+        feederMotor.simIterate();
     }
 }
