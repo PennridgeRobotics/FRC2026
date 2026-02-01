@@ -12,6 +12,9 @@ import static edu.wpi.first.units.Units.RPM;
 
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
+
+import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -33,8 +36,12 @@ import yams.motorcontrollers.local.SparkWrapper;
 @NullMarked
 public class FeederSubsystem extends SubsystemBase {
 
+    private SimpleMotorFeedforward feedForward = new SimpleMotorFeedforward(0.0, 0.0);
+    private PIDController pidController = new PIDController(0.0, 0.0, 0.0);
+
     private SmartMotorControllerConfig smcConfig = new SmartMotorControllerConfig(this)
-            .withControlMode(ControlMode.OPEN_LOOP)
+            .withFeedforward(feedForward)
+            .withClosedLoopController()
             // Telemetry name and verbosity level
             .withTelemetry("FeederMotor", TelemetryVerbosity.HIGH)
             // Gearing from the motor rotor to final shaft.
