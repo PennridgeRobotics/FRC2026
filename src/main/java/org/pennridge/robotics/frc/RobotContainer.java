@@ -6,6 +6,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.pennridge.robotics.frc.util.dashboard.CANBusLoadSendable;
 import org.pennridge.robotics.frc.util.enums.Constants.ControllerConstants;
 
 @NullMarked
@@ -20,6 +21,7 @@ public class RobotContainer {
             new CommandXboxController(ControllerConstants.OPERATOR_CONTROLLER_PORT);
 
     private final SendableChooser<Command> autoChooser;
+    CANBusLoadSendable testChooser = new CANBusLoadSendable();
 
     /** The container for the robot. Contains subsystems, I/O devices, and commands. */
     public RobotContainer() {
@@ -41,6 +43,7 @@ public class RobotContainer {
 
         // Add the auto chooser to SmartDashboard
         SmartDashboard.putData("Auto Chooser", autoChooser);
+        SmartDashboard.putData("Testing", testChooser);
     }
 
     private void setupPathPlanner() {}
