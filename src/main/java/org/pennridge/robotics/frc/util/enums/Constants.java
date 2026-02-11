@@ -1,9 +1,22 @@
 package org.pennridge.robotics.frc.util.enums;
 
-import static edu.wpi.first.units.Units.*;
+import static edu.wpi.first.units.Units.Amps;
+import static edu.wpi.first.units.Units.Inches;
+import static edu.wpi.first.units.Units.Meters;
+import static edu.wpi.first.units.Units.MetersPerSecond;
+import static edu.wpi.first.units.Units.MetersPerSecondPerSecond;
+import static edu.wpi.first.units.Units.Milliseconds;
+import static edu.wpi.first.units.Units.RadiansPerSecond;
+import static edu.wpi.first.units.Units.RadiansPerSecondPerSecond;
+import static edu.wpi.first.units.Units.Seconds;
+import static edu.wpi.first.units.Units.Volts;
 
 import com.pathplanner.lib.path.PathConstraints;
-import edu.wpi.first.units.measure.*;
+import edu.wpi.first.units.measure.Current;
+import edu.wpi.first.units.measure.Distance;
+import edu.wpi.first.units.measure.LinearVelocity;
+import edu.wpi.first.units.measure.Time;
+import edu.wpi.first.units.measure.Voltage;
 import org.jspecify.annotations.NullMarked;
 
 /**
@@ -56,7 +69,6 @@ public final class Constants {
         public static final String SWERVE_CONFIG_DIRECTORY = "swerve"; // + deploy
 
         public static final LinearVelocity MAX_LINEAR_SPEED = MetersPerSecond.of(0.5);
-        public static final AngularVelocity MAX_ANGULAR_SPEED = RadiansPerSecond.of(Math.PI / 2);
 
         public static final int ENCODER_CPR = 1024;
         public static final double GEAR_RATIO = 8.45;

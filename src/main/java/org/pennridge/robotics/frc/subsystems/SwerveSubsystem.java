@@ -1,11 +1,15 @@
 package org.pennridge.robotics.frc.subsystems;
 
 import static edu.wpi.first.units.Units.DegreesPerSecond;
+import static edu.wpi.first.units.Units.Meter;
 import static edu.wpi.first.units.Units.MetersPerSecond;
+import static edu.wpi.first.units.Units.RadiansPerSecond;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.units.measure.AngularVelocity;
@@ -14,6 +18,7 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import java.io.File;
 import java.io.IOException;
 import java.util.function.DoubleSupplier;
@@ -24,6 +29,7 @@ import org.pennridge.robotics.frc.util.enums.Constants.DriveConstants;
 import org.pennridge.robotics.frc.util.enums.Constants.VisionConstants;
 import org.pennridge.robotics.frc.util.lib.LimelightHelpers;
 import swervelib.SwerveDrive;
+import swervelib.SwerveDriveTest;
 import swervelib.parser.SwerveParser;
 import swervelib.telemetry.SwerveDriveTelemetry;
 
@@ -36,8 +42,14 @@ public class SwerveSubsystem extends SubsystemBase {
         SwerveDriveTelemetry.verbosity = SwerveDriveTelemetry.TelemetryVerbosity.HIGH;
         swerveDrive = new SwerveParser(
                         new File(Filesystem.getDeployDirectory(), DriveConstants.SWERVE_CONFIG_DIRECTORY))
-                .createSwerveDrive(DriveConstants.MAX_LINEAR_SPEED.in(MetersPerSecond));
-        swerveDrive.setHeadingCorrection(false);
+                .createSwerveDrive(
+                        DriveConstants.MAX_LINEAR_SPEED.in(MetersPerSecond),
+                        new Pose2d(new Translation2d(Meter.of(2), Meter.of(0)), Rotation2d.kZero));
+        swerveDrive.setHeadingCorrection(false); // only while controlling the robot via angle
+        swerveDrive.setCosineCompensator(SwerveDriveTelemetry.isSimulation); // disable for simulations
+        swerveDrive.setAngularVelocityCompensation(true, true, 0.1); // may need to adjust; see docs
+        swerveDrive.setModuleEncoderAutoSynchronize(false, 1); // can set to true, but I want to test
+        swerveDrive.setMotorIdleMode(false);
 
         initSmartDashboard();
     }
@@ -46,10 +58,6 @@ public class SwerveSubsystem extends SubsystemBase {
     public void periodic() {
         swerveDrive.updateOdometry();
         updateVision();
-    }
-
-    public Command resetRobotPose(Supplier<Pose2d> resetPose) {
-        return runOnce(() -> swerveDrive.resetOdometry(resetPose.get()));
     }
 
     /**
@@ -77,6 +85,27 @@ public class SwerveSubsystem extends SubsystemBase {
                 () -> joystickToAngularVelocity(angularInput.getAsDouble()));
     }
 
+    public Command sysIdDriveMotorCommand() {
+        // Empty config defaults to 1 Volt/sec ramp rate and 7 Volt step voltage
+        return SwerveDriveTest.generateSysIdCommand(
+                SwerveDriveTest.setDriveSysIdRoutine(new SysIdRoutine.Config(), this, swerveDrive, 12, true),
+                3.0,
+                5.0,
+                3.0);
+    }
+
+    public Command sysIdAngleMotorCommand() {
+        return SwerveDriveTest.generateSysIdCommand(
+                SwerveDriveTest.setAngleSysIdRoutine(new SysIdRoutine.Config(), this, swerveDrive), 3.0, 5.0, 3.0);
+    }
+
+    public void zeroGyroWithAlliance() {
+        swerveDrive.zeroGyro();
+        if (DriverStation.Alliance.Red.equals(DriverStation.getAlliance().orElse(null))) {
+            swerveDrive.resetOdometry(new Pose2d(getRobotPose().getTranslation(), Rotation2d.k180deg));
+        }
+    }
+
     private void driveFieldOriented(
             final LinearVelocity xVelocity, final LinearVelocity yVelocity, final AngularVelocity angularVelocity) {
         final var alliance = DriverStation.getAlliance();
@@ -93,14 +122,14 @@ public class SwerveSubsystem extends SubsystemBase {
         final var withDeadband =
                 MathUtil.applyDeadband(input, ControllerConstants.DRIVE_MIN_INPUT, ControllerConstants.DRIVE_MAX_INPUT);
         final var scaled = Math.pow(withDeadband, 3);
-        return DriveConstants.MAX_LINEAR_SPEED.times(scaled);
+        return getMaximumChassisVelocity().times(scaled);
     }
 
     private AngularVelocity joystickToAngularVelocity(final double input) {
         final var withDeadband =
                 MathUtil.applyDeadband(input, ControllerConstants.DRIVE_MIN_INPUT, ControllerConstants.DRIVE_MAX_INPUT);
         final var scaled = Math.pow(withDeadband, 3);
-        return DriveConstants.MAX_ANGULAR_SPEED.times(scaled);
+        return getMaximumChassisAngularVelocity().times(scaled);
     }
 
     private void updateVision() {
@@ -127,7 +156,11 @@ public class SwerveSubsystem extends SubsystemBase {
         return swerveDrive.getPose();
     }
 
-    public Command resetYaw() {
-        return runOnce(swerveDrive::zeroGyro);
+    private LinearVelocity getMaximumChassisVelocity() {
+        return MetersPerSecond.of(swerveDrive.getMaximumChassisVelocity());
+    }
+
+    private AngularVelocity getMaximumChassisAngularVelocity() {
+        return RadiansPerSecond.of(swerveDrive.getMaximumChassisAngularVelocity());
     }
 }
