@@ -21,9 +21,12 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
+import org.pennridge.robotics.frc.manager.VisionManager;
 import org.pennridge.robotics.frc.util.enums.Constants.ControllerConstants;
 import org.pennridge.robotics.frc.util.enums.Constants.DriveConstants;
 import org.pennridge.robotics.frc.util.enums.Constants.VisionConstants;
@@ -36,6 +39,7 @@ import swervelib.telemetry.SwerveDriveTelemetry;
 @NullMarked
 public class SwerveSubsystem extends SubsystemBase {
     private final SwerveDrive swerveDrive;
+    private @Nullable VisionManager visionManager;
 
     @SuppressWarnings("StaticAssignmentInConstructor")
     public SwerveSubsystem() throws IOException {
@@ -57,7 +61,7 @@ public class SwerveSubsystem extends SubsystemBase {
     @Override
     public void periodic() {
         swerveDrive.updateOdometry();
-        updateVision();
+        updatePhotonVision();
     }
 
     /**
@@ -83,6 +87,14 @@ public class SwerveSubsystem extends SubsystemBase {
                 () -> joystickToLinearVelocity(xInput.getAsDouble()),
                 () -> joystickToLinearVelocity(yInput.getAsDouble()),
                 () -> joystickToAngularVelocity(angularInput.getAsDouble()));
+    }
+
+    public Command centerModulesCommand() {
+        return run(() -> Arrays.asList(swerveDrive.getModules()).forEach(mod -> mod.setAngle(0.0)));
+    }
+
+    public Command lockPoseCommand() {
+        return run(swerveDrive::lockPose);
     }
 
     public Command sysIdDriveMotorCommand() {
@@ -132,7 +144,14 @@ public class SwerveSubsystem extends SubsystemBase {
         return getMaximumChassisAngularVelocity().times(scaled);
     }
 
-    private void updateVision() {
+    private void updatePhotonVision() {
+        if (visionManager == null) {
+            return;
+        }
+        visionManager.updatePoseEstimation(swerveDrive);
+    }
+
+    private void updateLimelightVision() {
         LimelightHelpers.SetRobotOrientation(
                 VisionConstants.LIMELIGHT_NAME, swerveDrive.getYaw().getDegrees(), 0, 0, 0, 0, 0);
         final var estimate = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(VisionConstants.LIMELIGHT_NAME);
@@ -162,5 +181,11 @@ public class SwerveSubsystem extends SubsystemBase {
 
     private AngularVelocity getMaximumChassisAngularVelocity() {
         return RadiansPerSecond.of(swerveDrive.getMaximumChassisAngularVelocity());
+    }
+
+    public VisionManager setupVisionManager() {
+        final var visionManager = new VisionManager(swerveDrive::getPose, swerveDrive.field);
+        this.visionManager = visionManager;
+        return visionManager;
     }
 }

@@ -48,6 +48,8 @@ public final class Constants {
 
     public static final class VisionConstants {
         public static final String LIMELIGHT_NAME = "limelight";
+
+        public static final boolean VISION_ENABLED = false;
     }
 
     public static final class NavXConstants {
