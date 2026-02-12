@@ -1,5 +1,6 @@
 package org.pennridge.robotics.frc;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -67,6 +68,13 @@ public class RobotContainer {
                 driverController::getLeftY, () -> -driverController.getLeftX(), () -> -driverController.getRightX()));
 
         driverController.start().onTrue(swerveSubsystem.resetYaw());*/
+
+        // for testing
+        swerveSubsystem.setDefaultCommand(swerveSubsystem.driveFieldOrientedCommand(
+                () -> MathUtil.applyDeadband(driverController.getLeftY(), 0.1),
+                () -> MathUtil.applyDeadband(driverController.getLeftX(), 0.1),
+                driverController::getRightX,
+                driverController::getRightY));
     }
 
     public void initSmartDashboard() {}
