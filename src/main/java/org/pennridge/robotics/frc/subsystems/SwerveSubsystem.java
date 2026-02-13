@@ -305,7 +305,8 @@ public class SwerveSubsystem extends SubsystemBase {
 
         } catch (Exception e) {
             // Handle exception as needed
-            e.printStackTrace();
+            DriverStation.reportError("Error loading PathPlanner", e.getStackTrace());
+            return;
         }
 
         // Preload PathPlanner Path finding
