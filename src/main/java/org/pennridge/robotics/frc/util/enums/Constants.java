@@ -2,10 +2,8 @@ package org.pennridge.robotics.frc.util.enums;
 
 import static edu.wpi.first.units.Units.Amps;
 import static edu.wpi.first.units.Units.Inches;
-import static edu.wpi.first.units.Units.Meters;
 import static edu.wpi.first.units.Units.MetersPerSecond;
 import static edu.wpi.first.units.Units.MetersPerSecondPerSecond;
-import static edu.wpi.first.units.Units.Milliseconds;
 import static edu.wpi.first.units.Units.RadiansPerSecond;
 import static edu.wpi.first.units.Units.RadiansPerSecondPerSecond;
 import static edu.wpi.first.units.Units.Seconds;
@@ -30,12 +28,11 @@ import org.jspecify.annotations.NullMarked;
 @NullMarked
 public final class Constants {
 
-    public static final class PhysicalConstants { // TODO update these numbers
-        public static final Distance ROBOT_LENGTH = Inches.of(38);
-        public static final Distance ROBOT_WIDTH = Inches.of(32.5);
-        public static final Distance WHEEL_CENTERS_DISTANCE_WIDTH = Inches.of(36);
-        public static final Distance WHEEL_CENTERS_DISTANCE_LENGTH = Inches.of(30);
-        public static final Distance LIMELIGHT_OFFSET_X = Inches.of(10.0); // offset from center
+    public static final class PhysicalConstants { // TODO update length/width depending on bumper size
+        public static final Distance ROBOT_LENGTH = Inches.of(26.5);
+        public static final Distance ROBOT_WIDTH = Inches.of(31.5);
+        public static final Distance WHEEL_CENTERS_DISTANCE_LENGTH = Inches.of(18.5);
+        public static final Distance WHEEL_CENTERS_DISTANCE_WIDTH = Inches.of(23.5);
     }
 
     public static final class PathPlannerConstants {
@@ -52,39 +49,18 @@ public final class Constants {
         public static final boolean VISION_ENABLED = false;
     }
 
-    public static final class NavXConstants {
-        public static final Distance SENSOR_OFFSET_X = Meters.of(0.1);
-        public static final Distance SENSOR_OFFSET_Y = Meters.of(0.1);
-    }
-
     public static final class DriveConstants {
-        public static final int LEFT_LEADER_ID = 1;
-        public static final int LEFT_FOLLOWER_ID = 2;
-        public static final int RIGHT_LEADER_ID = 3;
-        public static final int RIGHT_FOLLOWER_ID = 4;
-
-        public static final int[] LEFT_ENCODER_PORTS = {1, 2};
-        public static final int[] RIGHT_ENCODER_PORTS = {3, 4};
-        public static final boolean LEFT_ENCODER_REVERSED = false;
-        public static final boolean RIGHT_ENCODER_REVERSED = true;
-
         public static final String SWERVE_CONFIG_DIRECTORY = "swerve"; // + deploy
 
         public static final LinearVelocity MAX_LINEAR_SPEED = MetersPerSecond.of(0.5);
 
-        public static final int ENCODER_CPR = 1024;
-        public static final double GEAR_RATIO = 8.45;
-        public static final Time CAN_TIMEOUT = Milliseconds.of(250);
         public static final Current DRIVE_MOTOR_CURRENT_LIMIT = Amps.of(40);
-        public static final Distance WHEEL_DIAMETER = Inches.of(6);
-        public static final Distance DISTANCE_PER_REV =
-                WHEEL_DIAMETER.times(Math.PI).div(GEAR_RATIO);
-        public static final Distance TRACK_WIDTH = Inches.of(21.5);
+        public static final Distance WHEEL_DIAMETER = Inches.of(4);
     }
 
     public static final class FuelConstants {
-        public static final int INTAKE_LAUNCHER_MOTOR_ID = 11;
-        public static final int FEEDER_MOTOR_ID = 12;
+        public static final int INTAKE_LAUNCHER_MOTOR_ID = 14;
+        public static final int FEEDER_MOTOR_ID = 15;
 
         public static final Current MOTOR_CURRENT_LIMIT = Amps.of(40);
 
