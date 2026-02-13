@@ -14,6 +14,7 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
+import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -53,13 +54,14 @@ public class SwerveSubsystem extends SubsystemBase {
                 .createSwerveDrive(
                         DriveConstants.MAX_LINEAR_SPEED.in(MetersPerSecond),
                         new Pose2d(new Translation2d(Meter.of(2), Meter.of(0)), Rotation2d.kZero));
-        swerveDrive.setHeadingCorrection(true); // only while controlling the robot via angle
-        swerveDrive.setCosineCompensator(SwerveDriveTelemetry.isSimulation); // disable for simulations
+        swerveDrive.setHeadingCorrection(false); // enable this after testing/tuning PID
+        swerveDrive.setCosineCompensator(!SwerveDriveTelemetry.isSimulation); // disable for simulations
         swerveDrive.setAngularVelocityCompensation(true, true, 0.1); // may need to adjust; see docs
+        swerveDrive.useExternalFeedbackSensor();
         swerveDrive.setModuleEncoderAutoSynchronize(false, 1); // can set to true, but I want to test
-        swerveDrive.setMotorIdleMode(false);
+        swerveDrive.setMotorIdleMode(true);
 
-        setupPathPlanner();
+        // setupPathPlanner();
         initSmartDashboard();
     }
 
@@ -70,8 +72,8 @@ public class SwerveSubsystem extends SubsystemBase {
     }
 
     /**
-     * @param xVelocity Positive = towards other alliance
-     * @param yVelocity Positive = towards left wall
+     * @param xVelocity Positive = towards the other alliance
+     * @param yVelocity Positive = towards the left wall
      * @param angularVelocity Positive = CCW
      */
     public Command driveFieldOrientedCommand(
@@ -82,9 +84,9 @@ public class SwerveSubsystem extends SubsystemBase {
     }
 
     /**
-     * @param xInput Positive = towards other alliance
-     * @param yInput Positive = towards left wall
-     * @param angularInput Positive = CCW
+     * @param xInput [-1,1] Positive = towards the other alliance
+     * @param yInput [-1,1] Positive = towards the left wall
+     * @param angularInput [-1,1] Positive = CCW
      */
     public Command driveFieldOrientedCommand(
             final DoubleSupplier xInput, final DoubleSupplier yInput, final DoubleSupplier angularInput) {
@@ -92,6 +94,39 @@ public class SwerveSubsystem extends SubsystemBase {
                 () -> joystickToLinearVelocity(xInput.getAsDouble()),
                 () -> joystickToLinearVelocity(yInput.getAsDouble()),
                 () -> joystickToAngularVelocity(angularInput.getAsDouble()));
+    }
+
+    /**
+     * @param xVelocity Positive = towards the other alliance
+     * @param yVelocity Positive = towards the left wall
+     * @param headingX [-1,1] Heading X (positive = front)
+     * @param headingY [-1,1] Heading Y (positive = left)
+     */
+    public Command driveFieldOrientedCommand(
+            final Supplier<LinearVelocity> xVelocity,
+            final Supplier<LinearVelocity> yVelocity,
+            final DoubleSupplier headingX,
+            final DoubleSupplier headingY) {
+        return run(() ->
+                driveFieldOriented(xVelocity.get(), yVelocity.get(), headingX.getAsDouble(), headingY.getAsDouble()));
+    }
+
+    /**
+     * @param xInput [-1,1] Positive = towards the other alliance
+     * @param yInput [-1,1] Positive = towards the left wall
+     * @param headingX [-1,1] Heading X (positive = front)
+     * @param headingY [-1,1] Heading Y (positive = left)
+     */
+    public Command driveFieldOrientedCommand(
+            final DoubleSupplier xInput,
+            final DoubleSupplier yInput,
+            final DoubleSupplier headingX,
+            final DoubleSupplier headingY) {
+        return driveFieldOrientedCommand(
+                () -> joystickToLinearVelocity(xInput.getAsDouble()),
+                () -> joystickToLinearVelocity(yInput.getAsDouble()),
+                headingX,
+                headingY);
     }
 
     public Command centerModulesCommand() {
@@ -124,6 +159,14 @@ public class SwerveSubsystem extends SubsystemBase {
     }
 
     private void driveFieldOriented(
+            final LinearVelocity xVelocity,
+            final LinearVelocity yVelocity,
+            final double headingX,
+            final double headingY) {
+        driveFieldOriented(xVelocity, yVelocity, getTargetAngularVelocity(calculateTargetAngle(headingX, headingY)));
+    }
+
+    private void driveFieldOriented(
             final LinearVelocity xVelocity, final LinearVelocity yVelocity, final AngularVelocity angularVelocity) {
         final var alliance = DriverStation.getAlliance();
         if (alliance.isEmpty()) {
@@ -135,7 +178,7 @@ public class SwerveSubsystem extends SubsystemBase {
         swerveDrive.driveFieldOriented(new ChassisSpeeds(adjustedXVelocity, adjustedYVelocity, angularVelocity));
     }
 
-    public Command driveFieldOrientedCommand(
+    public Command driveFieldOrientedTestCommand(
             DoubleSupplier translationX,
             DoubleSupplier translationY,
             DoubleSupplier headingX,
@@ -154,6 +197,25 @@ public class SwerveSubsystem extends SubsystemBase {
                     swerveDrive.getOdometryHeading().getRadians(),
                     swerveDrive.getMaximumChassisVelocity()));
         });
+    }
+
+    private AngularVelocity getTargetAngularVelocity(Angle targetAngle) {
+        final var currentHeading = swerveDrive.getOdometryHeading().getRadians();
+        final var targetHeading = targetAngle.in(Radians);
+        final var maxAngularVelocity = getMaximumChassisAngularVelocity().in(RadiansPerSecond);
+        final var calculated = swerveDrive.swerveController.thetaController.calculate(currentHeading, targetHeading)
+                * maxAngularVelocity;
+        final var limited = swerveDrive.swerveController.angleLimiter != null
+                ? swerveDrive.swerveController.angleLimiter.calculate(calculated)
+                : calculated;
+        return RadiansPerSecond.of(limited);
+    }
+
+    private Angle calculateTargetAngle(double headingX, double headingY) {
+        return Radians.of(
+                swerveDrive.swerveController.withinHypotDeadband(headingX, headingY)
+                        ? swerveDrive.swerveController.lastAngleScalar
+                        : Math.atan2(headingX, headingY));
     }
 
     private LinearVelocity joystickToLinearVelocity(final double input) {
