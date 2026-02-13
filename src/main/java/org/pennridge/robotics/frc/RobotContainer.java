@@ -10,8 +10,8 @@ import java.io.IOException;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.pennridge.robotics.frc.manager.VisionManager;
-import org.pennridge.robotics.frc.subsystems.SwerveSubsystem;
 import org.pennridge.robotics.frc.subsystems.FuelSubsystem;
+import org.pennridge.robotics.frc.subsystems.SwerveSubsystem;
 import org.pennridge.robotics.frc.util.enums.Constants.ControllerConstants;
 import org.pennridge.robotics.frc.util.enums.Constants.VisionConstants;
 
