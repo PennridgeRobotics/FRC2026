@@ -1,6 +1,5 @@
 package org.pennridge.robotics.frc.subsystems;
 
-import static edu.wpi.first.units.Units.DegreesPerSecond;
 import static edu.wpi.first.units.Units.Meter;
 import static edu.wpi.first.units.Units.MetersPerSecond;
 import static edu.wpi.first.units.Units.RadiansPerSecond;
@@ -11,7 +10,6 @@ import com.pathplanner.lib.config.PIDConstants;
 import com.pathplanner.lib.config.RobotConfig;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
@@ -21,6 +19,7 @@ import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Filesystem;
+import edu.wpi.first.wpilibj.Notifier;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
@@ -33,14 +32,14 @@ import java.util.Arrays;
 import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
-import org.jspecify.annotations.Nullable;
-import org.pennridge.robotics.frc.manager.VisionManager;
+import org.pennridge.robotics.frc.Robot;
 import org.pennridge.robotics.frc.util.enums.Constants.ControllerConstants;
 import org.pennridge.robotics.frc.util.enums.Constants.DriveConstants;
 import org.pennridge.robotics.frc.util.enums.Constants.FieldConstants;
 import org.pennridge.robotics.frc.util.enums.Constants.VisionConstants;
 import org.pennridge.robotics.frc.util.enums.DriveMode;
-import org.pennridge.robotics.frc.util.lib.LimelightHelpers;
+import org.pennridge.robotics.frc.vision.PhotonCamera;
+import org.pennridge.robotics.frc.vision.VisionManager;
 import swervelib.SwerveDrive;
 import swervelib.SwerveDriveTest;
 import swervelib.math.SwerveMath;
@@ -50,7 +49,7 @@ import swervelib.telemetry.SwerveDriveTelemetry;
 @NullMarked
 public class SwerveSubsystem extends SubsystemBase {
     private final SwerveDrive swerveDrive;
-    private @Nullable VisionManager visionManager;
+    private VisionManager visionManager;
 
     private DriveMode currentDriveMode = DriveMode.NORMAL; // automatically accounts for forceNormalDriveMode
     private boolean forceNormalDriveMode = false;
@@ -76,14 +75,14 @@ public class SwerveSubsystem extends SubsystemBase {
         inBumpZoneTrigger.onTrue(updateDriveMode(DriveMode.BUMP_LOCK));
         inBumpZoneTrigger.onFalse(updateDriveMode(DriveMode.NORMAL));
 
+        setupVisionManager();
         // setupPathPlanner();
         initSmartDashboard();
     }
 
-    @Override
-    public void periodic() {
+    private void updateOdometry() {
         swerveDrive.updateOdometry();
-        updatePhotonVision();
+        visionManager.updatePoseEstimation(swerveDrive);
     }
 
     /**
@@ -260,27 +259,6 @@ public class SwerveSubsystem extends SubsystemBase {
         return getMaximumChassisAngularVelocity().times(scaled);
     }
 
-    private void updatePhotonVision() {
-        if (visionManager == null) {
-            return;
-        }
-        visionManager.updatePoseEstimation(swerveDrive);
-    }
-
-    private void updateLimelightVision() {
-        LimelightHelpers.SetRobotOrientation(
-                VisionConstants.LIMELIGHT_NAME, swerveDrive.getYaw().getDegrees(), 0, 0, 0, 0, 0);
-        final var estimate = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(VisionConstants.LIMELIGHT_NAME);
-        if (Math.abs(swerveDrive.getGyro().getYawAngularVelocity().in(DegreesPerSecond)) > 360) {
-            return;
-        }
-        if (estimate == null || estimate.tagCount == 0) {
-            return;
-        }
-        swerveDrive.swerveDrivePoseEstimator.setVisionMeasurementStdDevs(VecBuilder.fill(.7, .7, 9999999));
-        swerveDrive.addVisionMeasurement(estimate.pose, estimate.timestampSeconds);
-    }
-
     private void setupPathPlanner() {
         // Load the RobotConfig from the GUI settings. You should probably
         // store this in your Constants file
@@ -364,10 +342,25 @@ public class SwerveSubsystem extends SubsystemBase {
         return RadiansPerSecond.of(swerveDrive.getMaximumChassisAngularVelocity());
     }
 
-    public VisionManager setupVisionManager() {
-        final var visionManager = new VisionManager(swerveDrive::getPose, swerveDrive.field);
-        this.visionManager = visionManager;
-        return visionManager;
+    private void setupVisionManager() {
+        this.visionManager = new VisionManager(() -> swerveDrive
+                .getSimulationDriveTrainPose()
+                .orElseThrow(
+                        () -> new IllegalStateException("Cannot get simulation drive train pose when not simulating")));
+
+        swerveDrive.stopOdometryThread();
+        @SuppressWarnings("resource")
+        final var odometryThread = new Notifier(this::updateOdometry);
+        odometryThread.setName("Odometry Thread");
+        odometryThread.startPeriodic(Robot.isSimulation() ? 0.01 : 0.02);
+
+        if (!VisionConstants.VISION_ENABLED) {
+            return;
+        }
+        visionManager.addCamera(new PhotonCamera(
+                VisionConstants.CAMERA_1_NAME,
+                VisionConstants.CAMERA_1_TRANSLATION,
+                VisionConstants.CAMERA_1_ROTATION));
     }
 
     // check every 45° angle to find the quickest one that we can rotate to
