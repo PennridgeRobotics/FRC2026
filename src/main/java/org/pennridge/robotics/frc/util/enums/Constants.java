@@ -1,6 +1,7 @@
 package org.pennridge.robotics.frc.util.enums;
 
 import static edu.wpi.first.units.Units.Amps;
+import static edu.wpi.first.units.Units.Degrees;
 import static edu.wpi.first.units.Units.Inches;
 import static edu.wpi.first.units.Units.MetersPerSecond;
 import static edu.wpi.first.units.Units.MetersPerSecondPerSecond;
@@ -13,7 +14,9 @@ import com.pathplanner.lib.path.PathConstraints;
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.geometry.Rectangle2d;
+import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.units.measure.LinearVelocity;
@@ -51,6 +54,13 @@ public final class Constants {
         public static final String LIMELIGHT_NAME = "limelight";
 
         public static final boolean VISION_ENABLED = false;
+
+        // Camera 1
+        public static final String CAMERA_1_NAME = "Arducam_OV9281_1";
+        public static final Translation3d CAMERA_1_TRANSLATION =
+                new Translation3d(Inches.of(0), Inches.of(0), Inches.of(0)); // Robot to cam
+        public static final Rotation3d CAMERA_1_ROTATION =
+                new Rotation3d(Degrees.of(0), Degrees.of(0), Degrees.of(0)); // Robot to cam
     }
 
     public static final class DriveConstants {
