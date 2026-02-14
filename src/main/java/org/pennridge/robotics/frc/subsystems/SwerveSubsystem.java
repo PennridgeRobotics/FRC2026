@@ -266,7 +266,6 @@ public class SwerveSubsystem extends SubsystemBase {
         try {
             config = RobotConfig.fromGUISettings();
 
-            final boolean enableFeedforward = true;
             // Configure AutoBuilder last
             AutoBuilder.configure(
                     // Robot pose supplier
@@ -276,14 +275,10 @@ public class SwerveSubsystem extends SubsystemBase {
                     // ChassisSpeeds supplier. MUST BE ROBOT RELATIVE
                     swerveDrive::getRobotVelocity,
                     (speedsRobotRelative, moduleFeedForwards) -> {
-                        if (enableFeedforward) {
-                            swerveDrive.drive(
-                                    speedsRobotRelative,
-                                    swerveDrive.kinematics.toSwerveModuleStates(speedsRobotRelative),
-                                    moduleFeedForwards.linearForces());
-                        } else {
-                            swerveDrive.setChassisSpeeds(speedsRobotRelative);
-                        }
+                        swerveDrive.drive(
+                                speedsRobotRelative,
+                                swerveDrive.kinematics.toSwerveModuleStates(speedsRobotRelative),
+                                moduleFeedForwards.linearForces());
                     },
                     // Method that will drive the robot given ROBOT RELATIVE ChassisSpeeds. Also, optionally outputs
                     // individual module feedforwards
