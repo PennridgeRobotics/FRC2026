@@ -2,8 +2,6 @@ package org.pennridge.robotics.frc.manager;
 
 import static edu.wpi.first.units.Units.Meters;
 
-import edu.wpi.first.apriltag.AprilTagFieldLayout;
-import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
@@ -28,6 +26,7 @@ import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.pennridge.robotics.frc.Robot;
+import org.pennridge.robotics.frc.util.enums.Constants.FieldConstants;
 import org.photonvision.EstimatedRobotPose;
 import org.photonvision.PhotonCamera;
 import org.photonvision.PhotonPoseEstimator;
@@ -44,9 +43,6 @@ import swervelib.telemetry.SwerveDriveTelemetry;
 @NullMarked
 public class VisionManager {
 
-    /** April Tag Field Layout of the year. */
-    private static final AprilTagFieldLayout fieldLayout =
-            AprilTagFieldLayout.loadField(AprilTagFields.k2026RebuiltWelded);
     /** Photon Vision Simulation */
     private @Nullable VisionSystemSim visionSim;
     /** Current pose from the pose estimator using wheel odometry. */
@@ -66,7 +62,7 @@ public class VisionManager {
 
         if (Robot.isSimulation()) {
             visionSim = new VisionSystemSim("Vision");
-            visionSim.addAprilTags(fieldLayout);
+            visionSim.addAprilTags(FieldConstants.APRIL_TAGS);
 
             for (Camera camera : Camera.allCameras()) {
                 camera.addToVisionSim(visionSim);
@@ -85,11 +81,11 @@ public class VisionManager {
      * @return The target pose of the AprilTag.
      */
     public static Pose2d getAprilTagPose(int aprilTag, Transform2d robotOffset) {
-        Optional<Pose3d> aprilTagPose3d = fieldLayout.getTagPose(aprilTag);
+        Optional<Pose3d> aprilTagPose3d = FieldConstants.APRIL_TAGS.getTagPose(aprilTag);
         if (aprilTagPose3d.isPresent()) {
             return aprilTagPose3d.get().toPose2d().transformBy(robotOffset);
         } else {
-            throw new RuntimeException("Cannot get AprilTag " + aprilTag + " from field " + fieldLayout);
+            throw new RuntimeException("Cannot get AprilTag " + aprilTag + " from field " + FieldConstants.APRIL_TAGS);
         }
     }
 
@@ -151,7 +147,7 @@ public class VisionManager {
      * @return Distance
      */
     public @Nullable Distance getDistanceFromAprilTag(int id) {
-        Optional<Pose3d> tag = fieldLayout.getTagPose(id);
+        Optional<Pose3d> tag = FieldConstants.APRIL_TAGS.getTagPose(id);
         return tag.map(pose3d -> Meters.of(PhotonUtils.getDistanceToPose(currentPose.get(), pose3d.toPose2d())))
                 .orElse(null);
     }
@@ -212,9 +208,11 @@ public class VisionManager {
 
         List<Pose2d> poses = new ArrayList<>();
         for (PhotonTrackedTarget target : targets) {
-            if (fieldLayout.getTagPose(target.getFiducialId()).isPresent()) {
-                Pose2d targetPose =
-                        fieldLayout.getTagPose(target.getFiducialId()).get().toPose2d();
+            if (FieldConstants.APRIL_TAGS.getTagPose(target.getFiducialId()).isPresent()) {
+                Pose2d targetPose = FieldConstants.APRIL_TAGS
+                        .getTagPose(target.getFiducialId())
+                        .get()
+                        .toPose2d();
                 poses.add(targetPose);
             }
         }
@@ -284,7 +282,7 @@ public class VisionManager {
             // https://docs.wpilib.org/en/stable/docs/software/basic-programming/coordinate-system.html
             robotToCamTransform = new Transform3d(robotToCamTranslation, robotToCamRotation);
 
-            poseEstimator = new PhotonPoseEstimator(fieldLayout, robotToCamTransform);
+            poseEstimator = new PhotonPoseEstimator(FieldConstants.APRIL_TAGS, robotToCamTransform);
             // PoseStrategy.MULTI_TAG_PNP_ON_COPROCESSOR
             // poseEstimator.setMultiTagFallbackStrategy(PoseStrategy.LOWEST_AMBIGUITY);
 

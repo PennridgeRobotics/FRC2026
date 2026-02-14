@@ -1,6 +1,9 @@
 package org.pennridge.robotics.frc.subsystems;
 
-import static edu.wpi.first.units.Units.*;
+import static edu.wpi.first.units.Units.DegreesPerSecond;
+import static edu.wpi.first.units.Units.Meter;
+import static edu.wpi.first.units.Units.MetersPerSecond;
+import static edu.wpi.first.units.Units.RadiansPerSecond;
 
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.commands.PathfindingCommand;
@@ -14,14 +17,15 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
-import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Filesystem;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import java.io.File;
 import java.io.IOException;
@@ -33,7 +37,9 @@ import org.jspecify.annotations.Nullable;
 import org.pennridge.robotics.frc.manager.VisionManager;
 import org.pennridge.robotics.frc.util.enums.Constants.ControllerConstants;
 import org.pennridge.robotics.frc.util.enums.Constants.DriveConstants;
+import org.pennridge.robotics.frc.util.enums.Constants.FieldConstants;
 import org.pennridge.robotics.frc.util.enums.Constants.VisionConstants;
+import org.pennridge.robotics.frc.util.enums.DriveMode;
 import org.pennridge.robotics.frc.util.lib.LimelightHelpers;
 import swervelib.SwerveDrive;
 import swervelib.SwerveDriveTest;
@@ -45,6 +51,12 @@ import swervelib.telemetry.SwerveDriveTelemetry;
 public class SwerveSubsystem extends SubsystemBase {
     private final SwerveDrive swerveDrive;
     private @Nullable VisionManager visionManager;
+
+    private DriveMode currentDriveMode = DriveMode.NORMAL; // automatically accounts for forceNormalDriveMode
+    private boolean forceNormalDriveMode = false;
+
+    private final Trigger inBumpZoneTrigger =
+            new Trigger(this::isInBumpZone).and(() -> !forceNormalDriveMode).debounce(0.1);
 
     @SuppressWarnings("StaticAssignmentInConstructor")
     public SwerveSubsystem() throws IOException {
@@ -60,6 +72,9 @@ public class SwerveSubsystem extends SubsystemBase {
         swerveDrive.useExternalFeedbackSensor();
         swerveDrive.setModuleEncoderAutoSynchronize(false, 1); // can set to true, but I want to test
         swerveDrive.setMotorIdleMode(true);
+
+        inBumpZoneTrigger.onTrue(updateDriveMode(DriveMode.BUMP_LOCK));
+        inBumpZoneTrigger.onFalse(updateDriveMode(DriveMode.NORMAL));
 
         // setupPathPlanner();
         initSmartDashboard();
@@ -151,6 +166,14 @@ public class SwerveSubsystem extends SubsystemBase {
                 SwerveDriveTest.setAngleSysIdRoutine(new SysIdRoutine.Config(), this, swerveDrive), 3.0, 5.0, 3.0);
     }
 
+    public Command updateDriveMode(DriveMode newMode) {
+        return runOnce(() -> currentDriveMode = newMode);
+    }
+
+    public Command forceNormalDriveMode(boolean force) {
+        return runOnce(() -> forceNormalDriveMode = force);
+    }
+
     public void zeroGyroWithAlliance() {
         swerveDrive.zeroGyro();
         if (DriverStation.Alliance.Red.equals(DriverStation.getAlliance().orElse(null))) {
@@ -175,7 +198,12 @@ public class SwerveSubsystem extends SubsystemBase {
         final var shouldFlip = alliance.get() == DriverStation.Alliance.Red;
         final var adjustedXVelocity = shouldFlip ? xVelocity.unaryMinus() : xVelocity;
         final var adjustedYVelocity = shouldFlip ? yVelocity.unaryMinus() : yVelocity;
-        swerveDrive.driveFieldOriented(new ChassisSpeeds(adjustedXVelocity, adjustedYVelocity, angularVelocity));
+        final AngularVelocity finalAngularVelocity =
+                switch (currentDriveMode) {
+                    case NORMAL -> angularVelocity;
+                    case BUMP_LOCK -> getTargetAngularVelocity(getBumpLockAngle());
+                };
+        swerveDrive.driveFieldOriented(new ChassisSpeeds(adjustedXVelocity, adjustedYVelocity, finalAngularVelocity));
     }
 
     public Command driveFieldOrientedTestCommand(
@@ -199,9 +227,9 @@ public class SwerveSubsystem extends SubsystemBase {
         });
     }
 
-    private AngularVelocity getTargetAngularVelocity(Angle targetAngle) {
+    private AngularVelocity getTargetAngularVelocity(Rotation2d targetAngle) {
         final var currentHeading = swerveDrive.getOdometryHeading().getRadians();
-        final var targetHeading = targetAngle.in(Radians);
+        final var targetHeading = targetAngle.getRadians();
         final var maxAngularVelocity = getMaximumChassisAngularVelocity().in(RadiansPerSecond);
         final var calculated = swerveDrive.swerveController.thetaController.calculate(currentHeading, targetHeading)
                 * maxAngularVelocity;
@@ -211,8 +239,8 @@ public class SwerveSubsystem extends SubsystemBase {
         return RadiansPerSecond.of(limited);
     }
 
-    private Angle calculateTargetAngle(double headingX, double headingY) {
-        return Radians.of(
+    private Rotation2d calculateTargetAngle(double headingX, double headingY) {
+        return Rotation2d.fromRadians(
                 swerveDrive.swerveController.withinHypotDeadband(headingX, headingY)
                         ? swerveDrive.swerveController.lastAngleScalar
                         : Math.atan2(headingX, headingY));
@@ -314,7 +342,11 @@ public class SwerveSubsystem extends SubsystemBase {
         CommandScheduler.getInstance().schedule(PathfindingCommand.warmupCommand());
     }
 
-    private void initSmartDashboard() {}
+    private void initSmartDashboard() {
+        SmartDashboard.putData(
+                "Swerve Subsystem",
+                builder -> builder.addStringProperty("Drive Mode", currentDriveMode::getFriendlyName, null));
+    }
 
     private SwerveDriveKinematics getKinematics() {
         return swerveDrive.kinematics;
@@ -336,5 +368,25 @@ public class SwerveSubsystem extends SubsystemBase {
         final var visionManager = new VisionManager(swerveDrive::getPose, swerveDrive.field);
         this.visionManager = visionManager;
         return visionManager;
+    }
+
+    // check every 45° angle to find the quickest one that we can rotate to
+    private Rotation2d getBumpLockAngle() {
+        for (int angle = -135; angle < 180; angle += 90) {
+            if (Math.abs(MathUtil.inputModulus(getRobotPose().getRotation().getDegrees() - angle, -180, 180)) <= 45) {
+                return Rotation2d.fromDegrees(angle);
+            }
+        }
+        return Rotation2d.kZero;
+    }
+
+    private boolean isInBumpZone() {
+        final var pose = getRobotPose().getTranslation();
+        for (var zone : FieldConstants.BUMP_ZONES) {
+            if (zone.contains(pose)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

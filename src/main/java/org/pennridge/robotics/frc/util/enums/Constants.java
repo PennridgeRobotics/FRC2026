@@ -10,6 +10,10 @@ import static edu.wpi.first.units.Units.Seconds;
 import static edu.wpi.first.units.Units.Volts;
 
 import com.pathplanner.lib.path.PathConstraints;
+import edu.wpi.first.apriltag.AprilTagFieldLayout;
+import edu.wpi.first.apriltag.AprilTagFields;
+import edu.wpi.first.math.geometry.Rectangle2d;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.units.measure.LinearVelocity;
@@ -78,5 +82,57 @@ public final class Constants {
 
         public static final double DRIVE_MIN_INPUT = 0.01; // deadband
         public static final double DRIVE_MAX_INPUT = 0.98;
+    }
+
+    public static class FieldConstants {
+        public static final AprilTagFieldLayout APRIL_TAGS =
+                AprilTagFieldLayout.loadField(AprilTagFields.k2026RebuiltWelded);
+
+        public static final Distance FIELD_LENGTH = Inches.of(651.22);
+        public static final Distance FIELD_WIDTH = Inches.of(317.69);
+
+        public static final Distance ALLIANCE_ZONE = Inches.of(156.61);
+
+        public static final Translation2d HUB_BLUE = new Translation2d(Inches.of(182.11), FIELD_WIDTH.div(2));
+        public static final Translation2d HUB_RED =
+                new Translation2d(FIELD_LENGTH.minus(Inches.of(182.11)), FIELD_WIDTH.div(2));
+
+        private static final Distance BUMP_X = Inches.of(182.11);
+        private static final Distance BUMP_TO_EDGE_Y = Inches.of(50.35 + 12);
+        private static final Distance BUMP_LENGTH = Inches.of(73);
+
+        // 3.5 feet away from robot width
+        private static final Distance BUMP_EXTENSION_X =
+                PhysicalConstants.ROBOT_WIDTH.div(2).plus(Inches.of(42));
+        // bump zones are only when the full robot (while diagonal) would fit on the bump
+        private static final Distance BUMP_CLEARANCE_Y = Inches.of(
+                Math.hypot(PhysicalConstants.ROBOT_WIDTH.in(Inches), PhysicalConstants.ROBOT_LENGTH.in(Inches)) / 2.0);
+
+        public static final Rectangle2d[] BUMP_ZONES = {
+            new Rectangle2d(
+                    new Translation2d(BUMP_X.minus(BUMP_EXTENSION_X), BUMP_TO_EDGE_Y.plus(BUMP_CLEARANCE_Y)),
+                    new Translation2d(
+                            BUMP_X.plus(BUMP_EXTENSION_X),
+                            BUMP_TO_EDGE_Y.plus(BUMP_LENGTH).minus(BUMP_CLEARANCE_Y))),
+            new Rectangle2d(
+                    new Translation2d(
+                            BUMP_X.minus(BUMP_EXTENSION_X),
+                            FIELD_WIDTH.minus(BUMP_TO_EDGE_Y.plus(BUMP_LENGTH).minus(BUMP_CLEARANCE_Y))),
+                    new Translation2d(
+                            BUMP_X.plus(BUMP_EXTENSION_X), FIELD_WIDTH.minus(BUMP_TO_EDGE_Y.plus(BUMP_CLEARANCE_Y)))),
+            new Rectangle2d(
+                    new Translation2d(
+                            FIELD_LENGTH.minus(BUMP_X.plus(BUMP_EXTENSION_X)),
+                            FIELD_WIDTH.minus(BUMP_TO_EDGE_Y.plus(BUMP_LENGTH).minus(BUMP_CLEARANCE_Y))),
+                    new Translation2d(
+                            FIELD_LENGTH.minus(BUMP_X.minus(BUMP_EXTENSION_X)),
+                            FIELD_WIDTH.minus(BUMP_TO_EDGE_Y.plus(BUMP_CLEARANCE_Y)))),
+            new Rectangle2d(
+                    new Translation2d(
+                            FIELD_LENGTH.minus(BUMP_X.plus(BUMP_EXTENSION_X)), BUMP_TO_EDGE_Y.plus(BUMP_CLEARANCE_Y)),
+                    new Translation2d(
+                            FIELD_LENGTH.minus(BUMP_X.minus(BUMP_EXTENSION_X)),
+                            BUMP_TO_EDGE_Y.plus(BUMP_LENGTH).minus(BUMP_CLEARANCE_Y)))
+        };
     }
 }
