@@ -1,17 +1,21 @@
 package org.pennridge.robotics.frc.subsystems;
 
+import static edu.wpi.first.units.Units.DegreesPerSecond;
 import static edu.wpi.first.units.Units.Meter;
 import static edu.wpi.first.units.Units.MetersPerSecond;
 import static edu.wpi.first.units.Units.RadiansPerSecond;
 
+import com.ctre.phoenix6.hardware.core.CorePigeon2;
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.commands.PathfindingCommand;
 import com.pathplanner.lib.config.PIDConstants;
 import com.pathplanner.lib.config.RobotConfig;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.filter.Debouncer.DebounceType;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
@@ -21,6 +25,7 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj.Notifier;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.util.Color;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -32,6 +37,7 @@ import java.util.Arrays;
 import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.pennridge.robotics.frc.Robot;
 import org.pennridge.robotics.frc.util.enums.Constants.ControllerConstants;
 import org.pennridge.robotics.frc.util.enums.Constants.DriveConstants;
@@ -54,8 +60,8 @@ public class SwerveSubsystem extends SubsystemBase {
     private DriveMode currentDriveMode = DriveMode.NORMAL; // automatically accounts for forceNormalDriveMode
     private boolean forceNormalDriveMode = false;
 
-    private final Trigger inBumpZoneTrigger =
-            new Trigger(this::isInBumpZone).and(() -> !forceNormalDriveMode).debounce(0.1);
+    private final Trigger inBumpZoneTrigger;
+    private final Trigger onBump;
 
     @SuppressWarnings("StaticAssignmentInConstructor")
     public SwerveSubsystem() throws IOException {
@@ -72,8 +78,31 @@ public class SwerveSubsystem extends SubsystemBase {
         swerveDrive.setModuleEncoderAutoSynchronize(false, 1); // can set to true, but I want to test
         swerveDrive.setMotorIdleMode(true);
 
-        inBumpZoneTrigger.onTrue(updateDriveMode(DriveMode.BUMP_LOCK));
-        inBumpZoneTrigger.onFalse(updateDriveMode(DriveMode.NORMAL));
+        inBumpZoneTrigger =
+                new Trigger(this::isInBumpZone).and(() -> !forceNormalDriveMode).debounce(0.1);
+        inBumpZoneTrigger.onTrue(updateDriveMode(DriveMode.BUMP_LOCK, () -> "entered bump zone"));
+        inBumpZoneTrigger.onFalse(updateDriveMode(DriveMode.NORMAL, () -> "left bump zone"));
+
+        onBump = inBumpZoneTrigger
+                .and(() -> {
+                    final var rotation3d = swerveDrive.getGyroRotation3d();
+                    final var angle =
+                            Math.toDegrees(new Rotation3d(rotation3d.getX(), rotation3d.getY(), 0).getAngle());
+                    final var rollVel = Math.abs(getPigeon2()
+                            .getAngularVelocityXWorld(false)
+                            .getValue()
+                            .in(DegreesPerSecond));
+                    final var pitchVel = Math.abs(getPigeon2()
+                            .getAngularVelocityYWorld(false)
+                            .getValue()
+                            .in(DegreesPerSecond));
+                    final var angularVelocity = Math.hypot(rollVel, pitchVel);
+                    return angle > 7.0 || (angle > 2.0 && angularVelocity > 50);
+                })
+                .debounce(0.25, DebounceType.kBoth);
+        onBump.onTrue(runOnce(() -> System.out.println("on bump")));
+        onBump.onFalse(
+                updateDriveMode(DriveMode.NORMAL, () -> inBumpZoneTrigger.getAsBoolean() ? "no longer on bump" : null));
 
         setupVisionManager();
         // setupPathPlanner();
@@ -165,8 +194,17 @@ public class SwerveSubsystem extends SubsystemBase {
                 SwerveDriveTest.setAngleSysIdRoutine(new SysIdRoutine.Config(), this, swerveDrive), 3.0, 5.0, 3.0);
     }
 
+    public Command updateDriveMode(DriveMode newMode, @Nullable Supplier<@Nullable String> cause) {
+        return runOnce(() -> {
+            if (cause != null && cause.get() != null) {
+                System.out.println("Updated drive mode to " + newMode + " (" + cause.get() + ")");
+            }
+            currentDriveMode = newMode;
+        });
+    }
+
     public Command updateDriveMode(DriveMode newMode) {
-        return runOnce(() -> currentDriveMode = newMode);
+        return updateDriveMode(newMode, null);
     }
 
     public Command forceNormalDriveMode(boolean force) {
@@ -266,7 +304,6 @@ public class SwerveSubsystem extends SubsystemBase {
         try {
             config = RobotConfig.fromGUISettings();
 
-            final boolean enableFeedforward = true;
             // Configure AutoBuilder last
             AutoBuilder.configure(
                     // Robot pose supplier
@@ -276,14 +313,10 @@ public class SwerveSubsystem extends SubsystemBase {
                     // ChassisSpeeds supplier. MUST BE ROBOT RELATIVE
                     swerveDrive::getRobotVelocity,
                     (speedsRobotRelative, moduleFeedForwards) -> {
-                        if (enableFeedforward) {
-                            swerveDrive.drive(
-                                    speedsRobotRelative,
-                                    swerveDrive.kinematics.toSwerveModuleStates(speedsRobotRelative),
-                                    moduleFeedForwards.linearForces());
-                        } else {
-                            swerveDrive.setChassisSpeeds(speedsRobotRelative);
-                        }
+                        swerveDrive.drive(
+                                speedsRobotRelative,
+                                swerveDrive.kinematics.toSwerveModuleStates(speedsRobotRelative),
+                                moduleFeedForwards.linearForces());
                     },
                     // Method that will drive the robot given ROBOT RELATIVE ChassisSpeeds. Also, optionally outputs
                     // individual module feedforwards
@@ -321,9 +354,17 @@ public class SwerveSubsystem extends SubsystemBase {
     }
 
     private void initSmartDashboard() {
-        SmartDashboard.putData(
-                "Swerve Subsystem",
-                builder -> builder.addStringProperty("Drive Mode", currentDriveMode::getFriendlyName, null));
+        SmartDashboard.putData("Swerve Subsystem", builder -> {
+            builder.addStringProperty("Drive Mode", currentDriveMode::getFriendlyName, null);
+            builder.addStringProperty(
+                    "Bump Status",
+                    () -> {
+                        if (currentDriveMode == DriveMode.NORMAL) return Color.kLime.toHexString();
+                        if (onBump.getAsBoolean()) return Color.kRed.toHexString();
+                        return Color.kYellow.toHexString(); // in bump area, but not on the bump itself
+                    },
+                    null);
+        });
     }
 
     private SwerveDriveKinematics getKinematics() {
@@ -381,5 +422,9 @@ public class SwerveSubsystem extends SubsystemBase {
             }
         }
         return false;
+    }
+
+    private CorePigeon2 getPigeon2() {
+        return (CorePigeon2) swerveDrive.getGyro().getIMU();
     }
 }

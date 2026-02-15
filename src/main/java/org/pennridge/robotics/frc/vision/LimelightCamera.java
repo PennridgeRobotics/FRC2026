@@ -1,10 +1,15 @@
 package org.pennridge.robotics.frc.vision;
 
-import edu.wpi.first.math.VecBuilder;
+import static edu.wpi.first.units.Units.Meters;
+
+import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.numbers.N1;
+import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.networktables.BooleanPublisher;
+import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StructArrayPublisher;
 import edu.wpi.first.networktables.StructPublisher;
@@ -32,7 +37,7 @@ import org.pennridge.robotics.frc.util.lib.LimelightHelpers;
  */
 // Credits to https://gitlab.com/ironclad_code/ironclad-2026/
 @NullMarked
-public class LimelightCamera implements Camera {
+public class LimelightCamera extends Camera {
     /** Publishes the most recent estimated field pose to NetworkTables. */
     private final StructPublisher<Pose2d> posePublisher;
 
@@ -41,6 +46,9 @@ public class LimelightCamera implements Camera {
 
     /** Publishes whether MegaTag2 processing is enabled for this camera. */
     private final BooleanPublisher megaTag2Publisher;
+
+    /** Publishes the standard deviations being used for pose estimations */
+    private final DoublePublisher stdDevsPublisher;
 
     /** Limelight name as configured on the device and used by {@link LimelightHelpers}. */
     private final String name;
@@ -57,14 +65,18 @@ public class LimelightCamera implements Camera {
     public LimelightCamera(String name, boolean megaTag2) {
         this.name = name;
         this.megaTag2 = megaTag2;
+        final var topicPrefix = "Vision/" + name + "/";
         posePublisher = NetworkTableInstance.getDefault()
-                .getStructTopic("Vision/" + name + "/Estimated Pose", Pose2d.struct)
+                .getStructTopic(topicPrefix + "Estimated Pose", Pose2d.struct)
                 .publish();
         trackedTargetsPublisher = NetworkTableInstance.getDefault()
-                .getStructArrayTopic("Vision/" + name + "/Tracked Targets", Pose3d.struct)
+                .getStructArrayTopic(topicPrefix + "Tracked Targets", Pose3d.struct)
                 .publish();
         megaTag2Publisher = NetworkTableInstance.getDefault()
-                .getBooleanTopic("Vision/" + name + "/MegaTag2")
+                .getBooleanTopic(topicPrefix + "MegaTag2")
+                .publish();
+        stdDevsPublisher = NetworkTableInstance.getDefault()
+                .getDoubleTopic(topicPrefix + "Standard Deviations")
                 .publish();
     }
 
@@ -94,10 +106,16 @@ public class LimelightCamera implements Camera {
         megaTag2Publisher.set(megaTag2);
 
         if (llPose.tagCount > 0) {
+            final var stdDevs = getEstimationStdDevs(llPose);
+            if (stdDevs == null) {
+                return null;
+            }
             // Caller can fuse these with drivetrain odometry using the provided std devs
-            estimatedPose = new PoseEstimate(llPose.pose, llPose.timestampSeconds, VecBuilder.fill(0.5, 0.5, 0.5));
+            estimatedPose = new PoseEstimate(llPose.pose, llPose.timestampSeconds, stdDevs);
             posePublisher.set(llPose.pose);
             trackedTargetsPublisher.set(getTargetPoses(llPose.rawFiducials));
+            stdDevsPublisher.set(stdDevs.get(0, 0));
+            publishGlobalStdDev(stdDevs.get(0, 0));
         }
 
         return estimatedPose;
@@ -133,5 +151,15 @@ public class LimelightCamera implements Camera {
             poses[i] = FieldConstants.APRIL_TAGS.getTagPose(tags[i].id).orElse(new Pose3d());
         }
         return poses;
+    }
+
+    /**
+     * Computes standard deviation estimates based on the number of visible tags and their distance.
+     *
+     * @param poseEst The estimated robot pose returned by LimeLight.
+     * @return A 3×1 matrix representing (x, y, rotation) standard deviations.
+     */
+    private @Nullable Matrix<N3, N1> getEstimationStdDevs(LimelightHelpers.PoseEstimate poseEst) {
+        return getEstimationStdDevs(poseEst.tagCount, Meters.of(poseEst.avgTagDist), true);
     }
 }

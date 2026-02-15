@@ -13,10 +13,14 @@ import static edu.wpi.first.units.Units.Volts;
 import com.pathplanner.lib.path.PathConstraints;
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
+import edu.wpi.first.math.Matrix;
+import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.geometry.Rectangle2d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.math.numbers.N1;
+import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.units.measure.LinearVelocity;
@@ -54,6 +58,16 @@ public final class Constants {
         public static final String LIMELIGHT_NAME = "limelight";
 
         public static final boolean VISION_ENABLED = false;
+
+        // Tuning
+        // Base standard deviations
+        public static final Matrix<N3, N1> PHOTON_SINGLE_TAG_STD_DEVS = VecBuilder.fill(2, 2, 999999);
+        public static final Matrix<N3, N1> PHOTON_MULTI_TAG_STD_DEVS = VecBuilder.fill(0.5, 0.5, 999999);
+        public static final Matrix<N3, N1> LIMELIGHT_SINGLE_TAG_STD_DEVS = VecBuilder.fill(0.8, 0.8, 999999);
+        public static final Matrix<N3, N1> LIMELIGHT_MULTI_TAG_STD_DEVS = VecBuilder.fill(0.4, 0.4, 999999);
+        // Result std dev = base * (1 + (distance ^ exponent) * multiplier)
+        public static final double STD_DEV_DISTANCE_EXPONENT = 2.0;
+        public static final double STD_DEV_DISTANCE_MULTIPLIER = 1.0 / 30;
 
         // Camera 1
         public static final String CAMERA_1_NAME = "Arducam_OV9281_1";
