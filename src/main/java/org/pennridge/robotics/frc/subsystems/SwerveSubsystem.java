@@ -25,6 +25,7 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj.Notifier;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.util.Color;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -99,6 +100,7 @@ public class SwerveSubsystem extends SubsystemBase {
                     return angle > 7.0 || (angle > 2.0 && angularVelocity > 50);
                 })
                 .debounce(0.25, DebounceType.kBoth);
+        onBump.onTrue(runOnce(() -> System.out.println("on bump")));
         onBump.onFalse(
                 updateDriveMode(DriveMode.NORMAL, () -> inBumpZoneTrigger.getAsBoolean() ? "no longer on bump" : null));
 
@@ -352,9 +354,17 @@ public class SwerveSubsystem extends SubsystemBase {
     }
 
     private void initSmartDashboard() {
-        SmartDashboard.putData(
-                "Swerve Subsystem",
-                builder -> builder.addStringProperty("Drive Mode", currentDriveMode::getFriendlyName, null));
+        SmartDashboard.putData("Swerve Subsystem", builder -> {
+            builder.addStringProperty("Drive Mode", currentDriveMode::getFriendlyName, null);
+            builder.addStringProperty(
+                    "Bump Status",
+                    () -> {
+                        if (currentDriveMode == DriveMode.NORMAL) return Color.kLime.toHexString();
+                        if (onBump.getAsBoolean()) return Color.kRed.toHexString();
+                        return Color.kYellow.toHexString(); // in bump area, but not on the bump itself
+                    },
+                    null);
+        });
     }
 
     private SwerveDriveKinematics getKinematics() {
