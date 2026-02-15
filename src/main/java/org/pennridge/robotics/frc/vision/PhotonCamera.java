@@ -3,7 +3,6 @@ package org.pennridge.robotics.frc.vision;
 import static edu.wpi.first.units.Units.Meters;
 
 import edu.wpi.first.math.Matrix;
-import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -13,6 +12,7 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
+import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StructArrayPublisher;
 import edu.wpi.first.networktables.StructPublisher;
@@ -51,19 +51,13 @@ import org.photonvision.targeting.PhotonTrackedTarget;
  */
 // Credits to https://gitlab.com/ironclad_code/ironclad-2026/
 @NullMarked
-public class PhotonCamera implements Camera {
+public class PhotonCamera extends Camera {
 
     /** Physical PhotonVision camera instance. */
     private final org.photonvision.PhotonCamera camera;
 
     /** Simulation wrapper for the Photon camera. */
     private final PhotonCameraSim simCamera;
-
-    /** Standard deviation matrix for single-tag detections. */
-    private final Matrix<N3, N1> singleTagStdDevs;
-
-    /** Standard deviation matrix for multi-tag detections. */
-    private final Matrix<N3, N1> multiTagStdDevsMatrix;
 
     /** Camera property configuration used in simulation mode. */
     private final SimCameraProperties simProperties;
@@ -78,6 +72,7 @@ public class PhotonCamera implements Camera {
     private final StructPublisher<Pose2d> posePublisher;
     private final StructArrayPublisher<Pose3d> trackedTargetsPublisher;
     private final StructArrayPublisher<Translation2d> trackedCornersPublisher;
+    private final DoublePublisher stdDevsPublisher;
 
     /**
      * Constructs a {@code PhotonCamera} with full configuration
@@ -85,28 +80,22 @@ public class PhotonCamera implements Camera {
      * @param name The name of the PhotonVision camera in the client.
      * @param robotToCamTranslation The translation offset (in meters) from the robot origin to the camera lens center.
      * @param robotToCamRotation The rotation offset of the camera relative to the robot frame.
-     * @param singleTagStdDevs Standard deviation matrix for single-tag measurements.
-     * @param multiTagStdDevsMatrix Standard deviation matrix for multi-tag measurements.
      */
-    public PhotonCamera(
-            String name,
-            Translation3d robotToCamTranslation,
-            Rotation3d robotToCamRotation,
-            Matrix<N3, N1> singleTagStdDevs,
-            Matrix<N3, N1> multiTagStdDevsMatrix) {
+    public PhotonCamera(String name, Translation3d robotToCamTranslation, Rotation3d robotToCamRotation) {
         camera = new org.photonvision.PhotonCamera(name);
+        final var topicPrefix = "Vision/" + name + "/";
         posePublisher = NetworkTableInstance.getDefault()
-                .getStructTopic("Vision/" + name + "/Estimated Pose", Pose2d.struct)
+                .getStructTopic(topicPrefix + "Estimated Pose", Pose2d.struct)
                 .publish();
         trackedTargetsPublisher = NetworkTableInstance.getDefault()
-                .getStructArrayTopic("Vision/" + name + "/Tracked Targets", Pose3d.struct)
+                .getStructArrayTopic(topicPrefix + "Tracked Targets", Pose3d.struct)
                 .publish();
         trackedCornersPublisher = NetworkTableInstance.getDefault()
-                .getStructArrayTopic("Vision/" + name + "/Corners", Translation2d.struct)
+                .getStructArrayTopic(topicPrefix + "Corners", Translation2d.struct)
                 .publish();
-
-        this.singleTagStdDevs = singleTagStdDevs;
-        this.multiTagStdDevsMatrix = multiTagStdDevsMatrix;
+        stdDevsPublisher = NetworkTableInstance.getDefault()
+                .getDoubleTopic(topicPrefix + "Standard Deviations")
+                .publish();
 
         // Simulation configuration
         simProperties = new SimCameraProperties();
@@ -122,10 +111,6 @@ public class PhotonCamera implements Camera {
         poseEstimator = new PhotonPoseEstimator(FieldConstants.APRIL_TAGS, robotToCam);
 
         simCamera.enableDrawWireframe(true);
-    }
-
-    public PhotonCamera(String name, Translation3d robotToCamTranslation, Rotation3d robotToCamRotation) {
-        this(name, robotToCamTranslation, robotToCamRotation, VecBuilder.fill(2, 2, 8), VecBuilder.fill(0.5, 0.5, 1));
     }
 
     /** @return The {@link PhotonCameraSim} used for simulation. */
@@ -157,60 +142,64 @@ public class PhotonCamera implements Camera {
         PoseEstimate estimatedPose = null;
         var results = camera.getAllUnreadResults();
 
-        if (!results.isEmpty()) {
-            PhotonPipelineResult latestResult = results.get(results.size() - 1);
-            Optional<EstimatedRobotPose> photonEstimatedPose;
+        if (results.isEmpty()) {
+            return estimatedPose;
+        }
+        PhotonPipelineResult latestResult = results.get(results.size() - 1);
+        Optional<EstimatedRobotPose> photonEstimatedPose;
 
-            int tagCount = countFiducials(latestResult);
+        int tagCount = countFiducials(latestResult);
 
-            if (tagCount >= 2) {
-                photonEstimatedPose = poseEstimator.estimateCoprocMultiTagPose(latestResult);
-                if (photonEstimatedPose.isEmpty()) {
-                    photonEstimatedPose = poseEstimator.estimateLowestAmbiguityPose(latestResult);
-                }
-            } else {
+        if (tagCount >= 2) {
+            photonEstimatedPose = poseEstimator.estimateCoprocMultiTagPose(latestResult);
+            if (photonEstimatedPose.isEmpty()) {
                 photonEstimatedPose = poseEstimator.estimateLowestAmbiguityPose(latestResult);
             }
+        } else {
+            photonEstimatedPose = poseEstimator.estimateLowestAmbiguityPose(latestResult);
+        }
 
-            if (photonEstimatedPose.isPresent()) {
-                EstimatedRobotPose photonPose = photonEstimatedPose.get();
+        if (photonEstimatedPose.isPresent()) {
+            EstimatedRobotPose photonPose = photonEstimatedPose.get();
 
-                // Apply filters before accepting the estimate
-                if (isPoseReasonable(photonPose)) {
-                    estimatedPose = new PoseEstimate(
-                            photonPose.estimatedPose.toPose2d(),
-                            photonPose.timestampSeconds,
-                            getEstimationStdDevs(photonPose));
+            // Apply filters before accepting the estimate
+            if (isPoseReasonable(photonPose)) {
+                final var stdDevs = getEstimationStdDevs(photonPose);
+                if (stdDevs != null) {
+                    estimatedPose =
+                            new PoseEstimate(photonPose.estimatedPose.toPose2d(), photonPose.timestampSeconds, stdDevs);
                     posePublisher.set(photonPose.estimatedPose.toPose2d());
+                    stdDevsPublisher.set(stdDevs.get(0, 0));
+                    publishGlobalStdDev(stdDevs.get(0, 0));
                 }
-            }
-
-            // Publish telemetry for visible tags
-            if (latestResult.hasTargets()) {
-                Pose3d[] posesArray = new Pose3d[latestResult.targets.size()];
-                Translation2d[] corners = new Translation2d[latestResult.targets.size() * 4];
-                int cornerIndex = 0;
-
-                for (int i = 0; i < posesArray.length; i++) {
-                    PhotonTrackedTarget target = latestResult.targets.get(i);
-                    posesArray[i] = FieldConstants.APRIL_TAGS
-                            .getTagPose(target.getFiducialId())
-                            .orElse(new Pose3d());
-
-                    // Flatten each tag's 4 detected corners
-                    for (int j = 0; j < 4; j++) {
-                        var pt = target.getDetectedCorners().get(j);
-                        corners[cornerIndex++] = new Translation2d(pt.x, pt.y);
-                    }
-                }
-
-                trackedTargetsPublisher.set(posesArray);
-                trackedCornersPublisher.set(corners);
-            } else {
-                trackedTargetsPublisher.set(new Pose3d[0]);
-                trackedCornersPublisher.set(new Translation2d[0]);
             }
         }
+
+        // Publish telemetry for visible tags
+        if (!latestResult.hasTargets()) {
+            trackedTargetsPublisher.set(new Pose3d[0]);
+            trackedCornersPublisher.set(new Translation2d[0]);
+            return estimatedPose;
+        }
+
+        Pose3d[] posesArray = new Pose3d[latestResult.targets.size()];
+        Translation2d[] corners = new Translation2d[latestResult.targets.size() * 4];
+        int cornerIndex = 0;
+
+        for (int i = 0; i < posesArray.length; i++) {
+            PhotonTrackedTarget target = latestResult.targets.get(i);
+            posesArray[i] =
+                    FieldConstants.APRIL_TAGS.getTagPose(target.getFiducialId()).orElse(new Pose3d());
+
+            // Flatten each tag's 4 detected corners
+            for (int j = 0; j < 4; j++) {
+                var pt = target.getDetectedCorners().get(j);
+                corners[cornerIndex++] = new Translation2d(pt.x, pt.y);
+            }
+        }
+
+        trackedTargetsPublisher.set(posesArray);
+        trackedCornersPublisher.set(corners);
 
         return estimatedPose;
     }
@@ -221,13 +210,11 @@ public class PhotonCamera implements Camera {
      * @param poseEst The estimated robot pose returned by PhotonVision.
      * @return A 3×1 matrix representing (x, y, rotation) standard deviations.
      */
-    private Matrix<N3, N1> getEstimationStdDevs(EstimatedRobotPose poseEst) {
-        var estStdDevs = singleTagStdDevs;
-        var targets = poseEst.targetsUsed;
+    private @Nullable Matrix<N3, N1> getEstimationStdDevs(EstimatedRobotPose poseEst) {
         int numTags = 0;
         double avgDist = 0;
 
-        for (var tgt : targets) {
+        for (var tgt : poseEst.targetsUsed) {
             var tagPose = poseEstimator.getFieldTags().getTagPose(tgt.getFiducialId());
             if (tagPose.isEmpty()) continue;
 
@@ -236,20 +223,10 @@ public class PhotonCamera implements Camera {
                     poseEst.estimatedPose.toPose2d(), tagPose.get().toPose2d());
         }
 
-        if (numTags == 0) return estStdDevs;
+        if (numTags == 0) return null;
         avgDist /= numTags;
 
-        // Adjust standard deviations
-        if (numTags > 1) {
-            estStdDevs = multiTagStdDevsMatrix;
-        }
-        if (numTags == 1 && avgDist > 4) {
-            estStdDevs = VecBuilder.fill(Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE);
-        } else {
-            estStdDevs = estStdDevs.times(1 + (avgDist * avgDist / 30));
-        }
-
-        return estStdDevs;
+        return getEstimationStdDevs(numTags, Meters.of(avgDist), false);
     }
 
     /**
