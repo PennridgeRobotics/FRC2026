@@ -1,4 +1,5 @@
 [versions]
+bline-lib = "0.7.2"
 caffeine = "3.2.3"
 error-prone = "2.42.0"
 error-prone-plugin = "5.0.0"
@@ -15,6 +16,7 @@ gradle-rio = { id = "edu.wpi.first.GradleRIO", version.ref = "gradle-rio" }
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
 
 [libraries]
+bline-lib = { group = "com.github.edanliahovetsky", name = "BLine-Lib", version.ref = "bline-lib" }
 caffeine = { group = "com.github.ben-manes.caffeine", name = "caffeine", version.ref = "caffeine" }
 error-prone-core = { group = "com.google.errorprone", name = "error_prone_core", version.ref = "error-prone" }
 jspecify = { group = "org.jspecify", name = "jspecify", version.ref = "jspecify" }
