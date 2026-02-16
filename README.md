@@ -24,6 +24,7 @@ Welcome to Ridge Robotics' repository for the FRC 2026 season!
 | Pigeon 2                     | 13     |
 | Intake/Launcher Motor        | 14     |
 | Feeder Motor                 | 15     |
+| CANdle (LEDs)                | 16     |
 
 ## Development
 Here are some things to keep in mind while working on this codebase:
