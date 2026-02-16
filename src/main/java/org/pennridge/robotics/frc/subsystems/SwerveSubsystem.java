@@ -6,12 +6,8 @@ import static edu.wpi.first.units.Units.MetersPerSecond;
 import static edu.wpi.first.units.Units.RadiansPerSecond;
 
 import com.ctre.phoenix6.hardware.core.CorePigeon2;
-import com.pathplanner.lib.auto.AutoBuilder;
-import com.pathplanner.lib.commands.PathfindingCommand;
-import com.pathplanner.lib.config.PIDConstants;
-import com.pathplanner.lib.config.RobotConfig;
-import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.filter.Debouncer.DebounceType;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -19,6 +15,7 @@ import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
+import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -27,10 +24,11 @@ import edu.wpi.first.wpilibj.Notifier;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.util.Color;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+import frc.robot.lib.BLine.FollowPath;
+import frc.robot.lib.BLine.Path;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
@@ -39,6 +37,8 @@ import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.pennridge.robotics.frc.Robot;
+import org.pennridge.robotics.frc.util.dashboard.PIDSendable;
+import org.pennridge.robotics.frc.util.enums.Constants.BLineConstants;
 import org.pennridge.robotics.frc.util.enums.Constants.ControllerConstants;
 import org.pennridge.robotics.frc.util.enums.Constants.DriveConstants;
 import org.pennridge.robotics.frc.util.enums.Constants.FieldConstants;
@@ -62,6 +62,11 @@ public class SwerveSubsystem extends SubsystemBase {
 
     private final Trigger inBumpZoneTrigger;
     private final Trigger onBump;
+
+    private final PIDController bLineTranslationPID = new PIDController(5.0, 0, 0);
+    private final PIDController bLineRotationPID = new PIDController(3.0, 0, 0);
+    private final PIDController bLineCrossTrackPID = new PIDController(2.0, 0, 0);
+    private final FollowPath.Builder pathBuilder;
 
     @SuppressWarnings("StaticAssignmentInConstructor")
     public SwerveSubsystem() throws IOException {
@@ -105,7 +110,7 @@ public class SwerveSubsystem extends SubsystemBase {
                 updateDriveMode(DriveMode.NORMAL, () -> inBumpZoneTrigger.getAsBoolean() ? "no longer on bump" : null));
 
         setupVisionManager();
-        // setupPathPlanner();
+        pathBuilder = setupBLine();
         initSmartDashboard();
     }
 
@@ -297,60 +302,35 @@ public class SwerveSubsystem extends SubsystemBase {
         return getMaximumChassisAngularVelocity().times(scaled);
     }
 
-    private void setupPathPlanner() {
-        // Load the RobotConfig from the GUI settings. You should probably
-        // store this in your Constants file
-        RobotConfig config;
-        try {
-            config = RobotConfig.fromGUISettings();
+    private void setModuleOrientations(Rotation2d rotation) {
+        final var states = new SwerveModuleState[swerveDrive.getModules().length];
+        Arrays.fill(states, new SwerveModuleState(0, rotation));
+        swerveDrive.setModuleStates(states, false);
+    }
 
-            // Configure AutoBuilder last
-            AutoBuilder.configure(
-                    // Robot pose supplier
-                    swerveDrive::getPose,
-                    // Method to reset odometry (will be called if your auto has a starting pose)
-                    swerveDrive::resetOdometry,
-                    // ChassisSpeeds supplier. MUST BE ROBOT RELATIVE
-                    swerveDrive::getRobotVelocity,
-                    (speedsRobotRelative, moduleFeedForwards) -> {
-                        swerveDrive.drive(
-                                speedsRobotRelative,
-                                swerveDrive.kinematics.toSwerveModuleStates(speedsRobotRelative),
-                                moduleFeedForwards.linearForces());
-                    },
-                    // Method that will drive the robot given ROBOT RELATIVE ChassisSpeeds. Also, optionally outputs
-                    // individual module feedforwards
-                    new PPHolonomicDriveController(
-                            // PPHolonomicController is the built-in path following controller for holonomic drive
-                            // trains
-                            // Translation PID
-                            new PIDConstants(5.0, 0.0, 0.0),
-                            // Rotation PID constants
-                            new PIDConstants(5.0, 0.0, 0.0)),
-                    // The robot configuration
-                    config,
-                    () -> {
-                        // Boolean supplier that controls when the path will be mirrored for the red alliance
-                        // This will flip the path being followed to the red side of the field.
-                        // THE ORIGIN WILL REMAIN ON THE BLUE SIDE
-
-                        var alliance = DriverStation.getAlliance();
-                        return alliance.filter(value -> value == DriverStation.Alliance.Red)
-                                .isPresent();
-                    },
-                    this
-                    // Reference to this subsystem to set requirements
-                    );
-
-        } catch (Exception e) {
-            // Handle exception as needed
-            DriverStation.reportError("Error loading PathPlanner", e.getStackTrace());
-            return;
-        }
-
-        // Preload PathPlanner Path finding
-        // IF USING CUSTOM PATHFINDER ADD BEFORE THIS LINE
-        CommandScheduler.getInstance().schedule(PathfindingCommand.warmupCommand());
+    private FollowPath.Builder setupBLine() {
+        Path.setDefaultGlobalConstraints(BLineConstants.GLOBAL_CONSTRAINTS);
+        SmartDashboard.putData(
+                "BLine Translation PID",
+                new PIDSendable(
+                        bLineTranslationPID, PIDSendable.Type.PID, PIDSendable.PIDValues.from(bLineTranslationPID)));
+        SmartDashboard.putData(
+                "BLine Rotation PID",
+                new PIDSendable(bLineRotationPID, PIDSendable.Type.PID, PIDSendable.PIDValues.from(bLineRotationPID)));
+        SmartDashboard.putData(
+                "BLine Cross Track PID",
+                new PIDSendable(
+                        bLineCrossTrackPID, PIDSendable.Type.PID, PIDSendable.PIDValues.from(bLineCrossTrackPID)));
+        return new FollowPath.Builder(
+                        this,
+                        this::getRobotPose,
+                        swerveDrive::getRobotVelocity,
+                        swerveDrive::drive,
+                        bLineTranslationPID,
+                        bLineRotationPID,
+                        bLineCrossTrackPID)
+                .withDefaultShouldFlip()
+                .withPoseReset(this::resetPose);
     }
 
     private void initSmartDashboard() {
@@ -365,6 +345,10 @@ public class SwerveSubsystem extends SubsystemBase {
                     },
                     null);
         });
+    }
+
+    private void resetPose(Pose2d pose) {
+        swerveDrive.resetOdometry(pose);
     }
 
     private SwerveDriveKinematics getKinematics() {

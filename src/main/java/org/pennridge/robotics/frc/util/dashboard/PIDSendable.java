@@ -190,8 +190,8 @@ public class PIDSendable implements Sendable {
         }
         if ((type & Type.COS) != 0) {
             if (config != null) {
-                builder.addDoubleProperty("COS", sparkMaxPIDValues::getA, v -> {
-                    sparkMaxPIDValues.setA(v);
+                builder.addDoubleProperty("COS", sparkMaxPIDValues::getG, v -> {
+                    sparkMaxPIDValues.setG(v);
                     config.closedLoop.feedForward.kCos(v, closedLoopSlot);
                 });
             } else if (armFeedforward != null) {
@@ -322,8 +322,43 @@ public class PIDSendable implements Sendable {
             return new PIDValues(p, i, d, ff, iZone, 0, 0, 0, 0, maxVelocity, maxAcceleration);
         }
 
-        public static PIDValues elevatorFF(double s, double g, double v, double a) {
+        public static PIDValues feedForward(double s, double g, double v, double a) {
             return new PIDValues(0, 0, 0, 0, 0, s, g, v, a, 0, 0);
+        }
+
+        public static PIDValues from(PIDController pidController) {
+            return pidf(
+                    pidController.getP(),
+                    pidController.getI(),
+                    pidController.getD(),
+                    0,
+                    pidController.getIZone(),
+                    0,
+                    0);
+        }
+
+        public static PIDValues from(ProfiledPIDController profiledPIDController) {
+            return pidf(
+                    profiledPIDController.getP(),
+                    profiledPIDController.getI(),
+                    profiledPIDController.getD(),
+                    0,
+                    profiledPIDController.getIZone(),
+                    profiledPIDController.getConstraints().maxVelocity,
+                    profiledPIDController.getConstraints().maxAcceleration);
+        }
+
+        public static PIDValues from(ElevatorFeedforward elevatorFeedforward) {
+            return feedForward(
+                    elevatorFeedforward.getKs(),
+                    elevatorFeedforward.getKg(),
+                    elevatorFeedforward.getKv(),
+                    elevatorFeedforward.getKa());
+        }
+
+        public static PIDValues from(ArmFeedforward armFeedforward) {
+            return feedForward(
+                    armFeedforward.getKs(), armFeedforward.getKg(), armFeedforward.getKv(), armFeedforward.getKa());
         }
 
         public PIDValues(
