@@ -1,6 +1,30 @@
 # FRC2026
 Welcome to Ridge Robotics' repository for the FRC 2026 season!
 
+## Controls
+| Button | Action |
+|--------|--------|
+| TBD    | TBD    |
+
+## CAN IDs
+| Device                       | CAN ID |
+|------------------------------|--------|
+| Front-Left Drive Motor       | 1      |
+| Front-Left Steering Motor    | 2      |
+| Front-Left Absolute Encoder  | 9      |
+| Front-Right Drive Motor      | 3      |
+| Front-Right Steering Motor   | 4      |
+| Front-Right Absolute Encoder | 10     |
+| Back-Left Drive Motor        | 5      |
+| Back-Left Steering Motor     | 6      |
+| Back-Left Absolute Encoder   | 11     |
+| Back-Right Drive Motor       | 7      |
+| Back-Right Steering Motor    | 8      |
+| Back-Right Absolute Encoder  | 12     |
+| Pigeon 2                     | 13     |
+| Intake/Launcher Motor        | 14     |
+| Feeder Motor                 | 15     |
+
 ## Development
 Here are some things to keep in mind while working on this codebase:
 
