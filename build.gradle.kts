@@ -65,10 +65,15 @@ wpi {
 // Set this to true to enable desktop support.
 val includeDesktopSupport = true
 
+repositories {
+    maven("https://jitpack.io")
+}
+
 dependencies {
     errorprone(libs.error.prone.core)
     errorprone(libs.`null`.away)
 
+    implementation(libs.bline.lib)
     implementation(libs.caffeine)
     implementation(libs.jspecify)
 

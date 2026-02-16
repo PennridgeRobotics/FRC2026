@@ -2,15 +2,15 @@ package org.pennridge.robotics.frc.util.enums;
 
 import static edu.wpi.first.units.Units.Amps;
 import static edu.wpi.first.units.Units.Degrees;
+import static edu.wpi.first.units.Units.DegreesPerSecond;
+import static edu.wpi.first.units.Units.DegreesPerSecondPerSecond;
 import static edu.wpi.first.units.Units.Inches;
+import static edu.wpi.first.units.Units.Meters;
 import static edu.wpi.first.units.Units.MetersPerSecond;
 import static edu.wpi.first.units.Units.MetersPerSecondPerSecond;
-import static edu.wpi.first.units.Units.RadiansPerSecond;
-import static edu.wpi.first.units.Units.RadiansPerSecondPerSecond;
 import static edu.wpi.first.units.Units.Seconds;
 import static edu.wpi.first.units.Units.Volts;
 
-import com.pathplanner.lib.path.PathConstraints;
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.Matrix;
@@ -21,11 +21,16 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
+import edu.wpi.first.units.measure.Angle;
+import edu.wpi.first.units.measure.AngularAcceleration;
+import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Distance;
+import edu.wpi.first.units.measure.LinearAcceleration;
 import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.units.measure.Time;
 import edu.wpi.first.units.measure.Voltage;
+import frc.robot.lib.BLine.Path;
 import org.jspecify.annotations.NullMarked;
 
 /**
@@ -46,12 +51,23 @@ public final class Constants {
         public static final Distance WHEEL_CENTERS_DISTANCE_WIDTH = Inches.of(23.5);
     }
 
-    public static final class PathPlannerConstants {
-        public static final PathConstraints PATH_CONSTRAINTS = new PathConstraints(
-                MetersPerSecond.of(2),
-                MetersPerSecondPerSecond.of(1.75),
-                RadiansPerSecond.of(0.5 * Math.PI),
-                RadiansPerSecondPerSecond.of(1 * Math.PI));
+    public static final class BLineConstants {
+        public static final LinearVelocity MAX_LINEAR_VELOCITY = MetersPerSecond.of(2); // 4.5
+        public static final LinearAcceleration MAX_LINEAR_ACCELERATION = MetersPerSecondPerSecond.of(1.75); // 12.0
+        public static final AngularVelocity MAX_ANGULAR_VELOCITY = DegreesPerSecond.of(180); // 540
+        public static final AngularAcceleration MAX_ANGULAR_ACCELERATION = DegreesPerSecondPerSecond.of(360); // 860
+        public static final Distance END_TRANSLATION_TOLERANCE = Meters.of(0.03);
+        public static final Angle END_ROTATION_TOLERANCE = Degrees.of(2);
+        public static final Distance INTERMEDIATE_HANDOFF_RADIUS = Meters.of(0.2);
+
+        public static final Path.DefaultGlobalConstraints GLOBAL_CONSTRAINTS = new Path.DefaultGlobalConstraints(
+                MAX_LINEAR_VELOCITY.in(MetersPerSecond),
+                MAX_LINEAR_ACCELERATION.in(MetersPerSecondPerSecond),
+                MAX_ANGULAR_VELOCITY.in(DegreesPerSecond),
+                MAX_ANGULAR_ACCELERATION.in(DegreesPerSecondPerSecond),
+                END_TRANSLATION_TOLERANCE.in(Meters),
+                END_ROTATION_TOLERANCE.in(Degrees),
+                INTERMEDIATE_HANDOFF_RADIUS.in(Meters));
     }
 
     public static final class VisionConstants {
