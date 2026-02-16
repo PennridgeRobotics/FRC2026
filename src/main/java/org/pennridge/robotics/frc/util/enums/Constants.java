@@ -159,4 +159,9 @@ public final class Constants {
                             BUMP_TO_EDGE_Y.plus(BUMP_LENGTH).minus(BUMP_CLEARANCE_Y)))
         };
     }
+
+    public static class LightConstants {
+        public static final boolean LIGHTS_ENABLED = false;
+        public static final int CANDLE_ID = 16;
+    }
 }
