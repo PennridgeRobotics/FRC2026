@@ -50,6 +50,8 @@ public class LightsSubsystem extends SubsystemBase {
                         .withLossOfSignalBehavior(LossOfSignalBehaviorValue.KeepRunning)
                         .withBrightnessScalar(1.0));
         candle.getConfigurator().apply(config);
+
+        setDefaultCommand(setSolidColor(LightSegment.ALL, RGBWColor.fromHSV(120, 1, 0.5)));
     }
 
     public Command setSolidColor(List<LightSegment> segments, RGBWColor color) {
@@ -197,9 +199,9 @@ public class LightsSubsystem extends SubsystemBase {
     }
 
     public record LightSegment(int startIndex, int endIndex, int slot) {
-        // index starts from 0, inclusive
+        // index can be from 8-399 (0-7 are for the built-in LEDs)
         // slot must be between 0-7
 
-        public static final List<LightSegment> ALL = List.of(new LightSegment(0, 0, 0));
+        public static final List<LightSegment> ALL = List.of(new LightSegment(8, 8, 0));
     }
 }
