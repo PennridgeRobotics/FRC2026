@@ -9,12 +9,15 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import java.io.IOException;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.pennridge.robotics.frc.subsystems.LightsSubsystem;
 import org.pennridge.robotics.frc.subsystems.SwerveSubsystem;
 import org.pennridge.robotics.frc.util.enums.Constants.ControllerConstants;
+import org.pennridge.robotics.frc.util.enums.Constants.LightConstants;
 
 @NullMarked
 public class RobotContainer {
     // Initializes subsystems
+    private final @Nullable LightsSubsystem lightsSubsystem;
     private final SwerveSubsystem swerveSubsystem;
 
     // Initializes controllers
@@ -27,6 +30,7 @@ public class RobotContainer {
 
     /** The container for the robot. Contains subsystems, I/O devices, and commands. */
     public RobotContainer() {
+        lightsSubsystem = LightConstants.LIGHTS_ENABLED ? new LightsSubsystem() : null;
         try {
             swerveSubsystem = new SwerveSubsystem();
         } catch (IOException ex) {
