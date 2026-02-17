@@ -15,11 +15,11 @@ Welcome to Ridge Robotics' repository for the FRC 2026 season!
 | Front-Right Drive Motor      | 3      |
 | Front-Right Steering Motor   | 4      |
 | Front-Right Absolute Encoder | 10     |
-| Back-Left Drive Motor        | 5      |
-| Back-Left Steering Motor     | 6      |
+| Back-Left Drive Motor        | 7      |
+| Back-Left Steering Motor     | 8      |
 | Back-Left Absolute Encoder   | 11     |
-| Back-Right Drive Motor       | 7      |
-| Back-Right Steering Motor    | 8      |
+| Back-Right Drive Motor       | 5      |
+| Back-Right Steering Motor    | 6      |
 | Back-Right Absolute Encoder  | 12     |
 | Pigeon 2                     | 13     |
 | Intake/Launcher Motor        | 14     |
