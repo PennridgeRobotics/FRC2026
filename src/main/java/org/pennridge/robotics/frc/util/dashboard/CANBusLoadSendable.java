@@ -18,6 +18,7 @@ public class CANBusLoadSendable implements Sendable {
     public void initSendable(SendableBuilder builder) {
         Notify("buffer");
 
+        // Add properties for feeder and intake positions, velocities, and voltages (placeholders for now)
         builder.addDoubleProperty("Feeder Position", () -> 0.0, null);
         builder.addDoubleProperty("Intake Position", () -> 0.0, null);
 
@@ -91,6 +92,7 @@ public class CANBusLoadSendable implements Sendable {
     }
 
     public void Notify(String message) {
+        // Buffer to make sure notifications are shown due to bug of first notification not being shown.
         if (message == "buffer") {
             Elastic.Notification buffer =
                     new Elastic.Notification(Elastic.Notification.NotificationLevel.INFO, "", "", 2147483647);
