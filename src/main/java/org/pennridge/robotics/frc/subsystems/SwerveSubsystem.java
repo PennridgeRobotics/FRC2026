@@ -81,7 +81,7 @@ public class SwerveSubsystem extends SubsystemBase {
         swerveDrive.setHeadingCorrection(false); // enable this after testing/tuning PID
         swerveDrive.setCosineCompensator(!SwerveDriveTelemetry.isSimulation); // disable for simulations
         swerveDrive.setAngularVelocityCompensation(true, true, 0.1); // may need to adjust; see docs
-        swerveDrive.useExternalFeedbackSensor();
+        // swerveDrive.useExternalFeedbackSensor();
         swerveDrive.setModuleEncoderAutoSynchronize(false, 1); // can set to true, but I want to test
         swerveDrive.setMotorIdleMode(true);
 
