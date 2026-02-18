@@ -38,6 +38,7 @@ import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.pennridge.robotics.frc.Robot;
 import org.pennridge.robotics.frc.util.dashboard.PIDSendable;
+import org.pennridge.robotics.frc.util.dashboard.PIDSendable.PIDValues;
 import org.pennridge.robotics.frc.util.enums.Constants.BLineConstants;
 import org.pennridge.robotics.frc.util.enums.Constants.ControllerConstants;
 import org.pennridge.robotics.frc.util.enums.Constants.DriveConstants;
@@ -151,7 +152,7 @@ public class SwerveSubsystem extends SubsystemBase {
      * @param headingX [-1,1] Heading X (positive = front)
      * @param headingY [-1,1] Heading Y (positive = left)
      */
-    public Command driveFieldOrientedCommand(
+    public Command driveFieldOrientedHeadingCommand(
             final Supplier<LinearVelocity> xVelocity,
             final Supplier<LinearVelocity> yVelocity,
             final DoubleSupplier headingX,
@@ -166,16 +167,27 @@ public class SwerveSubsystem extends SubsystemBase {
      * @param headingX [-1,1] Heading X (positive = front)
      * @param headingY [-1,1] Heading Y (positive = left)
      */
-    public Command driveFieldOrientedCommand(
+    public Command driveFieldOrientedHeadingCommand(
             final DoubleSupplier xInput,
             final DoubleSupplier yInput,
             final DoubleSupplier headingX,
             final DoubleSupplier headingY) {
-        return driveFieldOrientedCommand(
+        return driveFieldOrientedHeadingCommand(
                 () -> joystickToLinearVelocity(xInput.getAsDouble()),
                 () -> joystickToLinearVelocity(yInput.getAsDouble()),
                 headingX,
                 headingY);
+    }
+    /**
+     * @param xVelocity Positive = towards the other alliance
+     * @param yVelocity Positive = towards the left wall
+     * @param heading Heading to point the robot in
+     */
+    public Command driveFieldOrientedHeadingCommand(
+            final Supplier<LinearVelocity> xVelocity,
+            final Supplier<LinearVelocity> yVelocity,
+            final Supplier<Rotation2d> heading) {
+        return run(() -> driveFieldOriented(xVelocity.get(), yVelocity.get(), getTargetAngularVelocity(heading.get())));
     }
 
     public Command centerModulesCommand() {
@@ -325,15 +337,13 @@ public class SwerveSubsystem extends SubsystemBase {
         Path.setDefaultGlobalConstraints(BLineConstants.GLOBAL_CONSTRAINTS);
         SmartDashboard.putData(
                 "BLine Translation PID",
-                new PIDSendable(
-                        bLineTranslationPID, PIDSendable.Type.PID, PIDSendable.PIDValues.from(bLineTranslationPID)));
+                new PIDSendable(bLineTranslationPID, PIDSendable.Type.PID, PIDValues.from(bLineTranslationPID)));
         SmartDashboard.putData(
                 "BLine Rotation PID",
-                new PIDSendable(bLineRotationPID, PIDSendable.Type.PID, PIDSendable.PIDValues.from(bLineRotationPID)));
+                new PIDSendable(bLineRotationPID, PIDSendable.Type.PID, PIDValues.from(bLineRotationPID)));
         SmartDashboard.putData(
                 "BLine Cross Track PID",
-                new PIDSendable(
-                        bLineCrossTrackPID, PIDSendable.Type.PID, PIDSendable.PIDValues.from(bLineCrossTrackPID)));
+                new PIDSendable(bLineCrossTrackPID, PIDSendable.Type.PID, PIDValues.from(bLineCrossTrackPID)));
         return new FollowPath.Builder(
                         this,
                         this::getRobotPose,
@@ -358,6 +368,12 @@ public class SwerveSubsystem extends SubsystemBase {
                     },
                     null);
         });
+        SmartDashboard.putData(
+                "Swerve Controller Heading PID",
+                new PIDSendable(
+                        swerveDrive.swerveController.thetaController,
+                        PIDSendable.Type.PID,
+                        PIDValues.from(swerveDrive.swerveController.thetaController)));
     }
 
     private void resetPose(Pose2d pose) {

@@ -1,6 +1,10 @@
 package org.pennridge.robotics.frc;
 
+import static edu.wpi.first.units.Units.DegreesPerSecond;
+import static edu.wpi.first.units.Units.MetersPerSecond;
+
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -66,11 +70,27 @@ public class RobotContainer {
         driverController.start().onTrue(swerveSubsystem.resetYaw());*/
 
         // for testing
-        swerveSubsystem.setDefaultCommand(swerveSubsystem.driveFieldOrientedCommand(
+        swerveSubsystem.setDefaultCommand(swerveSubsystem.driveFieldOrientedHeadingCommand(
                 () -> MathUtil.applyDeadband(driverController.getLeftY(), 0.1),
                 () -> MathUtil.applyDeadband(driverController.getLeftX(), 0.1),
                 driverController::getRightX,
                 driverController::getRightY));
+        driverController
+                .y()
+                .whileTrue(swerveSubsystem.driveFieldOrientedCommand(
+                        () -> MetersPerSecond.of(0.5), MetersPerSecond::zero, DegreesPerSecond::zero));
+        driverController
+                .b()
+                .whileTrue(swerveSubsystem.driveFieldOrientedHeadingCommand(
+                        MetersPerSecond::zero, MetersPerSecond::zero, () -> Rotation2d.kCW_90deg));
+        driverController
+                .x()
+                .whileTrue(swerveSubsystem.driveFieldOrientedHeadingCommand(
+                        MetersPerSecond::zero, MetersPerSecond::zero, () -> Rotation2d.kCCW_90deg));
+        driverController
+                .a()
+                .whileTrue(swerveSubsystem.driveFieldOrientedHeadingCommand(
+                        MetersPerSecond::zero, MetersPerSecond::zero, () -> Rotation2d.k180deg));
     }
 
     public void initSmartDashboard() {}

@@ -96,7 +96,7 @@ public final class Constants {
     public static final class DriveConstants {
         public static final String SWERVE_CONFIG_DIRECTORY = "swerve"; // + deploy
 
-        public static final LinearVelocity MAX_LINEAR_SPEED = MetersPerSecond.of(0.5);
+        public static final LinearVelocity MAX_LINEAR_SPEED = MetersPerSecond.of(1.0);
 
         public static final Current DRIVE_MOTOR_CURRENT_LIMIT = Amps.of(40);
         public static final Distance WHEEL_DIAMETER = Inches.of(4);
