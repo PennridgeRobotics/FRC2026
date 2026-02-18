@@ -36,6 +36,7 @@ import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.pennridge.robotics.frc.commands.light.LightChooserCommand;
+
 import org.pennridge.robotics.frc.util.enums.Constants.LightConstants;
 
 @NullMarked
@@ -72,10 +73,41 @@ public class LightsSubsystem extends SubsystemBase {
                     animation.withFrameRate(2); // this is optional; see code below, for example
                 },
                 DriverStation::isEStopped);
+
         // This code does the same thing as above, except that it doesn't configure the framerate (default is 4)
         // addStrobeAnimationRule(LightSegment.ALL, new RGBWColor(Color.kRed), null, DriverStation::isEStopped);
-
+        
         // Add others here (note that order matters!)
+        
+        // When disabled
+        
+
+        // X seconds left
+        // addStrobeAnimationRule(LightSegment.ALL, new RGBWColor(255, 255, 255), () -> /*Logic here*/);
+
+        // Bump Lock (overidden)
+        addStrobeAnimationRule(LightSegment.ALL, new RGBWColor(0, 255, 255), () -> SwerveSubsystem.isBumpLockOverriddenTrigger);
+
+        // Bump Lock
+        addSolidColorRule(LightSegment.ALL, new RGBWColor(0, 255, 255), () -> SwerveSubsystem::isOnBumpTrigger);
+
+        // When spinning up
+
+
+        // When shooting
+
+
+        // When ejecting
+
+
+        // When intaking
+        addSolidColorRule(LightSegment.ALL, new RGBWColor(new Color("8702fc")), () -> /*If intaking*/);
+
+        // When climbing
+        addSolidColorRule(LightSegment.ALL, new RGBWColor(new Color("f47718")), () -> /*If climbing*/);
+        
+        // When doing nothing
+        addSolidColorRule(LightSegment.ALL, new RGBWColor(new Color("025b35")), () -> true);
 
     }
 
