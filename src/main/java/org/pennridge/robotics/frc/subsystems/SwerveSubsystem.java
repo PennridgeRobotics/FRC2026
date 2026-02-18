@@ -38,6 +38,7 @@ import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.pennridge.robotics.frc.Robot;
 import org.pennridge.robotics.frc.util.dashboard.PIDSendable;
+import org.pennridge.robotics.frc.util.dashboard.PIDSendable.PIDValues;
 import org.pennridge.robotics.frc.util.enums.Constants.BLineConstants;
 import org.pennridge.robotics.frc.util.enums.Constants.ControllerConstants;
 import org.pennridge.robotics.frc.util.enums.Constants.DriveConstants;
@@ -57,11 +58,12 @@ public class SwerveSubsystem extends SubsystemBase {
     private final SwerveDrive swerveDrive;
     private VisionManager visionManager;
 
-    private DriveMode currentDriveMode = DriveMode.NORMAL; // automatically accounts for forceNormalDriveMode
+    private DriveMode currentDriveMode = DriveMode.NORMAL; // does NOT account for forceNormalDriveMode
     private boolean forceNormalDriveMode = false;
 
-    private final Trigger inBumpZoneTrigger;
+    private final Trigger inBumpZone;
     private final Trigger onBump;
+    private final Trigger bumpLockOverridden;
 
     private final PIDController bLineTranslationPID = new PIDController(5.0, 0, 0);
     private final PIDController bLineRotationPID = new PIDController(3.0, 0, 0);
@@ -83,12 +85,11 @@ public class SwerveSubsystem extends SubsystemBase {
         swerveDrive.setModuleEncoderAutoSynchronize(false, 1); // can set to true, but I want to test
         swerveDrive.setMotorIdleMode(true);
 
-        inBumpZoneTrigger =
-                new Trigger(this::isInBumpZone).and(() -> !forceNormalDriveMode).debounce(0.1);
-        inBumpZoneTrigger.onTrue(updateDriveMode(DriveMode.BUMP_LOCK, () -> "entered bump zone"));
-        inBumpZoneTrigger.onFalse(updateDriveMode(DriveMode.NORMAL, () -> "left bump zone"));
+        inBumpZone = new Trigger(this::isInBumpZone).debounce(0.1);
+        inBumpZone.onTrue(updateDriveMode(DriveMode.BUMP_LOCK, () -> "entered bump zone"));
+        inBumpZone.onFalse(updateDriveMode(DriveMode.NORMAL, () -> "left bump zone"));
 
-        onBump = inBumpZoneTrigger
+        onBump = inBumpZone
                 .and(() -> {
                     final var rotation3d = swerveDrive.getGyroRotation3d();
                     final var angle =
@@ -106,8 +107,9 @@ public class SwerveSubsystem extends SubsystemBase {
                 })
                 .debounce(0.25, DebounceType.kBoth);
         onBump.onTrue(runOnce(() -> System.out.println("on bump")));
-        onBump.onFalse(
-                updateDriveMode(DriveMode.NORMAL, () -> inBumpZoneTrigger.getAsBoolean() ? "no longer on bump" : null));
+        onBump.onFalse(updateDriveMode(DriveMode.NORMAL, () -> inBumpZone.getAsBoolean() ? "no longer on bump" : null));
+
+        bumpLockOverridden = new Trigger(() -> currentDriveMode == DriveMode.BUMP_LOCK && forceNormalDriveMode);
 
         setupVisionManager();
         pathBuilder = setupBLine();
@@ -150,7 +152,7 @@ public class SwerveSubsystem extends SubsystemBase {
      * @param headingX [-1,1] Heading X (positive = front)
      * @param headingY [-1,1] Heading Y (positive = left)
      */
-    public Command driveFieldOrientedCommand(
+    public Command driveFieldOrientedHeadingCommand(
             final Supplier<LinearVelocity> xVelocity,
             final Supplier<LinearVelocity> yVelocity,
             final DoubleSupplier headingX,
@@ -165,16 +167,27 @@ public class SwerveSubsystem extends SubsystemBase {
      * @param headingX [-1,1] Heading X (positive = front)
      * @param headingY [-1,1] Heading Y (positive = left)
      */
-    public Command driveFieldOrientedCommand(
+    public Command driveFieldOrientedHeadingCommand(
             final DoubleSupplier xInput,
             final DoubleSupplier yInput,
             final DoubleSupplier headingX,
             final DoubleSupplier headingY) {
-        return driveFieldOrientedCommand(
+        return driveFieldOrientedHeadingCommand(
                 () -> joystickToLinearVelocity(xInput.getAsDouble()),
                 () -> joystickToLinearVelocity(yInput.getAsDouble()),
                 headingX,
                 headingY);
+    }
+    /**
+     * @param xVelocity Positive = towards the other alliance
+     * @param yVelocity Positive = towards the left wall
+     * @param heading Heading to point the robot in
+     */
+    public Command driveFieldOrientedHeadingCommand(
+            final Supplier<LinearVelocity> xVelocity,
+            final Supplier<LinearVelocity> yVelocity,
+            final Supplier<Rotation2d> heading) {
+        return run(() -> driveFieldOriented(xVelocity.get(), yVelocity.get(), getTargetAngularVelocity(heading.get())));
     }
 
     public Command centerModulesCommand() {
@@ -223,6 +236,18 @@ public class SwerveSubsystem extends SubsystemBase {
         }
     }
 
+    public Trigger isInBumpZoneTrigger() {
+        return inBumpZone;
+    }
+
+    public Trigger isOnBumpTrigger() {
+        return onBump;
+    }
+
+    public Trigger isBumpLockOverriddenTrigger() {
+        return bumpLockOverridden;
+    }
+
     private void driveFieldOriented(
             final LinearVelocity xVelocity,
             final LinearVelocity yVelocity,
@@ -241,7 +266,7 @@ public class SwerveSubsystem extends SubsystemBase {
         final var adjustedXVelocity = shouldFlip ? xVelocity.unaryMinus() : xVelocity;
         final var adjustedYVelocity = shouldFlip ? yVelocity.unaryMinus() : yVelocity;
         final AngularVelocity finalAngularVelocity =
-                switch (currentDriveMode) {
+                switch (getActualDriveMode()) {
                     case NORMAL -> angularVelocity;
                     case BUMP_LOCK -> getTargetAngularVelocity(getBumpLockAngle());
                 };
@@ -312,15 +337,13 @@ public class SwerveSubsystem extends SubsystemBase {
         Path.setDefaultGlobalConstraints(BLineConstants.GLOBAL_CONSTRAINTS);
         SmartDashboard.putData(
                 "BLine Translation PID",
-                new PIDSendable(
-                        bLineTranslationPID, PIDSendable.Type.PID, PIDSendable.PIDValues.from(bLineTranslationPID)));
+                new PIDSendable(bLineTranslationPID, PIDSendable.Type.PID, PIDValues.from(bLineTranslationPID)));
         SmartDashboard.putData(
                 "BLine Rotation PID",
-                new PIDSendable(bLineRotationPID, PIDSendable.Type.PID, PIDSendable.PIDValues.from(bLineRotationPID)));
+                new PIDSendable(bLineRotationPID, PIDSendable.Type.PID, PIDValues.from(bLineRotationPID)));
         SmartDashboard.putData(
                 "BLine Cross Track PID",
-                new PIDSendable(
-                        bLineCrossTrackPID, PIDSendable.Type.PID, PIDSendable.PIDValues.from(bLineCrossTrackPID)));
+                new PIDSendable(bLineCrossTrackPID, PIDSendable.Type.PID, PIDValues.from(bLineCrossTrackPID)));
         return new FollowPath.Builder(
                         this,
                         this::getRobotPose,
@@ -345,6 +368,12 @@ public class SwerveSubsystem extends SubsystemBase {
                     },
                     null);
         });
+        SmartDashboard.putData(
+                "Swerve Controller Heading PID",
+                new PIDSendable(
+                        swerveDrive.swerveController.thetaController,
+                        PIDSendable.Type.PID,
+                        PIDValues.from(swerveDrive.swerveController.thetaController)));
     }
 
     private void resetPose(Pose2d pose) {
@@ -410,5 +439,10 @@ public class SwerveSubsystem extends SubsystemBase {
 
     private CorePigeon2 getPigeon2() {
         return (CorePigeon2) swerveDrive.getGyro().getIMU();
+    }
+
+    private DriveMode getActualDriveMode() {
+        if (forceNormalDriveMode) return DriveMode.NORMAL;
+        return currentDriveMode;
     }
 }

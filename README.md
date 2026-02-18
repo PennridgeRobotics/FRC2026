@@ -6,6 +6,24 @@ Welcome to Ridge Robotics' repository for the FRC 2026 season!
 |--------|--------|
 | TBD    | TBD    |
 
+## LED Signals
+(These are just some ideas right now)
+
+Note: Ordered by priority
+
+| State                | LED Pattern                       |
+|----------------------|-----------------------------------|
+| E-Stopped            | Red (strobe)                      |
+| Disabled             | Green/White                       |
+| X seconds left       | White (strobe)                    |
+| Bump Lock Overridden | Cyan (strobe)                     |
+| Bump Lock            | Cyan                              |
+| Winding Up           | Red/Green (depending on state)    |
+| Shooting             | Wind-Up Color (strobe)            |
+| Intaking             | Purple                            |
+| Climbing             | Fire                              |
+| Passive              | Dark Green (or white if low time) |
+
 ## CAN IDs
 | Device                       | CAN ID |
 |------------------------------|--------|
