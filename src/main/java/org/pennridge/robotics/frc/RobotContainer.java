@@ -30,7 +30,6 @@ public class RobotContainer {
 
     /** The container for the robot. Contains subsystems, I/O devices, and commands. */
     public RobotContainer() {
-        lightsSubsystem = LightConstants.LIGHTS_ENABLED ? new LightsSubsystem() : null;
         try {
             swerveSubsystem = new SwerveSubsystem();
         } catch (IOException ex) {
@@ -40,6 +39,7 @@ public class RobotContainer {
                     "Error instantiating Swerve Subsystem: " + ex.getMessage(), finalException.getStackTrace());
             throw finalException;
         }
+        lightsSubsystem = LightConstants.LIGHTS_ENABLED ? new LightsSubsystem(swerveSubsystem) : null;
 
         // autoChooser = AutoBuilder.buildAutoChooser("Epic Auto");
         autoChooser = new SendableChooser<>();
