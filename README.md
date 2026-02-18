@@ -18,8 +18,9 @@ Note: Ordered by priority
 | X seconds left       | White (strobe)                    |
 | Bump Lock Overridden | Cyan (strobe)                     |
 | Bump Lock            | Cyan                              |
-| Winding Up           | Red/Green (depending on state)    |
+| Spinning Up          | Red/Green (depending on state)    |
 | Shooting             | Wind-Up Color (strobe)            |
+| Ejecting             | Yellow (strobe)                   |
 | Intaking             | Purple                            |
 | Climbing             | Fire                              |
 | Passive              | Dark Green (or white if low time) |
