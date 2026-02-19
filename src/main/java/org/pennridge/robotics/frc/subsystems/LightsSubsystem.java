@@ -36,7 +36,6 @@ import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.pennridge.robotics.frc.commands.light.LightChooserCommand;
-
 import org.pennridge.robotics.frc.util.enums.Constants.LightConstants;
 
 @NullMarked
@@ -46,7 +45,7 @@ public class LightsSubsystem extends SubsystemBase {
 
     private final SwerveSubsystem swerveSubsystem;
     private final FuelSubsystem fuelSubsystem;
-    
+
     public LightsSubsystem(SwerveSubsystem swerveSubsystem, FuelSubsystem fuelSubsystem) {
         this.swerveSubsystem = swerveSubsystem;
         this.fuelSubsystem = fuelSubsystem;
@@ -78,9 +77,9 @@ public class LightsSubsystem extends SubsystemBase {
 
         // This code does the same thing as above, except that it doesn't configure the framerate (default is 4)
         // addStrobeAnimationRule(LightSegment.ALL, new RGBWColor(Color.kRed), null, DriverStation::isEStopped);
-        
+
         // Add others here (note that order matters!)
-        
+
         // When disabled
         // addStrobeAnimationRule(LightSegment.ALL, new RGBWColor(255, 255, 255), null, SwerveSubsystem.);
 
@@ -94,11 +93,11 @@ public class LightsSubsystem extends SubsystemBase {
         addSolidColorRule(LightSegment.ALL, new RGBWColor(0, 255, 255), () -> SwerveSubsystem.isOnBumpTrigger());
 
         // When spinning up
-        
+
 
         // When shooting
         // addStrobeAnimationRule(LightSegment.ALL, /*Wind-Up Color*/, /*If shooting*/);
-        
+
         // When ejecting
         addStrobeAnimationRule(LightSegment.ALL, new RGBWColor(255, 255, 0), null, () -> FuelSubsystem.isEjectingTrigger());
 
@@ -107,9 +106,9 @@ public class LightsSubsystem extends SubsystemBase {
 
         // When climbing
         // addSolidColorRule(LightSegment.ALL, new RGBWColor(new Color("f47718")), () -> /*If climbing*/);
-        
+
         // When doing nothing
-        addSolidColorRule(LightSegment.ALL, new RGBWColor(new Color("025b35")), () -> true); 
+        addSolidColorRule(LightSegment.ALL, new RGBWColor(new Color("025b35")), () -> true);
 
     }
 
@@ -277,7 +276,6 @@ public class LightsSubsystem extends SubsystemBase {
         }
         addLightRule(requests, configure, condition);
     }
-    
 
     private <T extends ControlRequest> void addLightRule(
             Map<LightSegment, T> animations, @Nullable Consumer<T> config, BooleanSupplier condition) {
@@ -292,7 +290,6 @@ public class LightsSubsystem extends SubsystemBase {
         }
         addLightRule(new LightRule(requests, condition));
     }
-
 
     private void addLightRule(LightRule lightRule) {
         chooserCommand.addLightRule(lightRule);

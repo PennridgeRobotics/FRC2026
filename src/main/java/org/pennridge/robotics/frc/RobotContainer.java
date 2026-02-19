@@ -45,6 +45,7 @@ public class RobotContainer {
                     "Error instantiating Swerve Subsystem: " + ex.getMessage(), finalException.getStackTrace());
             throw finalException;
         }
+        lightsSubsystem = LightConstants.LIGHTS_ENABLED ? new LightsSubsystem(swerveSubsystem) : null;
 
         fuelSubsystem = new FuelSubsystem();
         
