@@ -7,8 +7,6 @@ Welcome to Ridge Robotics' repository for the FRC 2026 season!
 | TBD    | TBD    |
 
 ## LED Signals
-(These are just some ideas right now)
-
 Note: Ordered by priority
 
 | State                | LED Pattern                       |
@@ -20,6 +18,7 @@ Note: Ordered by priority
 | Bump Lock            | Cyan                              |
 | Winding Up           | Red/Green (depending on state)    |
 | Shooting             | Wind-Up Color (strobe)            |
+| Ejecting             | Yellow (strobe)                   |
 | Intaking             | Purple                            |
 | Climbing             | Fire                              |
 | Passive              | Dark Green (or white if low time) |

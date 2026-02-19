@@ -13,6 +13,7 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import java.io.IOException;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.pennridge.robotics.frc.subsystems.FuelSubsystem;
 import org.pennridge.robotics.frc.subsystems.LightsSubsystem;
 import org.pennridge.robotics.frc.subsystems.SwerveSubsystem;
 import org.pennridge.robotics.frc.util.enums.Constants.ControllerConstants;
@@ -23,6 +24,7 @@ public class RobotContainer {
     // Initializes subsystems
     private final @Nullable LightsSubsystem lightsSubsystem;
     private final SwerveSubsystem swerveSubsystem;
+    private final FuelSubsystem fuelSubsystem;
 
     // Initializes controllers
     private final CommandXboxController driverController =
@@ -43,7 +45,8 @@ public class RobotContainer {
                     "Error instantiating Swerve Subsystem: " + ex.getMessage(), finalException.getStackTrace());
             throw finalException;
         }
-        lightsSubsystem = LightConstants.LIGHTS_ENABLED ? new LightsSubsystem(swerveSubsystem) : null;
+        fuelSubsystem = new FuelSubsystem();
+        lightsSubsystem = LightConstants.LIGHTS_ENABLED ? new LightsSubsystem(swerveSubsystem, fuelSubsystem) : null;
 
         // autoChooser = AutoBuilder.buildAutoChooser("Epic Auto");
         autoChooser = new SendableChooser<>();

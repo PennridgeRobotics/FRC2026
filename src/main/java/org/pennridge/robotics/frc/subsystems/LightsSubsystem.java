@@ -44,9 +44,11 @@ public class LightsSubsystem extends SubsystemBase {
     private final LightChooserCommand chooserCommand = new LightChooserCommand(candle);
 
     private final SwerveSubsystem swerveSubsystem;
+    private final FuelSubsystem fuelSubsystem;
 
-    public LightsSubsystem(SwerveSubsystem swerveSubsystem) {
+    public LightsSubsystem(SwerveSubsystem swerveSubsystem, FuelSubsystem fuelSubsystem) {
         this.swerveSubsystem = swerveSubsystem;
+        this.fuelSubsystem = fuelSubsystem;
         final var config = new CANdleConfiguration()
                 .withCANdleFeatures(new CANdleFeaturesConfigs()
                         .withEnable5VRail(Enable5VRailValue.Enabled)
@@ -72,11 +74,41 @@ public class LightsSubsystem extends SubsystemBase {
                     animation.withFrameRate(2); // this is optional; see code below, for example
                 },
                 DriverStation::isEStopped);
+
         // This code does the same thing as above, except that it doesn't configure the framerate (default is 4)
         // addStrobeAnimationRule(LightSegment.ALL, new RGBWColor(Color.kRed), null, DriverStation::isEStopped);
 
         // Add others here (note that order matters!)
 
+        // When disabled
+        // addStrobeAnimationRule(LightSegment.ALL, new RGBWColor(255, 255, 255), null, SwerveSubsystem.);
+
+        // X seconds left
+        // addStrobeAnimationRule(LightSegment.ALL, new RGBWColor(255, 255, 255), () -> /*Logic here*/);
+
+        // Bump Lock (overidden)
+        addStrobeAnimationRule(
+                LightSegment.ALL, new RGBWColor(0, 255, 255), null, swerveSubsystem.isBumpLockOverriddenTrigger());
+
+        // Bump Lock
+        addSolidColorRule(LightSegment.ALL, new RGBWColor(0, 255, 255), swerveSubsystem.isOnBumpTrigger());
+
+        // When spinning up
+
+        // When shooting
+        // addStrobeAnimationRule(LightSegment.ALL, /*Wind-Up Color*/, /*If shooting*/);
+
+        // When ejecting
+        addStrobeAnimationRule(LightSegment.ALL, new RGBWColor(255, 255, 0), null, fuelSubsystem.isEjectingTrigger());
+
+        // When intaking
+        addSolidColorRule(LightSegment.ALL, new RGBWColor(new Color("8702fc")), fuelSubsystem.isIntakingTrigger());
+
+        // When climbing
+        // addSolidColorRule(LightSegment.ALL, new RGBWColor(new Color("f47718")), () -> /*If climbing*/);
+
+        // When doing nothing
+        addSolidColorRule(LightSegment.ALL, new RGBWColor(new Color("025b35")), () -> true);
     }
 
     private void addSolidColorRule(List<LightSegment> segments, RGBWColor color, BooleanSupplier condition) {
