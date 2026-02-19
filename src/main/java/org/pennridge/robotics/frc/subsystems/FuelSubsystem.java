@@ -31,59 +31,43 @@ import yams.motorcontrollers.SmartMotorControllerConfig;
 import yams.motorcontrollers.SmartMotorControllerConfig.MotorMode;
 import yams.motorcontrollers.SmartMotorControllerConfig.TelemetryVerbosity;
 import yams.motorcontrollers.local.SparkWrapper;
-// COMMANDS:
-
-/*
- * EJECT
- * INTAKE
- * LAUNCH
- * SPIN UP
- * LAUNCH SEQUENCE
- */
-
-enum Action {
-    EJECTING,
-    LAUNCHING,
-    INTAKING,
-    SPINNING_UP,
-    NONE
-};
 
 @NullMarked
 public class FuelSubsystem extends SubsystemBase {
 
-    private SimpleMotorFeedforward feederFeedForward = new SimpleMotorFeedforward(0.0, 0.0);
-    private SimpleMotorFeedforward launcherFeedForward = new SimpleMotorFeedforward(0.0, 0.0);
-    private PIDController feederPIDController = new PIDController(0.0, 0.0, 0.0);
-    private PIDController launcherPIDController = new PIDController(0.0, 0.0, 0.0);
+    private final SimpleMotorFeedforward feederFeedForward = new SimpleMotorFeedforward(0.0, 0.0);
+    private final SimpleMotorFeedforward launcherFeedForward = new SimpleMotorFeedforward(0.0, 0.0);
+    private final PIDController feederPIDController = new PIDController(0.0, 0.0, 0.0);
+    private final PIDController launcherPIDController = new PIDController(0.0, 0.0, 0.0);
 
-    private Action state;
+    private FuelAction currentState;
     private final Trigger launching;
     private final Trigger ejecting;
     private final Trigger intaking;
-    private final Trigger spinning_up;
+    private final Trigger spinningUp;
 
     /** Creates a new FeederSubsystem. */
     public FuelSubsystem() {
         setDefaultCommand(run(() -> {
+            currentState = FuelAction.NONE;
             feederMotorController.setDutyCycle(0);
             launcherMotorController.setDutyCycle(0);
         }));
-        state = Action.NONE;
-        launching = new Trigger(() -> state == Action.LAUNCHING);
-        ejecting = new Trigger(() -> state == Action.EJECTING);
-        intaking = new Trigger(() -> state == Action.INTAKING);
-        spinning_up = new Trigger(() -> state == Action.SPINNING_UP);
+        currentState = FuelAction.NONE;
+        launching = new Trigger(() -> currentState == FuelAction.LAUNCHING);
+        ejecting = new Trigger(() -> currentState == FuelAction.EJECTING);
+        intaking = new Trigger(() -> currentState == FuelAction.INTAKING);
+        spinningUp = new Trigger(() -> currentState == FuelAction.SPINNING_UP);
 
         setupSmartDashboard();
     }
 
-    private SmartMotorControllerConfig feederSMCConfig = new SmartMotorControllerConfig(this)
+    private final SmartMotorControllerConfig feederSMCConfig = new SmartMotorControllerConfig(this)
             .withFeedforward(feederFeedForward)
             .withClosedLoopController(feederPIDController)
             // Telemetry name and verbosity level
             .withTelemetry("FeederMotor", TelemetryVerbosity.HIGH)
-            // Gearing from the motor rotor to final shaft.
+            // Gearing from the motor rotor to the final shaft.
             // In this example GearBox.fromReductionStages(3,4) is the same as GearBox.fromStages("3:1","4:1") which
             // corresponds to the gearbox attached to your motor.
             // You could also use .withGearing(12) which does the same thing.
@@ -94,12 +78,12 @@ public class FuelSubsystem extends SubsystemBase {
             .withIdleMode(MotorMode.BRAKE)
             .withStatorCurrentLimit(Amps.of(40));
 
-    private SmartMotorControllerConfig launcherSMCConfig = new SmartMotorControllerConfig(this)
+    private final SmartMotorControllerConfig launcherSMCConfig = new SmartMotorControllerConfig(this)
             .withFeedforward(launcherFeedForward)
             .withClosedLoopController(launcherPIDController)
             // Telemetry name and verbosity level
             .withTelemetry("LauncherMotor", TelemetryVerbosity.HIGH)
-            // Gearing from the motor rotor to final shaft.
+            // Gearing from the motor rotor to the final shaft.
             // In this example GearBox.fromReductionStages(3,4) is the same as GearBox.fromStages("3:1","4:1") which
             // corresponds to the gearbox attached to your motor.
             // You could also use .withGearing(12) which does the same thing.
@@ -112,25 +96,26 @@ public class FuelSubsystem extends SubsystemBase {
 
     // Vendor motor controller object
 
-    private SparkMax feeder = new SparkMax(FuelConstants.FEEDER_MOTOR_ID, MotorType.kBrushless);
-    private SparkMax launcher = new SparkMax(FuelConstants.INTAKE_LAUNCHER_MOTOR_ID, MotorType.kBrushless);
+    private final SparkMax feeder = new SparkMax(FuelConstants.FEEDER_MOTOR_ID, MotorType.kBrushless);
+    private final SparkMax launcher = new SparkMax(FuelConstants.INTAKE_LAUNCHER_MOTOR_ID, MotorType.kBrushless);
     // Create our SmartMotorController from our Spark and config with the NEO.
-    private SmartMotorController feederMotorController = new SparkWrapper(feeder, DCMotor.getNEO(1), feederSMCConfig);
+    private final SmartMotorController feederMotorController =
+            new SparkWrapper(feeder, DCMotor.getNEO(1), feederSMCConfig);
     private final FlyWheelConfig feederConfig = new FlyWheelConfig(feederMotorController)
             .withDiameter(Inches.of(4))
             .withMass(Pounds.of(1))
             .withUpperSoftLimit(RPM.of(1000))
             .withTelemetry("FeederMotor", TelemetryVerbosity.HIGH);
 
-    private SmartMotorController launcherMotorController =
+    private final SmartMotorController launcherMotorController =
             new SparkWrapper(launcher, DCMotor.getNEO(1), launcherSMCConfig);
     private final FlyWheelConfig launcherConfig = new FlyWheelConfig(launcherMotorController)
             .withDiameter(Inches.of(4))
             .withMass(Pounds.of(1))
             .withUpperSoftLimit(RPM.of(1000))
             .withTelemetry("LauncherMotor", TelemetryVerbosity.HIGH);
-    private FlyWheel feederMotor = new FlyWheel(feederConfig);
-    private FlyWheel launcherMotor = new FlyWheel(launcherConfig);
+    private final FlyWheel feederMotor = new FlyWheel(feederConfig);
+    private final FlyWheel launcherMotor = new FlyWheel(launcherConfig);
 
     private void setupSmartDashboard() {
         SmartDashboard.putNumber("Intaking feeder roller value", FuelConstants.INDEXER_INTAKING_PERCENT);
@@ -141,22 +126,18 @@ public class FuelSubsystem extends SubsystemBase {
         SmartDashboard.putData("Feeder", (builder) -> {
             builder.addDoubleProperty("Velocity", () -> feederMotor.getSpeed().in(DegreesPerSecond), null);
             builder.addDoubleProperty(
-                    "DutyCycle",
-                    () -> feederMotorController.getDutyCycle(),
-                    (f) -> feederMotorController.setDutyCycle(f));
+                    "DutyCycle", feederMotorController::getDutyCycle, feederMotorController::setDutyCycle);
         });
         SmartDashboard.putData("Feeder", (builder) -> {
             builder.addDoubleProperty("Velocity", () -> launcherMotor.getSpeed().in(DegreesPerSecond), null);
             builder.addDoubleProperty(
-                    "DutyCycle",
-                    () -> launcherMotorController.getDutyCycle(),
-                    (f) -> launcherMotorController.setDutyCycle(f));
+                    "DutyCycle", launcherMotorController::getDutyCycle, launcherMotorController::setDutyCycle);
         });
     }
 
     public Command eject() {
         return run(() -> {
-            state = Action.EJECTING;
+            currentState = FuelAction.EJECTING;
             launcherMotorController.setDutyCycle(
                     -1 * SmartDashboard.getNumber("Intaking intake roller value", FuelConstants.INTAKE_EJECT_PERCENT));
             feederMotorController.setDutyCycle(
@@ -166,7 +147,7 @@ public class FuelSubsystem extends SubsystemBase {
 
     public Command intake() {
         return run(() -> {
-            state = Action.INTAKING;
+            currentState = FuelAction.INTAKING;
             launcherMotorController.setDutyCycle(
                     SmartDashboard.getNumber("Intaking intake roller value", FuelConstants.INTAKE_INTAKING_PERCENT));
             feederMotorController.setDutyCycle(
@@ -176,7 +157,7 @@ public class FuelSubsystem extends SubsystemBase {
 
     public Command launch() {
         return run(() -> {
-            state = Action.LAUNCHING;
+            currentState = FuelAction.LAUNCHING;
             launcherMotorController.setDutyCycle(SmartDashboard.getNumber(
                     "Launching launcher roller value", FuelConstants.LAUNCHING_LAUNCHER_PERCENT));
             feederMotorController.setDutyCycle(
@@ -186,7 +167,7 @@ public class FuelSubsystem extends SubsystemBase {
 
     public Command spinUp() {
         return run(() -> {
-            state = Action.SPINNING_UP;
+            currentState = FuelAction.SPINNING_UP;
             launcherMotorController.setDutyCycle(SmartDashboard.getNumber(
                     "Launching launcher roller value", FuelConstants.LAUNCHING_LAUNCHER_PERCENT));
             feederMotorController.setDutyCycle(SmartDashboard.getNumber(
@@ -211,7 +192,7 @@ public class FuelSubsystem extends SubsystemBase {
     }
 
     public Trigger isSpinningUpTrigger() {
-        return spinning_up;
+        return spinningUp;
     }
 
     @Override
@@ -225,4 +206,22 @@ public class FuelSubsystem extends SubsystemBase {
         // This method will be called once per scheduler run during simulation
         feederMotor.simIterate();
     }
+
+    // COMMANDS:
+
+    /*
+     * EJECT
+     * INTAKE
+     * LAUNCH
+     * SPIN UP
+     * LAUNCH SEQUENCE
+     */
+
+    enum FuelAction {
+        EJECTING,
+        LAUNCHING,
+        INTAKING,
+        SPINNING_UP,
+        NONE
+    };
 }
