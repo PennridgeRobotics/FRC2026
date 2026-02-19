@@ -20,7 +20,6 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
-
 import org.jspecify.annotations.NullMarked;
 import org.pennridge.robotics.frc.util.enums.Constants.FuelConstants;
 import yams.gearing.GearBox;
@@ -33,14 +32,14 @@ import yams.motorcontrollers.SmartMotorControllerConfig.MotorMode;
 import yams.motorcontrollers.SmartMotorControllerConfig.TelemetryVerbosity;
 import yams.motorcontrollers.local.SparkWrapper;
 // COMMANDS:
+
 /*
  * EJECT
  * INTAKE
  * LAUNCH
  * SPIN UP
  * LAUNCH SEQUENCE
-*/
-
+ */
 
 enum Action {
     EJECTING,
@@ -52,7 +51,7 @@ enum Action {
 
 @NullMarked
 public class FuelSubsystem extends SubsystemBase {
-    
+
     private SimpleMotorFeedforward feederFeedForward = new SimpleMotorFeedforward(0.0, 0.0);
     private SimpleMotorFeedforward launcherFeedForward = new SimpleMotorFeedforward(0.0, 0.0);
     private PIDController feederPIDController = new PIDController(0.0, 0.0, 0.0);
@@ -63,8 +62,6 @@ public class FuelSubsystem extends SubsystemBase {
     private final Trigger ejecting;
     private final Trigger intaking;
     private final Trigger spinning_up;
-
-
 
     /** Creates a new FeederSubsystem. */
     public FuelSubsystem() {
@@ -112,7 +109,7 @@ public class FuelSubsystem extends SubsystemBase {
             .withVoltageCompensation(Volts.of(12))
             .withIdleMode(MotorMode.BRAKE)
             .withStatorCurrentLimit(Amps.of(40));
-            
+
     // Vendor motor controller object
 
     private SparkMax feeder = new SparkMax(FuelConstants.FEEDER_MOTOR_ID, MotorType.kBrushless);
@@ -135,7 +132,6 @@ public class FuelSubsystem extends SubsystemBase {
     private FlyWheel feederMotor = new FlyWheel(feederConfig);
     private FlyWheel launcherMotor = new FlyWheel(launcherConfig);
 
-
     private void setupSmartDashboard() {
         SmartDashboard.putNumber("Intaking feeder roller value", FuelConstants.INDEXER_INTAKING_PERCENT);
         SmartDashboard.putNumber("Intaking intake roller value", FuelConstants.INTAKE_INTAKING_PERCENT);
@@ -157,7 +153,6 @@ public class FuelSubsystem extends SubsystemBase {
                     (f) -> launcherMotorController.setDutyCycle(f));
         });
     }
-
 
     public Command eject() {
         return run(() -> {

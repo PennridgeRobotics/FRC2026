@@ -87,29 +87,28 @@ public class LightsSubsystem extends SubsystemBase {
         // addStrobeAnimationRule(LightSegment.ALL, new RGBWColor(255, 255, 255), () -> /*Logic here*/);
 
         // Bump Lock (overidden)
-        addStrobeAnimationRule(LightSegment.ALL, new RGBWColor(0, 255, 255), null, () -> SwerveSubsystem.isBumpLockOverriddenTrigger());
+        addStrobeAnimationRule(
+                LightSegment.ALL, new RGBWColor(0, 255, 255), null, swerveSubsystem.isBumpLockOverriddenTrigger());
 
         // Bump Lock
-        addSolidColorRule(LightSegment.ALL, new RGBWColor(0, 255, 255), () -> SwerveSubsystem.isOnBumpTrigger());
+        addSolidColorRule(LightSegment.ALL, new RGBWColor(0, 255, 255), swerveSubsystem.isOnBumpTrigger());
 
         // When spinning up
-
 
         // When shooting
         // addStrobeAnimationRule(LightSegment.ALL, /*Wind-Up Color*/, /*If shooting*/);
 
         // When ejecting
-        addStrobeAnimationRule(LightSegment.ALL, new RGBWColor(255, 255, 0), null, () -> FuelSubsystem.isEjectingTrigger());
+        addStrobeAnimationRule(LightSegment.ALL, new RGBWColor(255, 255, 0), null, fuelSubsystem.isEjectingTrigger());
 
         // When intaking
-        addSolidColorRule(LightSegment.ALL, new RGBWColor(new Color("8702fc")), () -> FuelSubsystem.isIntakingTrigger());
+        addSolidColorRule(LightSegment.ALL, new RGBWColor(new Color("8702fc")), fuelSubsystem.isIntakingTrigger());
 
         // When climbing
         // addSolidColorRule(LightSegment.ALL, new RGBWColor(new Color("f47718")), () -> /*If climbing*/);
 
         // When doing nothing
         addSolidColorRule(LightSegment.ALL, new RGBWColor(new Color("025b35")), () -> true);
-
     }
 
     private void addSolidColorRule(List<LightSegment> segments, RGBWColor color, BooleanSupplier condition) {
