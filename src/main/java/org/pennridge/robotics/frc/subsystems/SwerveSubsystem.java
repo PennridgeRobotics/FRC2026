@@ -3,6 +3,7 @@ package org.pennridge.robotics.frc.subsystems;
 import static edu.wpi.first.units.Units.DegreesPerSecond;
 import static edu.wpi.first.units.Units.Meter;
 import static edu.wpi.first.units.Units.MetersPerSecond;
+import static edu.wpi.first.units.Units.MetersPerSecondPerSecond;
 import static edu.wpi.first.units.Units.RadiansPerSecond;
 
 import com.ctre.phoenix6.hardware.core.CorePigeon2;
@@ -37,6 +38,7 @@ import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.pennridge.robotics.frc.Robot;
+import org.pennridge.robotics.frc.util.SlewRateLimiter2d;
 import org.pennridge.robotics.frc.util.dashboard.PIDSendable;
 import org.pennridge.robotics.frc.util.dashboard.PIDSendable.PIDValues;
 import org.pennridge.robotics.frc.util.enums.Constants.BLineConstants;
@@ -69,6 +71,9 @@ public class SwerveSubsystem extends SubsystemBase {
     private final PIDController bLineRotationPID = new PIDController(3.0, 0, 0);
     private final PIDController bLineCrossTrackPID = new PIDController(2.0, 0, 0);
     private final FollowPath.Builder pathBuilder;
+
+    private final SlewRateLimiter2d linearDriveLimiter =
+            new SlewRateLimiter2d(DriveConstants.MAX_LINEAR_ACCELERATION.in(MetersPerSecondPerSecond));
 
     @SuppressWarnings("StaticAssignmentInConstructor")
     public SwerveSubsystem() throws IOException {
@@ -265,12 +270,16 @@ public class SwerveSubsystem extends SubsystemBase {
         final var shouldFlip = alliance.get() == DriverStation.Alliance.Red;
         final var adjustedXVelocity = shouldFlip ? xVelocity.unaryMinus() : xVelocity;
         final var adjustedYVelocity = shouldFlip ? yVelocity.unaryMinus() : yVelocity;
-        final AngularVelocity finalAngularVelocity =
+        final Translation2d limitedLinearVelocity = linearDriveLimiter.calculate(
+                adjustedXVelocity.in(MetersPerSecond), adjustedYVelocity.in(MetersPerSecond));
+        final double finalAngularVelocity =
                 switch (getActualDriveMode()) {
-                    case NORMAL -> angularVelocity;
-                    case BUMP_LOCK -> getTargetAngularVelocity(getBumpLockAngle());
+                    case NORMAL -> angularVelocity.in(RadiansPerSecond);
+                    case BUMP_LOCK ->
+                        getTargetAngularVelocity(getBumpLockAngle()).in(RadiansPerSecond);
                 };
-        swerveDrive.driveFieldOriented(new ChassisSpeeds(adjustedXVelocity, adjustedYVelocity, finalAngularVelocity));
+        swerveDrive.driveFieldOriented(
+                new ChassisSpeeds(limitedLinearVelocity.getX(), limitedLinearVelocity.getY(), finalAngularVelocity));
     }
 
     public Command driveFieldOrientedTestCommand(
