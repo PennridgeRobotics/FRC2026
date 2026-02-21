@@ -81,14 +81,8 @@ public class FuelSubsystem extends SubsystemBase {
     private final SmartMotorControllerConfig launcherSMCConfig = new SmartMotorControllerConfig(this)
             .withFeedforward(launcherFeedForward)
             .withClosedLoopController(launcherPIDController)
-            // Telemetry name and verbosity level
             .withTelemetry("LauncherMotor", TelemetryVerbosity.HIGH)
-            // Gearing from the motor rotor to the final shaft.
-            // In this example GearBox.fromReductionStages(3,4) is the same as GearBox.fromStages("3:1","4:1") which
-            // corresponds to the gearbox attached to your motor.
-            // You could also use .withGearing(12) which does the same thing.
             .withGearing(new MechanismGearing(GearBox.fromReductionStages(3, 4)))
-            // Motor properties to prevent over currenting.
             .withMotorInverted(false)
             .withVoltageCompensation(Volts.of(12))
             .withIdleMode(MotorMode.BRAKE)

@@ -2,13 +2,16 @@ package frc.robot.commands.light;
 
 import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.controls.ControlRequest;
+import com.ctre.phoenix6.controls.EmptyAnimation;
 import com.ctre.phoenix6.hardware.CANdle;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.subsystems.LightsSubsystem.LightRule;
 import frc.robot.subsystems.LightsSubsystem.LightSegment;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
@@ -25,20 +28,23 @@ public class LightChooserCommand extends Command {
     /** The main body of a command. Called repeatedly while the command is scheduled. */
     @Override
     public void execute() {
-        checkCurrentSlotRequests();
-        requestNewLightRules();
+        requestNewLightRules(checkCurrentSlotRequests());
     }
 
-    private void checkCurrentSlotRequests() {
+    /** @return slot numbers/indices that were cleared */
+    private Set<Integer> checkCurrentSlotRequests() {
+        final var clearedSlots = new HashSet<Integer>(currentSlotRequests.length);
         for (int i = 0; i < currentSlotRequests.length; i++) {
             final var request = currentSlotRequests[i];
             if (request == null) continue;
             if (request.originalRule.condition().getAsBoolean()) continue;
+            clearedSlots.add(request.segment.slot());
             currentSlotRequests[i] = null;
         }
+        return clearedSlots;
     }
 
-    private void requestNewLightRules() {
+    private void requestNewLightRules(final Set<Integer> newlyClearedSlots) {
         lightRuleLoop:
         for (final var lightRule : lightRules) {
             var checkedCondition = false;
@@ -53,7 +59,12 @@ public class LightChooserCommand extends Command {
                 final var request = requestSupplier.get();
                 currentSlotRequests[segment.slot()] = new LightRequest(lightRule, segment);
                 sendRequest(request);
+                newlyClearedSlots.remove(segment.slot());
             }
+        }
+        for (final var slot : newlyClearedSlots) {
+            final var request = new EmptyAnimation(slot);
+            sendRequest(request);
         }
     }
 

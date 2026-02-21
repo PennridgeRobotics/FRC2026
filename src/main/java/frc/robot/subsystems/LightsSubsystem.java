@@ -24,6 +24,7 @@ import com.ctre.phoenix6.signals.StatusLedWhenActiveValue;
 import com.ctre.phoenix6.signals.StripTypeValue;
 import com.ctre.phoenix6.signals.VBatOutputModeValue;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.DriverStation.MatchType;
 import edu.wpi.first.wpilibj.util.Color;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -44,9 +45,9 @@ public class LightsSubsystem extends SubsystemBase {
     private final LightChooserCommand chooserCommand = new LightChooserCommand(candle);
 
     private final SwerveSubsystem swerveSubsystem;
-    private final FuelSubsystem fuelSubsystem;
+    private final @Nullable FuelSubsystem fuelSubsystem;
 
-    public LightsSubsystem(SwerveSubsystem swerveSubsystem, FuelSubsystem fuelSubsystem) {
+    public LightsSubsystem(SwerveSubsystem swerveSubsystem, @Nullable FuelSubsystem fuelSubsystem) {
         this.swerveSubsystem = swerveSubsystem;
         this.fuelSubsystem = fuelSubsystem;
         final var config = new CANdleConfiguration()
@@ -66,6 +67,9 @@ public class LightsSubsystem extends SubsystemBase {
     }
 
     private void addRules() {
+        final var pennridgeGreen = RGBWColor.fromHSV(154, 0.98, 0.36);
+        final var lowTimeSeconds = 15.0;
+
         // E-stop
         addStrobeAnimationRule(
                 LightSegment.ALL,
@@ -81,34 +85,48 @@ public class LightsSubsystem extends SubsystemBase {
         // Add others here (note that order matters!)
 
         // When disabled
-        // addStrobeAnimationRule(LightSegment.ALL, new RGBWColor(255, 255, 255), null, SwerveSubsystem.);
+        addSingleFadeAnimationRule(LightSegment.ALL, pennridgeGreen, null, DriverStation::isDisabled);
 
         // X seconds left
-        // addStrobeAnimationRule(LightSegment.ALL, new RGBWColor(255, 255, 255), () -> /*Logic here*/);
+        addStrobeAnimationRule(LightSegment.ALL, new RGBWColor(Color.kWhite), null, () -> {
+            final var secondsLeft = DriverStation.getMatchTime();
+            return DriverStation.getMatchType() != MatchType.None
+                    && secondsLeft >= (lowTimeSeconds - 2)
+                    && secondsLeft <= lowTimeSeconds;
+        });
 
-        // Bump Lock (overidden)
+        // Bump Lock (overridden)
         addStrobeAnimationRule(
                 LightSegment.ALL, new RGBWColor(0, 255, 255), null, swerveSubsystem.isBumpLockOverriddenTrigger());
 
         // Bump Lock
         addSolidColorRule(LightSegment.ALL, new RGBWColor(0, 255, 255), swerveSubsystem.isOnBumpTrigger());
 
-        // When spinning up
+        // When winding up
 
         // When shooting
         // addStrobeAnimationRule(LightSegment.ALL, /*Wind-Up Color*/, /*If shooting*/);
 
-        // When ejecting
-        addStrobeAnimationRule(LightSegment.ALL, new RGBWColor(255, 255, 0), null, fuelSubsystem.isEjectingTrigger());
+        if (fuelSubsystem != null) {
+            // When ejecting
+            addStrobeAnimationRule(
+                    LightSegment.ALL, new RGBWColor(Color.kYellow), null, fuelSubsystem.isEjectingTrigger());
 
-        // When intaking
-        addSolidColorRule(LightSegment.ALL, new RGBWColor(new Color("8702fc")), fuelSubsystem.isIntakingTrigger());
+            // When intaking
+            addSolidColorRule(LightSegment.ALL, RGBWColor.fromHSV(272, 1, 1), fuelSubsystem.isIntakingTrigger());
+        }
 
         // When climbing
-        // addSolidColorRule(LightSegment.ALL, new RGBWColor(new Color("f47718")), () -> /*If climbing*/);
+        // addFireAnimationRule(LightSegment.ALL, null, () -> /*If climbing*/);
+
+        // When doing nothing (but low time)
+        addSolidColorRule(
+                LightSegment.ALL,
+                new RGBWColor(Color.kWhite),
+                () -> DriverStation.getMatchType() != MatchType.None && DriverStation.getMatchTime() <= lowTimeSeconds);
 
         // When doing nothing
-        addSolidColorRule(LightSegment.ALL, new RGBWColor(new Color("025b35")), () -> true);
+        addSolidColorRule(LightSegment.ALL, pennridgeGreen, () -> true);
     }
 
     private void addSolidColorRule(List<LightSegment> segments, RGBWColor color, BooleanSupplier condition) {
