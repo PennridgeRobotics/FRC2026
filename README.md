@@ -54,7 +54,6 @@ Here are some things to keep in mind while working on this codebase:
 - Some conventions are (at least partially) enforced:
     - Nullability: check out [JSpecify/NullAway](#jspecifynullaway)
     - Code style (indentation/spacing/etc): strictly enforced by [Spotless](#spotless)
-    - Common possible points of error: checked by [Error Prone](#error-prone)
 
 ### Working on Tasks
 - Check out the [Project](https://github.com/orgs/PennridgeRobotics/projects/1)
@@ -80,11 +79,6 @@ Here are some things to keep in mind while working on this codebase:
 - We use Spotless to maintain code formatting consistency
 - Please ensure that you run Spotless before committing any code changes (otherwise the workflow will fail)
 - You can do this by executing the `spotlessApply` Gradle task
-
-### Error Prone
-- We use Error Prone (by Google) to catch common Java mistakes at compile time
-- Unlike Spotless, Error Prone is executed whenever the code is compiled
-- Note that some checks will only show as a warning, but others will fail the compilation
 
 ### JSpecify/NullAway
 - We use JSpecify annotations along with NullAway to enforce null-safety in our codebase
