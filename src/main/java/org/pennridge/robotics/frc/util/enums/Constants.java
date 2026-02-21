@@ -109,6 +109,14 @@ public final class Constants {
 
         public static final Current MOTOR_CURRENT_LIMIT = Amps.of(40);
 
+        public static final double INDEXER_INTAKING_PERCENT = -.8;
+        public static final double INDEXER_LAUNCHING_PERCENT = 0.6;
+        public static final double INDEXER_SPIN_UP_PRE_LAUNCH_PERCENT = -0.5;
+
+        public static final double INTAKE_INTAKING_PERCENT = 0.6;
+        public static final double LAUNCHING_LAUNCHER_PERCENT = .85;
+        public static final double INTAKE_EJECT_PERCENT = -0.8;
+
         public static final Voltage INTAKE_FEEDER_VOLTAGE = Volts.of(-12);
         public static final Voltage INTAKE_INTAKE_VOLTAGE = Volts.of(10);
         public static final Voltage LAUNCHING_FEEDER_VOLTAGE = Volts.of(9);
