@@ -104,6 +104,8 @@ public final class Constants {
     }
 
     public static final class FuelConstants {
+        public static final boolean FUEL_SUBSYSTEM_ENABLED = false;
+
         public static final int INTAKE_LAUNCHER_MOTOR_ID = 14;
         public static final int FEEDER_MOTOR_ID = 15;
 

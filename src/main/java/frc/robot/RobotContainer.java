@@ -14,6 +14,7 @@ import frc.robot.subsystems.FuelSubsystem;
 import frc.robot.subsystems.LightsSubsystem;
 import frc.robot.subsystems.SwerveSubsystem;
 import frc.robot.util.enums.Constants.ControllerConstants;
+import frc.robot.util.enums.Constants.FuelConstants;
 import frc.robot.util.enums.Constants.LightConstants;
 import java.io.IOException;
 import org.jspecify.annotations.NullMarked;
@@ -24,7 +25,7 @@ public class RobotContainer {
     // Initializes subsystems
     private final @Nullable LightsSubsystem lightsSubsystem;
     private final SwerveSubsystem swerveSubsystem;
-    private final FuelSubsystem fuelSubsystem;
+    private final @Nullable FuelSubsystem fuelSubsystem;
 
     // Initializes controllers
     private final CommandXboxController driverController =
@@ -45,7 +46,7 @@ public class RobotContainer {
                     "Error instantiating Swerve Subsystem: " + ex.getMessage(), finalException.getStackTrace());
             throw finalException;
         }
-        fuelSubsystem = new FuelSubsystem();
+        fuelSubsystem = FuelConstants.FUEL_SUBSYSTEM_ENABLED ? new FuelSubsystem() : null;
         lightsSubsystem = LightConstants.LIGHTS_ENABLED ? new LightsSubsystem(swerveSubsystem, fuelSubsystem) : null;
 
         // autoChooser = AutoBuilder.buildAutoChooser("Epic Auto");
