@@ -29,8 +29,8 @@ public class RobotContainer {
     // Initializes controllers
     private final CommandXboxController driverController =
             new CommandXboxController(ControllerConstants.DRIVER_CONTROLLER_PORT);
-    private final CommandXboxController operatorController =
-            new CommandXboxController(ControllerConstants.OPERATOR_CONTROLLER_PORT);
+    /*private final CommandXboxController operatorController =
+    new CommandXboxController(ControllerConstants.OPERATOR_CONTROLLER_PORT);*/
 
     private final SendableChooser<Command> autoChooser;
 
