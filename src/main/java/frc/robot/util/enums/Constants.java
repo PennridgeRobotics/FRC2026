@@ -32,6 +32,8 @@ import edu.wpi.first.units.measure.Time;
 import edu.wpi.first.units.measure.Voltage;
 import frc.robot.lib.BLine.Path;
 import org.jspecify.annotations.NullMarked;
+import yams.gearing.MechanismGearing;
+import yams.motorcontrollers.SmartMotorControllerConfig.MotorMode;
 
 /**
  * The Constants class provides a convenient place for teams to hold robot-wide numerical or boolean constants. This
@@ -125,6 +127,21 @@ public final class Constants {
         public static final Voltage LAUNCHING_LAUNCHER_VOLTAGE = Volts.of(10.6);
         public static final Voltage SPIN_UP_FEEDER_VOLTAGE = Volts.of(-6);
         public static final Time SPIN_UP_SECONDS = Seconds.of(1);
+    }
+
+    public static final class ClimberConstants {
+        public static boolean CLIMBER_ENABLED = false;
+
+        public static final int CLIMBER_MOTOR_ID = 9;
+        public static final MotorMode IDLE_MODE = MotorMode.BRAKE;
+        public static final MechanismGearing CLIMBER_GEARING = new MechanismGearing(100.0, 60.0 / 20, 28.0 / 10);
+        public static final Current CURRENT_LIMIT = Amps.of(40);
+        public static final Current STALL_CURRENT = Amps.of(10);
+        public static final Time RAMP_RATE = Seconds.of(0.25);
+
+        public static final Angle MINIMUM_ANGLE = Degrees.of(-53.5);
+        public static final Angle HORIZONTAL_ANGLE = Degrees.of(0);
+        public static final Angle CLIMBED_ANGLE = Degrees.of(70);
     }
 
     public static final class ControllerConstants {

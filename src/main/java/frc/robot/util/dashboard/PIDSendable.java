@@ -50,11 +50,13 @@ public class PIDSendable implements Sendable {
         }
     }
 
+    // Spark MAX
     public PIDSendable(SparkMax sparkMax, ClosedLoopSlot slot, int types, PIDValues defaults) {
         this(types, defaults, sparkMax, slot, null, null, null, null);
         checkSupported("SparkMax", types, Type.PID | Type.I_ZONE | Type.LINEAR_FF | Type.COS);
     }
 
+    // PIDController
     public PIDSendable(PIDController pidController, int types, @Nullable PIDValues defaults) {
         this(types, defaults, null, null, pidController, null, null, null);
         checkSupported("PIDController", types, Type.PID | Type.I_ZONE);
@@ -63,7 +65,31 @@ public class PIDSendable implements Sendable {
     public PIDSendable(PIDController pidController, int types) {
         this(pidController, types, null);
     }
+    // PIDController + ElevatorFeedforward
+    public PIDSendable(
+            PIDController pidController,
+            ElevatorFeedforward elevatorFeedforward,
+            int types,
+            @Nullable PIDValues defaults) {
+        this(types, defaults, null, null, pidController, null, elevatorFeedforward, null);
+        checkSupported("PIDController/ElevatorFeedforward", types, Type.PID | Type.I_ZONE | Type.LINEAR_FF);
+    }
 
+    public PIDSendable(PIDController pidController, ElevatorFeedforward elevatorFeedforward, int types) {
+        this(pidController, elevatorFeedforward, types, null);
+    }
+    // PIDController + ArmFeedforward
+    public PIDSendable(
+            PIDController pidController, ArmFeedforward armFeedforward, int types, @Nullable PIDValues defaults) {
+        this(types, defaults, null, null, pidController, null, null, armFeedforward);
+        checkSupported("PIDController/ArmFeedforward", types, Type.PID | Type.I_ZONE | Type.ROTARY_FF);
+    }
+
+    public PIDSendable(PIDController pidController, ArmFeedforward armFeedforward, int types) {
+        this(pidController, armFeedforward, types, null);
+    }
+
+    // ProfiledPIDController
     public PIDSendable(ProfiledPIDController profiledPIDController, int types, @Nullable PIDValues defaults) {
         this(types, defaults, null, null, null, profiledPIDController, null, null);
         checkSupported("ProfiledPIDController", types, Type.PID | Type.I_ZONE | Type.CONSTRAINTS);
@@ -72,7 +98,41 @@ public class PIDSendable implements Sendable {
     public PIDSendable(ProfiledPIDController profiledPIDController, int types) {
         this(profiledPIDController, types, null);
     }
+    // ProfiledPIDController + ElevatorFeedforward
+    public PIDSendable(
+            ProfiledPIDController profiledPIDController,
+            ElevatorFeedforward elevatorFeedforward,
+            int types,
+            @Nullable PIDValues defaults) {
+        this(types, defaults, null, null, null, profiledPIDController, elevatorFeedforward, null);
+        checkSupported(
+                "ProfiledPIDController/ElevatorFeedforward",
+                types,
+                Type.PID | Type.I_ZONE | Type.CONSTRAINTS | Type.LINEAR_FF);
+    }
 
+    public PIDSendable(
+            ProfiledPIDController profiledPIDController, ElevatorFeedforward elevatorFeedforward, int types) {
+        this(profiledPIDController, elevatorFeedforward, types, null);
+    }
+    // ProfiledPIDController + ArmFeedforward
+    public PIDSendable(
+            ProfiledPIDController profiledPIDController,
+            ArmFeedforward armFeedforward,
+            int types,
+            @Nullable PIDValues defaults) {
+        this(types, defaults, null, null, null, profiledPIDController, null, armFeedforward);
+        checkSupported(
+                "ProfiledPIDController/ArmFeedforward",
+                types,
+                Type.PID | Type.I_ZONE | Type.CONSTRAINTS | Type.ROTARY_FF);
+    }
+
+    public PIDSendable(ProfiledPIDController profiledPIDController, ArmFeedforward armFeedforward, int types) {
+        this(profiledPIDController, armFeedforward, types, null);
+    }
+
+    // Feedforwards
     public PIDSendable(ElevatorFeedforward elevatorFeedforward, int types, @Nullable PIDValues defaults) {
         this(types, defaults, null, null, null, null, elevatorFeedforward, null);
         checkSupported("ElevatorFeedforward", types, Type.LINEAR_FF);
@@ -361,6 +421,23 @@ public class PIDSendable implements Sendable {
                     armFeedforward.getKs(), armFeedforward.getKg(), armFeedforward.getKv(), armFeedforward.getKa());
         }
 
+        public static PIDValues from(PIDController pidController, ElevatorFeedforward elevatorFeedforward) {
+            return from(pidController).and(from(elevatorFeedforward));
+        }
+
+        public static PIDValues from(
+                ProfiledPIDController profiledPIDController, ElevatorFeedforward elevatorFeedforward) {
+            return from(profiledPIDController).and(from(elevatorFeedforward));
+        }
+
+        public static PIDValues from(PIDController pidController, ArmFeedforward armFeedforward) {
+            return from(pidController).and(from(armFeedforward));
+        }
+
+        public static PIDValues from(ProfiledPIDController profiledPIDController, ArmFeedforward armFeedforward) {
+            return from(profiledPIDController).and(from(armFeedforward));
+        }
+
         public PIDValues(
                 double p,
                 double i,
@@ -388,6 +465,37 @@ public class PIDSendable implements Sendable {
 
         public PIDValues copy() {
             return new PIDValues(p, i, d, ff, iZone, s, g, v, a, maxVelocity, maxAcceleration);
+        }
+
+        /**
+         * Combines the current PIDValues instance with another instance by selecting non-zero values from each
+         * corresponding field. If both values for a field are non-zero, an IllegalArgumentException is thrown.
+         *
+         * @param other The other PIDValues instance to combine with this instance.
+         * @return A new PIDValues instance containing the combined values.
+         * @throws IllegalArgumentException If both this instance and the other instance contain non-zero values for any
+         *     field.
+         */
+        public PIDValues and(PIDValues other) {
+            return new PIDValues(
+                    getOneValueOrThrow(this.p, other.p, "P"),
+                    getOneValueOrThrow(this.i, other.i, "I"),
+                    getOneValueOrThrow(this.d, other.d, "D"),
+                    getOneValueOrThrow(this.ff, other.ff, "FF"),
+                    getOneValueOrThrow(this.iZone, other.iZone, "I Zone"),
+                    getOneValueOrThrow(this.s, other.s, "S"),
+                    getOneValueOrThrow(this.g, other.g, "G"),
+                    getOneValueOrThrow(this.v, other.v, "V"),
+                    getOneValueOrThrow(this.a, other.a, "A"),
+                    getOneValueOrThrow(this.maxVelocity, other.maxVelocity, "Max Velocity"),
+                    getOneValueOrThrow(this.maxAcceleration, other.maxAcceleration, "Max Acceleration"));
+        }
+
+        private double getOneValueOrThrow(double value1, double value2, String valueName) {
+            if (value1 == 0) return value2;
+            if (value2 == 0) return value1;
+            throw new IllegalArgumentException(
+                    String.format("PID Value %s cannot be both %s and %s", valueName, value1, value2));
         }
 
         public double getP() {
