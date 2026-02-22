@@ -24,20 +24,21 @@ Note: Ordered by priority
 | Passive              | Dark Green (or white if low time) |
 
 ## CAN IDs
-| Device                       | CAN ID |
-|------------------------------|--------|
-| Front-Left Drive Motor       | 1      |
-| Front-Left Steering Motor    | 2      |
-| Front-Right Drive Motor      | 3      |
-| Front-Right Steering Motor   | 4      |
-| Back-Right Drive Motor       | 5      |
-| Back-Right Steering Motor    | 6      |
-| Back-Left Drive Motor        | 7      |
-| Back-Left Steering Motor     | 8      |
-| Pigeon 2                     | 13     |
-| Intake/Launcher Motor        | 14     |
-| Feeder Motor                 | 15     |
-| CANdle (LEDs)                | 16     |
+| Device                     | CAN ID |
+|----------------------------|--------|
+| Front-Left Drive Motor     | 1      |
+| Front-Left Steering Motor  | 2      |
+| Front-Right Drive Motor    | 3      |
+| Front-Right Steering Motor | 4      |
+| Back-Right Drive Motor     | 5      |
+| Back-Right Steering Motor  | 6      |
+| Back-Left Drive Motor      | 7      |
+| Back-Left Steering Motor   | 8      |
+| Climber Motor              | 9      |
+| Pigeon 2                   | 13     |
+| Intake/Launcher Motor      | 14     |
+| Feeder Motor               | 15     |
+| CANdle (LEDs)              | 16     |
 
 ## Development
 Here are some things to keep in mind while working on this codebase:

@@ -46,10 +46,15 @@ public class LightsSubsystem extends SubsystemBase {
 
     private final SwerveSubsystem swerveSubsystem;
     private final @Nullable FuelSubsystem fuelSubsystem;
+    private final @Nullable ClimberSubsystem climberSubsystem;
 
-    public LightsSubsystem(SwerveSubsystem swerveSubsystem, @Nullable FuelSubsystem fuelSubsystem) {
+    public LightsSubsystem(
+            SwerveSubsystem swerveSubsystem,
+            @Nullable FuelSubsystem fuelSubsystem,
+            @Nullable ClimberSubsystem climberSubsystem) {
         this.swerveSubsystem = swerveSubsystem;
         this.fuelSubsystem = fuelSubsystem;
+        this.climberSubsystem = climberSubsystem;
         final var config = new CANdleConfiguration()
                 .withCANdleFeatures(new CANdleFeaturesConfigs()
                         .withEnable5VRail(Enable5VRailValue.Enabled)
@@ -117,7 +122,9 @@ public class LightsSubsystem extends SubsystemBase {
         }
 
         // When climbing
-        // addFireAnimationRule(LightSegment.ALL, null, () -> /*If climbing*/);
+        if (climberSubsystem != null) {
+            addFireAnimationRule(LightSegment.ALL, null, climberSubsystem.getClimbingTrigger());
+        }
 
         // When doing nothing (but low time)
         addSolidColorRule(
