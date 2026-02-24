@@ -80,11 +80,20 @@ public class RobotContainer {
         driverController.start().onTrue(swerveSubsystem.resetYaw());*/
 
         // for testing
-        swerveSubsystem.setDefaultCommand(swerveSubsystem.driveFieldOrientedHeadingCommand(
-                () -> MathUtil.applyDeadband(driverController.getLeftY(), 0.1),
-                () -> MathUtil.applyDeadband(driverController.getLeftX(), 0.1),
-                driverController::getRightX,
-                driverController::getRightY));
+        final var fieldOriented = true;
+        if (fieldOriented) {
+            swerveSubsystem.setDefaultCommand(swerveSubsystem.driveFieldOrientedHeadingCommand(
+                    () -> MathUtil.applyDeadband(-driverController.getLeftY(), 0.1),
+                    () -> MathUtil.applyDeadband(-driverController.getLeftX(), 0.1),
+                    () -> -driverController.getRightX(),
+                    () -> -driverController.getRightY()));
+        } else {
+            swerveSubsystem.setDefaultCommand(swerveSubsystem.driveRobotOrientedCommand(
+                    () -> MathUtil.applyDeadband(-driverController.getLeftY(), 0.1),
+                    () -> MathUtil.applyDeadband(-driverController.getLeftX(), 0.1),
+                    () -> -driverController.getRightX()));
+        }
+
         driverController
                 .y()
                 .whileTrue(swerveSubsystem.driveFieldOrientedCommand(
