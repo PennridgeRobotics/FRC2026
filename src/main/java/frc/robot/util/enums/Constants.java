@@ -147,6 +147,7 @@ public final class Constants {
         public static boolean CLIMBER_ENABLED = false;
 
         public static final int CLIMBER_MOTOR_ID = 9;
+        public static final boolean CLIMBER_INVERTED = false;
         public static final MotorMode IDLE_MODE = MotorMode.BRAKE;
         public static final MechanismGearing CLIMBER_GEARING = new MechanismGearing(100.0, 60.0 / 20, 28.0 / 10);
         public static final Current CURRENT_LIMIT = Amps.of(40);
