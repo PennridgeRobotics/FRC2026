@@ -344,15 +344,9 @@ public class SwerveSubsystem extends SubsystemBase {
 
     private FollowPath.Builder setupBLine() {
         Path.setDefaultGlobalConstraints(BLineConstants.GLOBAL_CONSTRAINTS);
-        SmartDashboard.putData(
-                "BLine Translation PID",
-                new PIDSendable(bLineTranslationPID, PIDSendable.Type.PID, PIDValues.from(bLineTranslationPID)));
-        SmartDashboard.putData(
-                "BLine Rotation PID",
-                new PIDSendable(bLineRotationPID, PIDSendable.Type.PID, PIDValues.from(bLineRotationPID)));
-        SmartDashboard.putData(
-                "BLine Cross Track PID",
-                new PIDSendable(bLineCrossTrackPID, PIDSendable.Type.PID, PIDValues.from(bLineCrossTrackPID)));
+        SmartDashboard.putData("BLine Translation PID", new PIDSendable(bLineTranslationPID, PIDSendable.Type.PID));
+        SmartDashboard.putData("BLine Rotation PID", new PIDSendable(bLineRotationPID, PIDSendable.Type.PID));
+        SmartDashboard.putData("BLine Cross Track PID", new PIDSendable(bLineCrossTrackPID, PIDSendable.Type.PID));
         return new FollowPath.Builder(
                         this,
                         this::getRobotPose,

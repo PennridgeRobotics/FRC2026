@@ -3,12 +3,14 @@ package frc.robot.util.dashboard;
 import com.revrobotics.PersistMode;
 import com.revrobotics.ResetMode;
 import com.revrobotics.spark.ClosedLoopSlot;
+import com.revrobotics.spark.SparkBase;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkMaxConfig;
 import edu.wpi.first.math.controller.ArmFeedforward;
 import edu.wpi.first.math.controller.ElevatorFeedforward;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.ProfiledPIDController;
+import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.util.sendable.Sendable;
 import edu.wpi.first.util.sendable.SendableBuilder;
@@ -16,6 +18,9 @@ import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import yams.math.ExponentialProfilePIDController;
+import yams.motorcontrollers.SmartMotorController;
+import yams.motorcontrollers.SmartMotorControllerConfig;
 
 @NullMarked
 public class PIDSendable implements Sendable {
@@ -24,8 +29,10 @@ public class PIDSendable implements Sendable {
     private final @Nullable ClosedLoopSlot closedLoopSlot;
     private final @Nullable PIDController pidController;
     private final @Nullable ProfiledPIDController profiledPIDController;
+    private final @Nullable SimpleMotorFeedforward simpleMotorFeedforward;
     private final @Nullable ElevatorFeedforward elevatorFeedforward;
     private final @Nullable ArmFeedforward armFeedforward;
+    private final @Nullable SmartMotorController yams;
     private final PIDValues sparkMaxPIDValues;
 
     private PIDSendable(
@@ -35,16 +42,20 @@ public class PIDSendable implements Sendable {
             @Nullable ClosedLoopSlot closedLoopSlot,
             @Nullable PIDController pidController,
             @Nullable ProfiledPIDController profiledPIDController,
+            @Nullable SimpleMotorFeedforward simpleMotorFeedforward,
             @Nullable ElevatorFeedforward elevatorFeedforward,
-            @Nullable ArmFeedforward armFeedforward) {
+            @Nullable ArmFeedforward armFeedforward,
+            @Nullable SmartMotorController yams) {
         this.type = type;
         this.sparkMaxPIDValues = defaults != null ? defaults.copy() : new PIDValues();
         this.sparkMax = sparkMax;
         this.closedLoopSlot = closedLoopSlot;
         this.pidController = pidController;
         this.profiledPIDController = profiledPIDController;
+        this.simpleMotorFeedforward = simpleMotorFeedforward;
         this.elevatorFeedforward = elevatorFeedforward;
         this.armFeedforward = armFeedforward;
+        this.yams = yams;
         if ((type & Type.G) != 0 && (type & Type.COS) != 0) {
             throw new IllegalArgumentException("Cannot have both G and COS feedforward types");
         }
@@ -52,18 +63,22 @@ public class PIDSendable implements Sendable {
 
     // Spark MAX
     public PIDSendable(SparkMax sparkMax, ClosedLoopSlot slot, int types, PIDValues defaults) {
-        this(types, defaults, sparkMax, slot, null, null, null, null);
+        this(types, defaults, sparkMax, slot, null, null, null, null, null, null);
         checkSupported("SparkMax", types, Type.PID | Type.I_ZONE | Type.LINEAR_FF | Type.COS);
     }
 
     // PIDController
     public PIDSendable(PIDController pidController, int types, @Nullable PIDValues defaults) {
-        this(types, defaults, null, null, pidController, null, null, null);
+        this(types, defaults, null, null, pidController, null, null, null, null, null);
         checkSupported("PIDController", types, Type.PID | Type.I_ZONE);
     }
 
     public PIDSendable(PIDController pidController, int types) {
-        this(pidController, types, null);
+        this(pidController, types, PIDValues.from(pidController));
+    }
+
+    public PIDSendable(PIDController pidController) {
+        this(pidController, Type.PID | Type.I_ZONE);
     }
     // PIDController + ElevatorFeedforward
     public PIDSendable(
@@ -71,32 +86,48 @@ public class PIDSendable implements Sendable {
             ElevatorFeedforward elevatorFeedforward,
             int types,
             @Nullable PIDValues defaults) {
-        this(types, defaults, null, null, pidController, null, elevatorFeedforward, null);
+        this(types, defaults, null, null, pidController, null, null, elevatorFeedforward, null, null);
         checkSupported("PIDController/ElevatorFeedforward", types, Type.PID | Type.I_ZONE | Type.LINEAR_FF);
     }
 
     public PIDSendable(PIDController pidController, ElevatorFeedforward elevatorFeedforward, int types) {
-        this(pidController, elevatorFeedforward, types, null);
+        this(
+                pidController,
+                elevatorFeedforward,
+                types,
+                PIDValues.from(pidController).and(PIDValues.from(elevatorFeedforward)));
+    }
+
+    public PIDSendable(PIDController pidController, ElevatorFeedforward elevatorFeedforward) {
+        this(pidController, elevatorFeedforward, Type.PID | Type.I_ZONE | Type.LINEAR_FF);
     }
     // PIDController + ArmFeedforward
     public PIDSendable(
             PIDController pidController, ArmFeedforward armFeedforward, int types, @Nullable PIDValues defaults) {
-        this(types, defaults, null, null, pidController, null, null, armFeedforward);
+        this(types, defaults, null, null, pidController, null, null, null, armFeedforward, null);
         checkSupported("PIDController/ArmFeedforward", types, Type.PID | Type.I_ZONE | Type.ROTARY_FF);
     }
 
     public PIDSendable(PIDController pidController, ArmFeedforward armFeedforward, int types) {
-        this(pidController, armFeedforward, types, null);
+        this(pidController, armFeedforward, types, PIDValues.from(pidController).and(PIDValues.from(armFeedforward)));
+    }
+
+    public PIDSendable(PIDController pidController, ArmFeedforward armFeedforward) {
+        this(pidController, armFeedforward, Type.PID | Type.I_ZONE | Type.ROTARY_FF);
     }
 
     // ProfiledPIDController
     public PIDSendable(ProfiledPIDController profiledPIDController, int types, @Nullable PIDValues defaults) {
-        this(types, defaults, null, null, null, profiledPIDController, null, null);
+        this(types, defaults, null, null, null, profiledPIDController, null, null, null, null);
         checkSupported("ProfiledPIDController", types, Type.PID | Type.I_ZONE | Type.CONSTRAINTS);
     }
 
     public PIDSendable(ProfiledPIDController profiledPIDController, int types) {
-        this(profiledPIDController, types, null);
+        this(profiledPIDController, types, PIDValues.from(profiledPIDController));
+    }
+
+    public PIDSendable(ProfiledPIDController profiledPIDController) {
+        this(profiledPIDController, Type.PID | Type.I_ZONE | Type.CONSTRAINTS);
     }
     // ProfiledPIDController + ElevatorFeedforward
     public PIDSendable(
@@ -104,7 +135,7 @@ public class PIDSendable implements Sendable {
             ElevatorFeedforward elevatorFeedforward,
             int types,
             @Nullable PIDValues defaults) {
-        this(types, defaults, null, null, null, profiledPIDController, elevatorFeedforward, null);
+        this(types, defaults, null, null, null, profiledPIDController, null, elevatorFeedforward, null, null);
         checkSupported(
                 "ProfiledPIDController/ElevatorFeedforward",
                 types,
@@ -113,7 +144,15 @@ public class PIDSendable implements Sendable {
 
     public PIDSendable(
             ProfiledPIDController profiledPIDController, ElevatorFeedforward elevatorFeedforward, int types) {
-        this(profiledPIDController, elevatorFeedforward, types, null);
+        this(
+                profiledPIDController,
+                elevatorFeedforward,
+                types,
+                PIDValues.from(profiledPIDController).and(PIDValues.from(elevatorFeedforward)));
+    }
+
+    public PIDSendable(ProfiledPIDController profiledPIDController, ElevatorFeedforward elevatorFeedforward) {
+        this(profiledPIDController, elevatorFeedforward, Type.PID | Type.I_ZONE | Type.CONSTRAINTS | Type.LINEAR_FF);
     }
     // ProfiledPIDController + ArmFeedforward
     public PIDSendable(
@@ -121,7 +160,7 @@ public class PIDSendable implements Sendable {
             ArmFeedforward armFeedforward,
             int types,
             @Nullable PIDValues defaults) {
-        this(types, defaults, null, null, null, profiledPIDController, null, armFeedforward);
+        this(types, defaults, null, null, null, profiledPIDController, null, null, armFeedforward, null);
         checkSupported(
                 "ProfiledPIDController/ArmFeedforward",
                 types,
@@ -129,26 +168,97 @@ public class PIDSendable implements Sendable {
     }
 
     public PIDSendable(ProfiledPIDController profiledPIDController, ArmFeedforward armFeedforward, int types) {
-        this(profiledPIDController, armFeedforward, types, null);
+        this(
+                profiledPIDController,
+                armFeedforward,
+                types,
+                PIDValues.from(profiledPIDController).and(PIDValues.from(armFeedforward)));
+    }
+
+    public PIDSendable(ProfiledPIDController profiledPIDController, ArmFeedforward armFeedforward) {
+        this(profiledPIDController, armFeedforward, Type.PID | Type.I_ZONE | Type.CONSTRAINTS | Type.ROTARY_FF);
     }
 
     // Feedforwards
+    public PIDSendable(SimpleMotorFeedforward simpleMotorFeedforward, int types, @Nullable PIDValues defaults) {
+        this(types, defaults, null, null, null, null, simpleMotorFeedforward, null, null, null);
+        checkSupported("SimpleMotorFeedforward", types, Type.BASE_FF);
+    }
+
+    public PIDSendable(SimpleMotorFeedforward simpleMotorFeedforward, int types) {
+        this(simpleMotorFeedforward, types, PIDValues.from(simpleMotorFeedforward));
+    }
+
+    public PIDSendable(SimpleMotorFeedforward simpleMotorFeedforward) {
+        this(simpleMotorFeedforward, Type.BASE_FF);
+    }
+
     public PIDSendable(ElevatorFeedforward elevatorFeedforward, int types, @Nullable PIDValues defaults) {
-        this(types, defaults, null, null, null, null, elevatorFeedforward, null);
+        this(types, defaults, null, null, null, null, null, elevatorFeedforward, null, null);
         checkSupported("ElevatorFeedforward", types, Type.LINEAR_FF);
     }
 
     public PIDSendable(ElevatorFeedforward elevatorFeedforward, int types) {
-        this(elevatorFeedforward, types, null);
+        this(elevatorFeedforward, types, PIDValues.from(elevatorFeedforward));
+    }
+
+    public PIDSendable(ElevatorFeedforward elevatorFeedforward) {
+        this(elevatorFeedforward, Type.LINEAR_FF);
     }
 
     public PIDSendable(ArmFeedforward armFeedforward, int types, @Nullable PIDValues defaults) {
-        this(types, defaults, null, null, null, null, null, armFeedforward);
+        this(types, defaults, null, null, null, null, null, null, armFeedforward, null);
         checkSupported("ArmFeedforward", types, Type.ROTARY_FF);
     }
 
     public PIDSendable(ArmFeedforward armFeedforward, int types) {
-        this(armFeedforward, types, null);
+        this(armFeedforward, types, PIDValues.from(armFeedforward));
+    }
+
+    public PIDSendable(ArmFeedforward armFeedforward) {
+        this(armFeedforward, Type.ROTARY_FF);
+    }
+
+    // YAMS
+    public PIDSendable(SmartMotorController yams, int types, @Nullable PIDValues defaults) {
+        this(
+                types,
+                defaults,
+                null,
+                null,
+                yams.getConfig().getSimpleClosedLoopController().orElse(null),
+                yams.getConfig().getClosedLoopController().orElse(null),
+                yams.getConfig().getSimpleFeedforward().orElse(null),
+                yams.getConfig().getElevatorFeedforward().orElse(null),
+                yams.getConfig().getArmFeedforward().orElse(null),
+                yams);
+        yams.getConfig().getClosedLoopController();
+        final var config = yams.getConfig();
+        int supportedTypes = 0;
+        final var simple = config.getSimpleClosedLoopController();
+        final var profiled = config.getClosedLoopController();
+        final var exponential = config.getExponentiallyProfiledClosedLoopController();
+        final var simpleFF = config.getSimpleFeedforward();
+        final var elevatorFF = config.getElevatorFeedforward();
+        final var armFF = config.getArmFeedforward();
+        if (simple.isPresent() || profiled.isPresent() || exponential.isPresent()) supportedTypes |= Type.PID;
+        // if (simple.isPresent() || profiled.isPresent()) supportedTypes |= Type.I_ZONE;
+        // if (profiled.isPresent()) supportedTypes |= Type.CONSTRAINTS;
+        if (simpleFF.isPresent()) supportedTypes |= Type.BASE_FF;
+        if (elevatorFF.isPresent()) supportedTypes |= Type.LINEAR_FF;
+        if (armFF.isPresent()) supportedTypes |= Type.ROTARY_FF;
+        String name = "YAMS";
+        if (simple.isPresent()) name += " (PIDController)";
+        if (profiled.isPresent()) name += " (ProfiledPIDController)";
+        if (exponential.isPresent()) name += " (ExponentialProfiledPIDController)";
+        if (simpleFF.isPresent()) name += " (SimpleMotorFeedforward)";
+        if (elevatorFF.isPresent()) name += " (ElevatorFeedforward)";
+        if (armFF.isPresent()) name += " (ArmFeedforward)";
+        checkSupported(name, types, supportedTypes);
+    }
+
+    public PIDSendable(SmartMotorController yams, int types) {
+        this(yams, types, PIDValues.from(yams.getConfig()));
     }
 
     @Override
@@ -161,9 +271,15 @@ public class PIDSendable implements Sendable {
                     config.closedLoop.p(v, closedLoopSlot);
                 });
             } else if (pidController != null) {
-                builder.addDoubleProperty("P", pidController::getP, pidController::setP);
+                builder.addDoubleProperty("P", pidController::getP, v -> {
+                    pidController.setP(v);
+                    if (yams != null) yams.setKp(v);
+                });
             } else if (profiledPIDController != null) {
-                builder.addDoubleProperty("P", profiledPIDController::getP, profiledPIDController::setP);
+                builder.addDoubleProperty("P", profiledPIDController::getP, v -> {
+                    profiledPIDController.setP(v);
+                    if (yams != null) yams.setKp(v);
+                });
             }
         }
         if ((type & Type.I) != 0) {
@@ -173,9 +289,15 @@ public class PIDSendable implements Sendable {
                     config.closedLoop.i(v, closedLoopSlot);
                 });
             } else if (pidController != null) {
-                builder.addDoubleProperty("I", pidController::getI, pidController::setI);
+                builder.addDoubleProperty("I", pidController::getI, v -> {
+                    pidController.setI(v);
+                    if (yams != null) yams.setKi(v);
+                });
             } else if (profiledPIDController != null) {
-                builder.addDoubleProperty("I", profiledPIDController::getI, profiledPIDController::setI);
+                builder.addDoubleProperty("I", profiledPIDController::getI, v -> {
+                    profiledPIDController.setI(v);
+                    if (yams != null) yams.setKi(v);
+                });
             }
         }
         if ((type & Type.D) != 0) {
@@ -185,9 +307,15 @@ public class PIDSendable implements Sendable {
                     config.closedLoop.d(v, closedLoopSlot);
                 });
             } else if (pidController != null) {
-                builder.addDoubleProperty("D", pidController::getD, pidController::setD);
+                builder.addDoubleProperty("D", pidController::getD, v -> {
+                    pidController.setD(v);
+                    if (yams != null) yams.setKd(v);
+                });
             } else if (profiledPIDController != null) {
-                builder.addDoubleProperty("D", profiledPIDController::getD, profiledPIDController::setD);
+                builder.addDoubleProperty("D", profiledPIDController::getD, v -> {
+                    profiledPIDController.setD(v);
+                    if (yams != null) yams.setKd(v);
+                });
             }
         }
         if ((type & Type.I_ZONE) != 0) {
@@ -208,10 +336,21 @@ public class PIDSendable implements Sendable {
                     sparkMaxPIDValues.setS(v);
                     config.closedLoop.feedForward.kS(v, closedLoopSlot);
                 });
+            } else if (simpleMotorFeedforward != null) {
+                builder.addDoubleProperty("S", simpleMotorFeedforward::getKs, v -> {
+                    simpleMotorFeedforward.setKs(v);
+                    if (yams != null) yams.setKs(v);
+                });
             } else if (elevatorFeedforward != null) {
-                builder.addDoubleProperty("S", elevatorFeedforward::getKs, elevatorFeedforward::setKs);
+                builder.addDoubleProperty("S", elevatorFeedforward::getKs, v -> {
+                    elevatorFeedforward.setKs(v);
+                    if (yams != null) yams.setKs(v);
+                });
             } else if (armFeedforward != null) {
-                builder.addDoubleProperty("S", armFeedforward::getKs, armFeedforward::setKs);
+                builder.addDoubleProperty("S", armFeedforward::getKs, v -> {
+                    armFeedforward.setKs(v);
+                    if (yams != null) yams.setKs(v);
+                });
             }
         }
         if ((type & Type.G) != 0) {
@@ -221,7 +360,10 @@ public class PIDSendable implements Sendable {
                     config.closedLoop.feedForward.kG(v, closedLoopSlot);
                 });
             } else if (elevatorFeedforward != null) {
-                builder.addDoubleProperty("G", elevatorFeedforward::getKg, elevatorFeedforward::setKg);
+                builder.addDoubleProperty("G", elevatorFeedforward::getKg, v -> {
+                    elevatorFeedforward.setKg(v);
+                    if (yams != null) yams.setKg(v);
+                });
             }
         }
         if ((type & Type.V) != 0) {
@@ -230,10 +372,21 @@ public class PIDSendable implements Sendable {
                     sparkMaxPIDValues.setV(v);
                     config.closedLoop.feedForward.kV(v, closedLoopSlot);
                 });
+            } else if (simpleMotorFeedforward != null) {
+                builder.addDoubleProperty("V", simpleMotorFeedforward::getKv, v -> {
+                    simpleMotorFeedforward.setKv(v);
+                    if (yams != null) yams.setKv(v);
+                });
             } else if (elevatorFeedforward != null) {
-                builder.addDoubleProperty("V", elevatorFeedforward::getKv, elevatorFeedforward::setKv);
+                builder.addDoubleProperty("V", elevatorFeedforward::getKv, v -> {
+                    elevatorFeedforward.setKv(v);
+                    if (yams != null) yams.setKv(v);
+                });
             } else if (armFeedforward != null) {
-                builder.addDoubleProperty("V", armFeedforward::getKv, armFeedforward::setKv);
+                builder.addDoubleProperty("V", armFeedforward::getKv, v -> {
+                    armFeedforward.setKv(v);
+                    if (yams != null) yams.setKv(v);
+                });
             }
         }
         if ((type & Type.A) != 0) {
@@ -242,10 +395,21 @@ public class PIDSendable implements Sendable {
                     sparkMaxPIDValues.setA(v);
                     config.closedLoop.feedForward.kA(v, closedLoopSlot);
                 });
+            } else if (simpleMotorFeedforward != null) {
+                builder.addDoubleProperty("A", simpleMotorFeedforward::getKa, v -> {
+                    simpleMotorFeedforward.setKa(v);
+                    if (yams != null) yams.setKa(v);
+                });
             } else if (elevatorFeedforward != null) {
-                builder.addDoubleProperty("A", elevatorFeedforward::getKa, elevatorFeedforward::setKa);
+                builder.addDoubleProperty("A", elevatorFeedforward::getKa, v -> {
+                    elevatorFeedforward.setKa(v);
+                    if (yams != null) yams.setKa(v);
+                });
             } else if (armFeedforward != null) {
-                builder.addDoubleProperty("A", armFeedforward::getKa, armFeedforward::setKa);
+                builder.addDoubleProperty("A", armFeedforward::getKa, v -> {
+                    armFeedforward.setKa(v);
+                    if (yams != null) yams.setKa(v);
+                });
             }
         }
         if ((type & Type.COS) != 0) {
@@ -255,7 +419,10 @@ public class PIDSendable implements Sendable {
                     config.closedLoop.feedForward.kCos(v, closedLoopSlot);
                 });
             } else if (armFeedforward != null) {
-                builder.addDoubleProperty("COS", armFeedforward::getKg, armFeedforward::setKg);
+                builder.addDoubleProperty("COS", armFeedforward::getKg, v -> {
+                    armFeedforward.setKg(v);
+                    if (yams != null) yams.setKg(v);
+                });
             }
         }
         if ((type & Type.MAX_VELOCITY) != 0 && profiledPIDController != null) {
@@ -272,20 +439,29 @@ public class PIDSendable implements Sendable {
                     (v) -> profiledPIDController.setConstraints(
                             new TrapezoidProfile.Constraints(profiledPIDController.getConstraints().maxVelocity, v)));
         }
+        final SparkBase sparkBase;
+        final ClosedLoopSlot closedLoopSlot;
         if (sparkMax != null) {
-            builder.addDoubleProperty(
-                    "Setpoint",
-                    () -> sparkMax.getClosedLoopController().getSetpoint(),
-                    (v) -> sparkMax.getClosedLoopController()
-                            .setSetpoint(v, sparkMax.getClosedLoopController().getControlType(), closedLoopSlot));
-            builder.addBooleanProperty(
-                    "At Setpoint", () -> sparkMax.getClosedLoopController().isAtSetpoint(), null);
+            sparkBase = sparkMax;
+            closedLoopSlot = this.closedLoopSlot;
+        } else if (yams != null && yams.getMotorController() instanceof SparkBase yamsSparkBase) {
+            sparkBase = yamsSparkBase;
+            closedLoopSlot = ClosedLoopSlot.kSlot0;
+        } else {
+            sparkBase = null;
+            closedLoopSlot = null;
         }
-        if (pidController != null) {
+        if (sparkBase != null) {
+            builder.addDoubleProperty(
+                    "Setpoint", () -> sparkBase.getClosedLoopController().getSetpoint(), (v) -> sparkBase
+                            .getClosedLoopController()
+                            .setSetpoint(v, sparkBase.getClosedLoopController().getControlType(), closedLoopSlot));
+            builder.addBooleanProperty(
+                    "At Setpoint", () -> sparkBase.getClosedLoopController().isAtSetpoint(), null);
+        } else if (pidController != null) {
             builder.addDoubleProperty("Setpoint", pidController::getSetpoint, pidController::setSetpoint);
             builder.addBooleanProperty("At Setpoint", pidController::atSetpoint, null);
-        }
-        if (profiledPIDController != null) {
+        } else if (profiledPIDController != null) {
             builder.addDoubleProperty("Setpoint Position", () -> profiledPIDController.getSetpoint().position, null);
             builder.addDoubleProperty("Setpoint Velocity", () -> profiledPIDController.getSetpoint().velocity, null);
             builder.addBooleanProperty("At Setpoint", profiledPIDController::atSetpoint, null);
@@ -345,8 +521,9 @@ public class PIDSendable implements Sendable {
         public static final int MAX_ACCELERATION = 1 << 10;
 
         public static final int PID = P | I | D;
-        public static final int LINEAR_FF = S | G | V | A;
-        public static final int ROTARY_FF = S | COS | V | A;
+        public static final int BASE_FF = S | V | A;
+        public static final int LINEAR_FF = BASE_FF | G;
+        public static final int ROTARY_FF = BASE_FF | COS;
         public static final int CONSTRAINTS = MAX_VELOCITY | MAX_ACCELERATION;
 
         public static final List<String> VALUES =
@@ -408,6 +585,22 @@ public class PIDSendable implements Sendable {
                     profiledPIDController.getConstraints().maxAcceleration);
         }
 
+        public static PIDValues from(ExponentialProfilePIDController exponentialProfilePIDController) {
+            return pidf(
+                    exponentialProfilePIDController.getP(),
+                    exponentialProfilePIDController.getI(),
+                    exponentialProfilePIDController.getD(),
+                    0,
+                    0,
+                    0,
+                    0);
+        }
+
+        public static PIDValues from(SimpleMotorFeedforward simpleMotorFeedforward) {
+            return feedForward(
+                    simpleMotorFeedforward.getKs(), 0, simpleMotorFeedforward.getKv(), simpleMotorFeedforward.getKa());
+        }
+
         public static PIDValues from(ElevatorFeedforward elevatorFeedforward) {
             return feedForward(
                     elevatorFeedforward.getKs(),
@@ -436,6 +629,33 @@ public class PIDSendable implements Sendable {
 
         public static PIDValues from(ProfiledPIDController profiledPIDController, ArmFeedforward armFeedforward) {
             return from(profiledPIDController).and(from(armFeedforward));
+        }
+
+        public static PIDValues from(SmartMotorControllerConfig smartMotorControllerConfig) {
+            var pidValues = new PIDValues();
+            if (smartMotorControllerConfig.getSimpleClosedLoopController().isPresent())
+                pidValues = pidValues.and(PIDValues.from(smartMotorControllerConfig
+                        .getSimpleClosedLoopController()
+                        .get()));
+            if (smartMotorControllerConfig.getClosedLoopController().isPresent())
+                pidValues = pidValues.and(PIDValues.from(
+                        smartMotorControllerConfig.getClosedLoopController().get()));
+            if (smartMotorControllerConfig
+                    .getExponentiallyProfiledClosedLoopController()
+                    .isPresent())
+                pidValues = pidValues.and(PIDValues.from(smartMotorControllerConfig
+                        .getExponentiallyProfiledClosedLoopController()
+                        .get()));
+            if (smartMotorControllerConfig.getSimpleFeedforward().isPresent())
+                pidValues = pidValues.and(PIDValues.from(
+                        smartMotorControllerConfig.getSimpleFeedforward().get()));
+            if (smartMotorControllerConfig.getElevatorFeedforward().isPresent())
+                pidValues = pidValues.and(PIDValues.from(
+                        smartMotorControllerConfig.getElevatorFeedforward().get()));
+            if (smartMotorControllerConfig.getArmFeedforward().isPresent())
+                pidValues = pidValues.and(PIDValues.from(
+                        smartMotorControllerConfig.getArmFeedforward().get()));
+            return pidValues;
         }
 
         public PIDValues(

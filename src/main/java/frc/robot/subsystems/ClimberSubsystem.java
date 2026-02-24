@@ -19,7 +19,6 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.util.dashboard.PIDSendable;
-import frc.robot.util.dashboard.PIDSendable.PIDValues;
 import frc.robot.util.enums.Constants.ClimberConstants;
 import org.jspecify.annotations.NullMarked;
 import yams.mechanisms.config.ArmConfig;
@@ -32,12 +31,7 @@ import yams.motorcontrollers.local.SparkWrapper;
 
 @NullMarked
 public class ClimberSubsystem extends SubsystemBase {
-    private final PIDController pidController;
-    private final ArmFeedforward feedforward;
-    private final SmartMotorControllerConfig motorConfig;
-    private final SparkMax sparkMaxMotor;
     private final SmartMotorController motorController;
-    private final ArmConfig climberConfig;
     private final Arm climber;
 
     private boolean isClimbing = false;
@@ -45,10 +39,8 @@ public class ClimberSubsystem extends SubsystemBase {
     private boolean closedLoopEnabled = true;
 
     public ClimberSubsystem() {
-        pidController = new PIDController(0, 0, 0);
-        feedforward = new ArmFeedforward(0, 0, 0, 0);
-        motorConfig = new SmartMotorControllerConfig()
-                .withMotorInverted(false)
+        final var motorConfig = new SmartMotorControllerConfig()
+                .withMotorInverted(ClimberConstants.CLIMBER_INVERTED)
                 .withIdleMode(ClimberConstants.IDLE_MODE)
                 .withControlMode(closedLoopEnabled ? ControlMode.CLOSED_LOOP : ControlMode.OPEN_LOOP)
                 .withGearing(ClimberConstants.CLIMBER_GEARING)
@@ -56,26 +48,20 @@ public class ClimberSubsystem extends SubsystemBase {
                 .withOpenLoopRampRate(ClimberConstants.RAMP_RATE)
                 .withTelemetry("ClimberMotor", TelemetryVerbosity.HIGH)
                 .withSoftLimit(ClimberConstants.HORIZONTAL_ANGLE, ClimberConstants.CLIMBED_ANGLE)
-                .withClosedLoopController(pidController)
-                .withFeedforward(feedforward);
-        sparkMaxMotor = new SparkMax(ClimberConstants.CLIMBER_MOTOR_ID, MotorType.kBrushless);
+                .withClosedLoopController(new PIDController(0, 0, 0))
+                .withFeedforward(new ArmFeedforward(0, 0, 0, 0));
+        final var sparkMaxMotor = new SparkMax(ClimberConstants.CLIMBER_MOTOR_ID, MotorType.kBrushless);
         motorController = new SparkWrapper(sparkMaxMotor, DCMotor.getNEO(1), motorConfig);
-        climberConfig = new ArmConfig(motorController)
+        climber = new Arm(new ArmConfig(motorController)
                 .withStartingPosition(ClimberConstants.MINIMUM_ANGLE)
-                .withTelemetry("ClimberArm", TelemetryVerbosity.HIGH);
-        climber = new Arm(climberConfig);
+                .withTelemetry("ClimberArm", TelemetryVerbosity.HIGH));
 
         setupSmartDashboard();
     }
 
     private void setupSmartDashboard() {
         SmartDashboard.putData(
-                "Climber PID/FF",
-                new PIDSendable(
-                        pidController,
-                        feedforward,
-                        PIDSendable.Type.PID | PIDSendable.Type.LINEAR_FF,
-                        PIDValues.from(pidController, feedforward)));
+                "Climber PID/FF", new PIDSendable(motorController, PIDSendable.Type.PID | PIDSendable.Type.LINEAR_FF));
         SmartDashboard.putData("Climbing Subsystem", (builder) -> {
             builder.addBooleanProperty("Climbing", () -> isClimbing, (v) -> isClimbing = v);
             builder.addBooleanProperty("Closed loop enabled", () -> closedLoopEnabled, (v) -> {
