@@ -4,7 +4,7 @@
     "wheelGripCoefficientOfFriction": 1,
     "currentLimit": {
         "drive": 40,
-        "angle": 20
+        "angle": 40
     },
     "conversionFactors": {
         "angle": {
