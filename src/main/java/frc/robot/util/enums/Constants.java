@@ -108,8 +108,22 @@ public final class Constants {
     public static final class FuelConstants {
         public static final boolean FUEL_SUBSYSTEM_ENABLED = false;
 
-        public static final int INTAKE_LAUNCHER_MOTOR_ID = 14;
-        public static final int FEEDER_MOTOR_ID = 15;
+        public static final int INTAKE_LAUNCHER_LEFT_MOTOR_ID = 10;
+        public static final int INTAKE_LAUNCHER_RIGHT_MOTOR_ID = 11;
+        public static final int FEEDER_MOTOR_ID = 12;
+
+        public static final boolean INTAKE_LAUNCHER_INVERTED = false;
+        public static final boolean FEEDER_INVERTED = false;
+        public static final Voltage INTAKE_LAUNCHER_VOLTAGE_COMP = Volts.of(12);
+        public static final Voltage FEEDER_VOLTAGE_COMP = Volts.of(12);
+        public static final Current INTAKE_LAUNCHER_CURRENT_LIMIT = Amps.of(40);
+        public static final Current FEEDER_CURRENT_LIMIT = Amps.of(40);
+        public static final Time INTAKE_LAUNCHER_RAMP_RATE = Seconds.of(0.2);
+        public static final Time FEEDER_RAMP_RATE = Seconds.of(0.2);
+        public static final MotorMode INTAKE_LAUNCHER_MOTOR_MODE = MotorMode.BRAKE;
+        public static final MotorMode FEEDER_MOTOR_MODE = MotorMode.BRAKE;
+        public static final MechanismGearing INTAKE_LAUNCHER_GEARING = new MechanismGearing(60.0 / 40);
+        public static final MechanismGearing FEEDER_GEARING = new MechanismGearing(32.0 / 18);
 
         public static final Current MOTOR_CURRENT_LIMIT = Amps.of(40);
 
