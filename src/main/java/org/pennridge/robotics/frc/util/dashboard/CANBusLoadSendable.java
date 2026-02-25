@@ -18,7 +18,9 @@ public class CANBusLoadSendable implements Sendable {
     public void initSendable(SendableBuilder builder) {
         Notify("buffer");
 
-        // Add properties for feeder and intake positions, velocities, and voltages (placeholders for now)
+        // Placeholder properties for feeder and intake positions, velocities, and voltages
+
+        /*
         builder.addDoubleProperty("Feeder Position", () -> 0.0, null);
         builder.addDoubleProperty("Intake Position", () -> 0.0, null);
 
@@ -30,9 +32,15 @@ public class CANBusLoadSendable implements Sendable {
         builder.addDoubleProperty("Launching Feeder Voltage", () -> 0.0, null);
         builder.addDoubleProperty("Launching Launcher Voltage", () -> 0.0, null);
         builder.addDoubleProperty("Spin Up Feeder Voltage", () -> 0.0, null);
+        */
 
+        // CAN Bus usage properties
+
+        // Current usage percentage
         builder.addDoubleProperty(
                 "CAN Bus Percentage", () -> RobotController.getCANStatus().percentBusUtilization, null);
+
+        // Average usage percentage over the last few seconds
         builder.addDoubleProperty(
                 "CAN Bus Average %",
                 () -> {
@@ -49,6 +57,8 @@ public class CANBusLoadSendable implements Sendable {
                     return sum / utilPercentsList.size();
                 },
                 null);
+
+        // Full average usage percentage since the start
         builder.addDoubleProperty(
                 "CAN Bus Full Average %",
                 () -> {
@@ -58,6 +68,8 @@ public class CANBusLoadSendable implements Sendable {
                     return utilPercents / elapsed;
                 },
                 null);
+
+        // A color that changes from green to yellow to red based on the current usage percentage
         builder.addStringProperty(
                 // 0%-60% FF0000 -> 60%-100% 00FF00 gradient based on percentage
                 "CAN Bus Status", () -> updateColor(), null);
