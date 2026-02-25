@@ -105,22 +105,22 @@ public class CANBusLoadSendable implements Sendable {
 
     public void Notify(String message) {
         // Buffer to make sure notifications are shown due to bug of first notification not being shown.
-        if (message == "buffer") {
+        if (message.equals("buffer")) {
             Elastic.Notification buffer =
                     new Elastic.Notification(Elastic.Notification.NotificationLevel.INFO, "", "", 2147483647);
             Elastic.sendNotification(buffer);
-        } else if (message == "init") {
+        } else if (message.equals("init")) {
             Elastic.Notification init = new Elastic.Notification(
                     Elastic.Notification.NotificationLevel.INFO, "Welcome", "Initialization Sucessful :)", 10000);
             Elastic.sendNotification(init);
-        } else if (message == "highBusPercentWarning") {
+        } else if (message.equals("highBusPercentWarning")) {
             Elastic.Notification highBusPercentWarning = new Elastic.Notification(
                     Elastic.Notification.NotificationLevel.WARNING,
                     "High Usage",
                     "The CAN Bus usage is above 70%",
                     10000);
             Elastic.sendNotification(highBusPercentWarning);
-        } else if (message == "highBusPercentCritical") {
+        } else if (message.equals("highBusPercentCritical")) {
             Elastic.Notification highBusPercentCritical = new Elastic.Notification(
                     Elastic.Notification.NotificationLevel.ERROR,
                     "Critical Usage",
