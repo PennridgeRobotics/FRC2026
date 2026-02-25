@@ -311,9 +311,6 @@ public class SwerveSubsystem extends SubsystemBase {
                     case BUMP_LOCK ->
                         getTargetAngularVelocity(getBumpLockAngle()).in(RadiansPerSecond);
                 };
-        latestVelocityX = MetersPerSecond.of(limitedLinearVelocity.getX());
-        latestVelocityY = MetersPerSecond.of(limitedLinearVelocity.getY());
-        latestAngularVelocity = RadiansPerSecond.of(finalAngularVelocity);
         driveFieldOrientedTEST(
                 new ChassisSpeeds(limitedLinearVelocity.getX(), limitedLinearVelocity.getY(), finalAngularVelocity));
     }
