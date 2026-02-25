@@ -218,7 +218,7 @@ public class SwerveSubsystem extends SubsystemBase {
             latestVelocityX = MetersPerSecond.of(chassisSpeeds.vxMetersPerSecond);
             latestVelocityY = MetersPerSecond.of(chassisSpeeds.vyMetersPerSecond);
             latestAngularVelocity = RadiansPerSecond.of(chassisSpeeds.omegaRadiansPerSecond);
-            swerveDrive.drive(chassisSpeeds, true, new Translation2d());
+            swerveDrive.drive(chassisSpeeds, false, new Translation2d());
         });
     }
 
