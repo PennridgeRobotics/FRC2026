@@ -80,7 +80,7 @@ public class RobotContainer {
         driverController.start().onTrue(swerveSubsystem.resetYaw());*/
 
         // for testing
-        final var fieldOriented = false;
+        final var fieldOriented = true;
         if (fieldOriented) {
             swerveSubsystem.setDefaultCommand(swerveSubsystem.driveFieldOrientedHeadingCommand(
                     () -> MathUtil.applyDeadband(-driverController.getLeftY(), 0.1),

@@ -44,6 +44,9 @@ import frc.robot.vision.PhotonCamera;
 import frc.robot.vision.VisionManager;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
@@ -93,6 +96,9 @@ public class SwerveSubsystem extends SubsystemBase {
         // swerveDrive.useExternalFeedbackSensor();
         // swerveDrive.setModuleEncoderAutoSynchronize(false, 1); // can set to true, but I want to test
         // swerveDrive.setMotorIdleMode(true);
+
+        swerveDrive.setHeadingCorrection(false);
+        swerveDrive.setCosineCompensator(false);
 
         inBumpZone = new Trigger(this::isInBumpZone).debounce(0.1);
         inBumpZone.onTrue(updateDriveMode(DriveMode.BUMP_LOCK, () -> "entered bump zone"));
@@ -308,8 +314,109 @@ public class SwerveSubsystem extends SubsystemBase {
         latestVelocityX = MetersPerSecond.of(limitedLinearVelocity.getX());
         latestVelocityY = MetersPerSecond.of(limitedLinearVelocity.getY());
         latestAngularVelocity = RadiansPerSecond.of(finalAngularVelocity);
-        swerveDrive.driveFieldOriented(
+        driveFieldOrientedTEST(
                 new ChassisSpeeds(limitedLinearVelocity.getX(), limitedLinearVelocity.getY(), finalAngularVelocity));
+    }
+
+    private void driveFieldOrientedTEST(ChassisSpeeds fieldRelativeSpeeds) {
+        driveTEST(
+                ChassisSpeeds.fromFieldRelativeSpeeds(fieldRelativeSpeeds, swerveDrive.getOdometryHeading()),
+                false,
+                new Translation2d());
+    }
+
+    private @Nullable Field lastHeadingRadiansField;
+
+    private double lastHeadingRadians() {
+        try {
+            if (lastHeadingRadiansField == null) {
+                lastHeadingRadiansField = swerveDrive.getClass().getDeclaredField("lastHeadingRadians");
+                lastHeadingRadiansField.setAccessible(true);
+            }
+            return lastHeadingRadiansField.getDouble(swerveDrive);
+        } catch (NoSuchFieldException | IllegalAccessException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    private void lastHeadingRadians(double newHeading) {
+        try {
+            if (lastHeadingRadiansField == null) {
+                lastHeadingRadiansField = swerveDrive.getClass().getDeclaredField("lastHeadingRadians");
+                lastHeadingRadiansField.setAccessible(true);
+            }
+            lastHeadingRadiansField.setDouble(swerveDrive, newHeading);
+        } catch (NoSuchFieldException | IllegalAccessException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    private @Nullable Method setRawModuleStatesMethod;
+
+    private void setRawModuleStates(
+            SwerveModuleState[] desiredStates, ChassisSpeeds desiredChassisSpeed, boolean isOpenLoop) {
+        try {
+            if (setRawModuleStatesMethod == null) {
+                setRawModuleStatesMethod = swerveDrive
+                        .getClass()
+                        .getDeclaredMethod(
+                                "setRawModuleStates", SwerveModuleState[].class, ChassisSpeeds.class, boolean.class);
+                setRawModuleStatesMethod.setAccessible(true);
+            }
+            setRawModuleStatesMethod.invoke(swerveDrive, desiredStates, desiredChassisSpeed, isOpenLoop);
+        } catch (IllegalAccessException | NoSuchMethodError | NoSuchMethodException | InvocationTargetException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    private void driveTEST(
+            ChassisSpeeds robotRelativeVelocity, boolean isOpenLoop, Translation2d centerOfRotationMeters) {
+        SwerveDriveTelemetry.startCtrlCycle();
+        robotRelativeVelocity = movementOptimizationsTEST(
+                robotRelativeVelocity, swerveDrive.chassisVelocityCorrection, swerveDrive.angularVelocityCorrection);
+
+        // Heading Angular Velocity Deadband, might make a configuration option later.
+        // Originally made by Team 1466 Webb Robotics.
+        // Modified by Team 7525 Pioneers and BoiledBurntBagel of 6036
+        if (swerveDrive.headingCorrection) {
+            if (Math.abs(robotRelativeVelocity.omegaRadiansPerSecond) < 0.01
+                    && (Math.abs(robotRelativeVelocity.vxMetersPerSecond) > 0.01
+                            || Math.abs(robotRelativeVelocity.vyMetersPerSecond) > 0.01)) {
+                robotRelativeVelocity.omegaRadiansPerSecond = swerveDrive.swerveController.headingCalculate(
+                        swerveDrive.getOdometryHeading().getRadians(), lastHeadingRadians());
+            } else {
+                lastHeadingRadians(swerveDrive.getOdometryHeading().getRadians());
+            }
+        }
+
+        // Display commanded speed for testing
+        if (SwerveDriveTelemetry.verbosity.ordinal() >= SwerveDriveTelemetry.TelemetryVerbosity.LOW.ordinal()) {
+            SwerveDriveTelemetry.desiredChassisSpeedsObj = robotRelativeVelocity;
+        }
+
+        // Calculate required module states via kinematics
+        SwerveModuleState[] swerveModuleStates =
+                swerveDrive.kinematics.toSwerveModuleStates(robotRelativeVelocity, centerOfRotationMeters);
+
+        setRawModuleStates(swerveModuleStates, robotRelativeVelocity, isOpenLoop);
+    }
+
+    private ChassisSpeeds movementOptimizationsTEST(
+            ChassisSpeeds robotRelativeVelocity,
+            boolean uesChassisDiscretize,
+            boolean useAngularVelocitySkewCorrection) {
+
+        if (useAngularVelocitySkewCorrection) {
+            robotRelativeVelocity = swerveDrive.angularVelocitySkewCorrection(robotRelativeVelocity);
+        }
+
+        // Thank you to Jared Russell FRC254 for Open Loop Compensation Code
+        // https://www.chiefdelphi.com/t/whitepaper-swerve-drive-skew-and-second-order-kinematics/416964/5
+        if (uesChassisDiscretize) {
+            robotRelativeVelocity = ChassisSpeeds.discretize(robotRelativeVelocity, 0.02);
+        }
+
+        return robotRelativeVelocity;
     }
 
     public Command driveFieldOrientedTestCommand(
