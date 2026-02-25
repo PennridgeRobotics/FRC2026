@@ -1,10 +1,6 @@
 package frc.robot.subsystems;
 
-import static edu.wpi.first.units.Units.DegreesPerSecond;
-import static edu.wpi.first.units.Units.Meter;
-import static edu.wpi.first.units.Units.MetersPerSecond;
-import static edu.wpi.first.units.Units.MetersPerSecondPerSecond;
-import static edu.wpi.first.units.Units.RadiansPerSecond;
+import static edu.wpi.first.units.Units.*;
 
 import com.ctre.phoenix6.hardware.core.CorePigeon2;
 import edu.wpi.first.math.MathUtil;
@@ -82,6 +78,9 @@ public class SwerveSubsystem extends SubsystemBase {
     private LinearVelocity latestVelocityY = MetersPerSecond.zero();
     private AngularVelocity latestAngularVelocity = RadiansPerSecond.zero();
 
+    private Rotation2d currentModuleAngle = Rotation2d.kZero;
+    private Rotation2d targetModuleAngle = Rotation2d.kZero;
+
     @SuppressWarnings("StaticAssignmentInConstructor")
     public SwerveSubsystem() throws IOException {
         SwerveDriveTelemetry.verbosity = SwerveDriveTelemetry.TelemetryVerbosity.HIGH;
@@ -98,7 +97,7 @@ public class SwerveSubsystem extends SubsystemBase {
         // swerveDrive.setMotorIdleMode(true);
 
         swerveDrive.setHeadingCorrection(false);
-        swerveDrive.setCosineCompensator(false);
+        swerveDrive.setCosineCompensator(true);
 
         inBumpZone = new Trigger(this::isInBumpZone).debounce(0.1);
         inBumpZone.onTrue(updateDriveMode(DriveMode.BUMP_LOCK, () -> "entered bump zone"));
@@ -398,6 +397,9 @@ public class SwerveSubsystem extends SubsystemBase {
         SwerveModuleState[] swerveModuleStates =
                 swerveDrive.kinematics.toSwerveModuleStates(robotRelativeVelocity, centerOfRotationMeters);
 
+        targetModuleAngle = swerveModuleStates[0].angle;
+        currentModuleAngle = swerveDrive.getModules()[0].getState().angle;
+
         setRawModuleStates(swerveModuleStates, robotRelativeVelocity, isOpenLoop);
     }
 
@@ -507,6 +509,13 @@ public class SwerveSubsystem extends SubsystemBase {
             builder.addDoubleProperty("Velocity X", () -> latestVelocityX.in(MetersPerSecond), null);
             builder.addDoubleProperty("Velocity Y", () -> latestVelocityY.in(MetersPerSecond), null);
             builder.addDoubleProperty("Angular Velocity", () -> latestAngularVelocity.in(DegreesPerSecond), null);
+            builder.addDoubleProperty(
+                    "Current Module Angle",
+                    () -> swerveDrive.getModules()[0].getPosition().angle.getDegrees(),
+                    null);
+            builder.addDoubleProperty(
+                    "Current Module Speed", () -> swerveDrive.getModules()[0].getState().speedMetersPerSecond, null);
+            builder.addDoubleProperty("Target Module Angle", () -> targetModuleAngle.getDegrees(), null);
         });
         SmartDashboard.putData(
                 "Swerve Controller Heading PID",
