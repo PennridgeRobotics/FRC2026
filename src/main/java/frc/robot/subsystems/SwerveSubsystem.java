@@ -29,6 +29,7 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Robot;
+import frc.robot.classes.AutoManager;
 import frc.robot.lib.BLine.FollowPath;
 import frc.robot.lib.BLine.Path;
 import frc.robot.util.SlewRateLimiter2d;
@@ -70,7 +71,10 @@ public class SwerveSubsystem extends SubsystemBase {
     private final PIDController bLineTranslationPID = new PIDController(5.0, 0, 0);
     private final PIDController bLineRotationPID = new PIDController(3.0, 0, 0);
     private final PIDController bLineCrossTrackPID = new PIDController(2.0, 0, 0);
+
     private final FollowPath.Builder pathBuilder;
+
+    private final AutoManager autoManager;
 
     private final SlewRateLimiter2d linearDriveLimiter =
             new SlewRateLimiter2d(DriveConstants.MAX_LINEAR_ACCELERATION.in(MetersPerSecondPerSecond));
@@ -116,8 +120,10 @@ public class SwerveSubsystem extends SubsystemBase {
 
         bumpLockOverridden = new Trigger(() -> currentDriveMode == DriveMode.BUMP_LOCK && forceNormalDriveMode);
 
+        
         setupVisionManager();
         pathBuilder = setupBLine();
+        autoManager = new AutoManager(this, pathBuilder);
         initSmartDashboard();
     }
 
@@ -336,7 +342,7 @@ public class SwerveSubsystem extends SubsystemBase {
         return getMaximumChassisAngularVelocity().times(scaled);
     }
 
-    private void setModuleOrientations(Rotation2d rotation) {
+    public void setModuleOrientations(Rotation2d rotation) {
         final var states = new SwerveModuleState[swerveDrive.getModules().length];
         Arrays.fill(states, new SwerveModuleState(0, rotation));
         swerveDrive.setModuleStates(states, false);
@@ -447,5 +453,9 @@ public class SwerveSubsystem extends SubsystemBase {
     private DriveMode getActualDriveMode() {
         if (forceNormalDriveMode) return DriveMode.NORMAL;
         return currentDriveMode;
+    }
+
+    public AutoManager getAutoManager() {
+        return autoManager;
     }
 }
