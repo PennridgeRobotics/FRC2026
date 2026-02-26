@@ -37,7 +37,7 @@ Note: Ordered by priority
 | Climber Motor               | 9      |
 | Intake/Launcher Left Motor  | 10     |
 | Intake/Launcher Right Motor | 11     |
-| Feeder Motor                | 12     |
+| Indexer Motor               | 12     |
 | Pigeon 2                    | 13     |
 | CANdle (LEDs)               | 16     |
 
