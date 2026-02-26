@@ -326,8 +326,7 @@ public class SwerveSubsystem extends SubsystemBase {
         if (alliance.isEmpty()) {
             return;
         }
-        // final var shouldFlip = alliance.get() == DriverStation.Alliance.Red;
-        final var shouldFlip = false;
+        final var shouldFlip = alliance.get() == DriverStation.Alliance.Red;
         final var adjustedXVelocity = shouldFlip ? xVelocity.unaryMinus() : xVelocity;
         final var adjustedYVelocity = shouldFlip ? yVelocity.unaryMinus() : yVelocity;
         final Translation2d limitedLinearVelocity = linearDriveLimiter.calculate(
