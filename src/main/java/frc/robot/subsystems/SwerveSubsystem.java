@@ -227,6 +227,33 @@ public class SwerveSubsystem extends SubsystemBase {
         });
     }
 
+    /**
+     * @param xInput [-1,1] Positive = towards the other alliance
+     * @param yInput [-1,1] Positive = towards the left wall
+     * @param angularInput [-1,1] Positive = CCW
+     * @param headingX [-1,1] Heading X (positive = front) - OVERRIDES {@code angularInput}
+     * @param headingY [-1,1] Heading Y (positive = left) - OVERRIDES {@code angularInput}
+     */
+    public Command driveFieldAndRobotOrientedCommand(
+            final DoubleSupplier xInput,
+            final DoubleSupplier yInput,
+            final DoubleSupplier angularInput,
+            final DoubleSupplier headingX,
+            final DoubleSupplier headingY) {
+        return run(() -> {
+            final var xVelocity = joystickToLinearVelocity(xInput.getAsDouble());
+            final var yVelocity = joystickToLinearVelocity(yInput.getAsDouble());
+            final var headingXValue = headingX.getAsDouble();
+            final var headingYValue = headingY.getAsDouble();
+            if (!swerveDrive.swerveController.withinHypotDeadband(headingXValue, headingYValue)) {
+                driveFieldOriented(xVelocity, yVelocity, headingXValue, headingYValue);
+                return;
+            }
+            final var angularVelocity = joystickToAngularVelocity(angularInput.getAsDouble());
+            driveFieldOriented(xVelocity, yVelocity, angularVelocity);
+        });
+    }
+
     public Command centerModulesCommand() {
         return run(() -> Arrays.asList(swerveDrive.getModules()).forEach(mod -> mod.setAngle(0.0)));
     }

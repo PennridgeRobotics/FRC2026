@@ -33,8 +33,9 @@ public class RobotContainer {
     // Initializes controllers
     private final CommandXboxController driverController =
             new CommandXboxController(ControllerConstants.DRIVER_CONTROLLER_PORT);
-    /*private final CommandXboxController operatorController =
-    new CommandXboxController(ControllerConstants.OPERATOR_CONTROLLER_PORT);*/
+    private final @Nullable CommandXboxController operatorController = ControllerConstants.OPERATOR_ENABLED
+            ? new CommandXboxController(ControllerConstants.OPERATOR_CONTROLLER_PORT)
+            : null;
 
     private final SendableChooser<Command> autoChooser;
 
@@ -81,12 +82,22 @@ public class RobotContainer {
 
         // for testing
         final var fieldOriented = false;
+        final var forceRobotOrientedRotation = true;
         if (fieldOriented) {
-            swerveSubsystem.setDefaultCommand(swerveSubsystem.driveFieldOrientedHeadingCommand(
-                    () -> MathUtil.applyDeadband(-driverController.getLeftY(), 0.1),
-                    () -> MathUtil.applyDeadband(-driverController.getLeftX(), 0.1),
-                    () -> -driverController.getRightX(),
-                    () -> -driverController.getRightY()));
+            if (forceRobotOrientedRotation && operatorController != null) {
+                swerveSubsystem.setDefaultCommand(swerveSubsystem.driveFieldAndRobotOrientedCommand(
+                        () -> -driverController.getLeftY(),
+                        () -> -driverController.getLeftX(),
+                        () -> -driverController.getRightX(),
+                        () -> -operatorController.getLeftY(),
+                        () -> -operatorController.getLeftX()));
+            } else {
+                swerveSubsystem.setDefaultCommand(swerveSubsystem.driveFieldOrientedHeadingCommand(
+                        () -> -driverController.getLeftY(),
+                        () -> -driverController.getLeftX(),
+                        () -> -driverController.getRightX(),
+                        () -> -driverController.getRightY()));
+            }
         } else {
             swerveSubsystem.setDefaultCommand(swerveSubsystem.driveRobotOrientedCommand(
                     () -> MathUtil.applyDeadband(-driverController.getLeftY(), 0.1),
