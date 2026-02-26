@@ -15,7 +15,7 @@ plugins {
     alias(libs.plugins.spotless)
 }
 
-val robotMainClass = "org.pennridge.robotics.frc.Main"
+val robotMainClass = "frc.robot.Main"
 
 // Define my targets (RoboRIO) and artifacts (deployable files)
 // This is added by GradleRIO's backing project DeployUtils.
@@ -65,10 +65,15 @@ wpi {
 // Set this to true to enable desktop support.
 val includeDesktopSupport = true
 
+repositories {
+    maven("https://jitpack.io")
+}
+
 dependencies {
     errorprone(libs.error.prone.core)
     errorprone(libs.`null`.away)
 
+    implementation(libs.bline.lib)
     implementation(libs.caffeine)
     implementation(libs.jspecify)
 
@@ -110,8 +115,9 @@ tasks {
 
         options.errorprone {
             allErrorsAsWarnings.set(false) // set to true if needed - temporarily!
-            disable("EnumOrdinal", "MissingSummary", "MutablePublicArray", "UnusedVariable", "UnusedMethod")
-            excludedPaths.set(".*/frc/util/lib/.*")
+            disableAllChecks.set(true)
+            // disable("EnumOrdinal", "MissingSummary", "MutablePublicArray", "UnusedVariable", "UnusedMethod")
+            excludedPaths.set(".*/robot/util/lib/.*")
 
             check("NullAway", CheckSeverity.ERROR)
             option("NullAway:OnlyNullMarked", "true")
