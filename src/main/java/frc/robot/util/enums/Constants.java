@@ -47,8 +47,8 @@ import yams.motorcontrollers.SmartMotorControllerConfig.MotorMode;
 public final class Constants {
 
     public static final class PhysicalConstants { // TODO update length/width depending on bumper size
-        public static final Distance ROBOT_LENGTH = Inches.of(26.5);
-        public static final Distance ROBOT_WIDTH = Inches.of(31.5);
+        public static final Distance ROBOT_LENGTH_X = Inches.of(26.5);
+        public static final Distance ROBOT_WIDTH_Y = Inches.of(31.5);
         public static final Distance WHEEL_CENTERS_DISTANCE_LENGTH = Inches.of(18.5);
         public static final Distance WHEEL_CENTERS_DISTANCE_WIDTH = Inches.of(23.5);
     }
@@ -188,10 +188,11 @@ public final class Constants {
 
         // 3.5 feet away from robot width
         private static final Distance BUMP_EXTENSION_X =
-                PhysicalConstants.ROBOT_WIDTH.div(2).plus(Inches.of(42));
+                PhysicalConstants.ROBOT_WIDTH_Y.div(2).plus(Inches.of(42));
         // bump zones are only when the full robot (while diagonal) would fit on the bump
         private static final Distance BUMP_CLEARANCE_Y = Inches.of(
-                Math.hypot(PhysicalConstants.ROBOT_WIDTH.in(Inches), PhysicalConstants.ROBOT_LENGTH.in(Inches)) / 2.0);
+                Math.hypot(PhysicalConstants.ROBOT_WIDTH_Y.in(Inches), PhysicalConstants.ROBOT_LENGTH_X.in(Inches))
+                        / 2.0);
 
         public static final Rectangle2d[] BUMP_ZONES = {
             new Rectangle2d(

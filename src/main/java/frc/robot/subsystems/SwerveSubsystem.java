@@ -1,6 +1,5 @@
 package frc.robot.subsystems;
 
-import static edu.wpi.first.units.Units.DegreesPerSecond;
 import static edu.wpi.first.units.Units.Meter;
 import static edu.wpi.first.units.Units.MetersPerSecond;
 import static edu.wpi.first.units.Units.MetersPerSecondPerSecond;
@@ -9,10 +8,8 @@ import static edu.wpi.first.units.Units.RadiansPerSecond;
 import com.ctre.phoenix6.hardware.core.CorePigeon2;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
-import edu.wpi.first.math.filter.Debouncer.DebounceType;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
@@ -31,15 +28,14 @@ import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Robot;
 import frc.robot.lib.BLine.FollowPath;
 import frc.robot.lib.BLine.Path;
+import frc.robot.util.BumpManager;
 import frc.robot.util.SlewRateLimiter2d;
 import frc.robot.util.dashboard.PIDSendable;
 import frc.robot.util.dashboard.PIDSendable.PIDValues;
 import frc.robot.util.enums.Constants.BLineConstants;
 import frc.robot.util.enums.Constants.ControllerConstants;
 import frc.robot.util.enums.Constants.DriveConstants;
-import frc.robot.util.enums.Constants.FieldConstants;
 import frc.robot.util.enums.Constants.VisionConstants;
-import frc.robot.util.enums.DriveMode;
 import frc.robot.vision.PhotonCamera;
 import frc.robot.vision.VisionManager;
 import java.io.File;
@@ -48,7 +44,6 @@ import java.util.Arrays;
 import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
-import org.jspecify.annotations.Nullable;
 import swervelib.SwerveDrive;
 import swervelib.SwerveDriveTest;
 import swervelib.math.SwerveMath;
@@ -59,13 +54,12 @@ import swervelib.telemetry.SwerveDriveTelemetry;
 public class SwerveSubsystem extends SubsystemBase {
     private final SwerveDrive swerveDrive;
     private VisionManager visionManager;
+    private final BumpManager bumpManager;
 
-    private DriveMode currentDriveMode = DriveMode.NORMAL; // does NOT account for forceNormalDriveMode
     private boolean forceNormalDriveMode = false;
+    private boolean lockYawTowardsVelocity = false;
 
-    private final Trigger inBumpZone;
-    private final Trigger onBump;
-    private final Trigger bumpLockOverridden;
+    private final Trigger forceNormalDriveModeTrigger = new Trigger(() -> forceNormalDriveMode);
 
     private final PIDController bLineTranslationPID = new PIDController(5.0, 0, 0);
     private final PIDController bLineRotationPID = new PIDController(3.0, 0, 0);
@@ -95,31 +89,8 @@ public class SwerveSubsystem extends SubsystemBase {
         // swerveDrive.setAngularVelocityCompensation(false, false, 0.1);
         // swerveDrive.setModuleEncoderAutoSynchronize(false, 1);
 
-        inBumpZone = new Trigger(this::isInBumpZone).debounce(0.1);
-        inBumpZone.onTrue(updateDriveMode(DriveMode.BUMP_LOCK, () -> "entered bump zone"));
-        inBumpZone.onFalse(updateDriveMode(DriveMode.NORMAL, () -> "left bump zone"));
-
-        onBump = inBumpZone
-                .and(() -> {
-                    final var rotation3d = swerveDrive.getGyroRotation3d();
-                    final var angle =
-                            Math.toDegrees(new Rotation3d(rotation3d.getX(), rotation3d.getY(), 0).getAngle());
-                    final var rollVel = Math.abs(getPigeon2()
-                            .getAngularVelocityXWorld(false)
-                            .getValue()
-                            .in(DegreesPerSecond));
-                    final var pitchVel = Math.abs(getPigeon2()
-                            .getAngularVelocityYWorld(false)
-                            .getValue()
-                            .in(DegreesPerSecond));
-                    final var angularVelocity = Math.hypot(rollVel, pitchVel);
-                    return angle > 7.0 || (angle > 2.0 && angularVelocity > 50);
-                })
-                .debounce(0.25, DebounceType.kBoth);
-        onBump.onTrue(runOnce(() -> System.out.println("on bump")));
-        onBump.onFalse(updateDriveMode(DriveMode.NORMAL, () -> inBumpZone.getAsBoolean() ? "no longer on bump" : null));
-
-        bumpLockOverridden = new Trigger(() -> currentDriveMode == DriveMode.BUMP_LOCK && forceNormalDriveMode);
+        bumpManager = new BumpManager(
+                getPigeon2(), swerveDrive::getGyroRotation3d, this::getRobotPose, forceNormalDriveModeTrigger);
 
         setupVisionManager();
         pathBuilder = setupBLine();
@@ -216,6 +187,12 @@ public class SwerveSubsystem extends SubsystemBase {
                     translationX.getAsDouble() * swerveDrive.getMaximumChassisVelocity(),
                     translationY.getAsDouble() * swerveDrive.getMaximumChassisVelocity(),
                     angularRotationX.getAsDouble() * swerveDrive.getMaximumChassisAngularVelocity());
+            if (lockYawTowardsVelocity && !forceNormalDriveMode) {
+                chassisSpeeds.omegaRadiansPerSecond = getVelocityAngle(
+                                MetersPerSecond.of(chassisSpeeds.vxMetersPerSecond),
+                                MetersPerSecond.of(chassisSpeeds.vyMetersPerSecond))
+                        .getRadians();
+            }
             swerveDrive.drive(chassisSpeeds, false, new Translation2d());
         });
     }
@@ -269,19 +246,6 @@ public class SwerveSubsystem extends SubsystemBase {
                 SwerveDriveTest.setAngleSysIdRoutine(new SysIdRoutine.Config(), this, swerveDrive), 3.0, 5.0, 3.0);
     }
 
-    public Command updateDriveMode(DriveMode newMode, @Nullable Supplier<@Nullable String> cause) {
-        return runOnce(() -> {
-            if (cause != null && cause.get() != null) {
-                System.out.println("Updated drive mode to " + newMode + " (" + cause.get() + ")");
-            }
-            currentDriveMode = newMode;
-        });
-    }
-
-    public Command updateDriveMode(DriveMode newMode) {
-        return updateDriveMode(newMode, null);
-    }
-
     public Command forceNormalDriveMode(boolean force) {
         return runOnce(() -> forceNormalDriveMode = force);
     }
@@ -294,15 +258,15 @@ public class SwerveSubsystem extends SubsystemBase {
     }
 
     public Trigger isInBumpZoneTrigger() {
-        return inBumpZone;
+        return bumpManager.isInBumpZoneTrigger();
     }
 
     public Trigger isOnBumpTrigger() {
-        return onBump;
+        return bumpManager.isOnBumpTrigger();
     }
 
     public Trigger isBumpLockOverriddenTrigger() {
-        return bumpLockOverridden;
+        return bumpManager.isBumpLockOverriddenTrigger();
     }
 
     private void driveFieldOriented(
@@ -324,14 +288,16 @@ public class SwerveSubsystem extends SubsystemBase {
         final var adjustedYVelocity = shouldFlip ? yVelocity.unaryMinus() : yVelocity;
         final Translation2d limitedLinearVelocity = linearDriveLimiter.calculate(
                 adjustedXVelocity.in(MetersPerSecond), adjustedYVelocity.in(MetersPerSecond));
-        final double finalAngularVelocity =
-                switch (getActualDriveMode()) {
-                    case NORMAL -> angularVelocity.in(RadiansPerSecond);
-                    case BUMP_LOCK ->
-                        getTargetAngularVelocity(getBumpLockAngle()).in(RadiansPerSecond);
-                };
-        swerveDrive.driveFieldOriented(
-                new ChassisSpeeds(limitedLinearVelocity.getX(), limitedLinearVelocity.getY(), finalAngularVelocity));
+        final AngularVelocity finalAngularVelocity =
+                bumpManager.isBumpLockEnabledTrigger().getAsBoolean()
+                        ? getTargetAngularVelocity(bumpManager.getBumpLockAngle())
+                        : ((lockYawTowardsVelocity && !forceNormalDriveMode)
+                                ? getTargetAngularVelocity(getVelocityAngle(
+                                        MetersPerSecond.of(limitedLinearVelocity.getX()),
+                                        MetersPerSecond.of(limitedLinearVelocity.getY())))
+                                : angularVelocity);
+        swerveDrive.driveFieldOriented(new ChassisSpeeds(
+                limitedLinearVelocity.getX(), limitedLinearVelocity.getY(), finalAngularVelocity.in(RadiansPerSecond)));
     }
 
     public Command driveFieldOrientedTestCommand(
@@ -356,17 +322,27 @@ public class SwerveSubsystem extends SubsystemBase {
     }
 
     public Command straightenWheelsCommand() {
-        return run(() -> {
-            SwerveModuleState[] states = new SwerveModuleState[4];
-            for (int i = 0; i < 4; i++) {
-                states[i] = new SwerveModuleState(0, Rotation2d.kZero);
-            }
-            swerveDrive.setModuleStates(states, false);
-        });
+        return run(() -> setModuleOrientations(Rotation2d.kZero));
+    }
+
+    public Command lockYawTowardsVelocity(final boolean lockEnabled) {
+        return runOnce(() -> lockYawTowardsVelocity = lockEnabled);
     }
 
     public Pose2d getPose() {
         return swerveDrive.getPose();
+    }
+
+    private Rotation2d getVelocityAngle() {
+        final var fieldVelocity = swerveDrive.getFieldVelocity();
+        return getVelocityAngle(
+                MetersPerSecond.of(fieldVelocity.vxMetersPerSecond),
+                MetersPerSecond.of(fieldVelocity.vyMetersPerSecond));
+    }
+
+    private Rotation2d getVelocityAngle(LinearVelocity xVelocity, LinearVelocity yVelocity) {
+        final double velocityAngle = Math.atan2(yVelocity.in(MetersPerSecond), xVelocity.in(MetersPerSecond));
+        return Rotation2d.fromRadians(velocityAngle);
     }
 
     private AngularVelocity getTargetAngularVelocity(Rotation2d targetAngle) {
@@ -423,17 +399,17 @@ public class SwerveSubsystem extends SubsystemBase {
     }
 
     private void initSmartDashboard() {
-        SmartDashboard.putData("Swerve Subsystem", builder -> {
-            builder.addStringProperty("Drive Mode", currentDriveMode::getFriendlyName, null);
-            builder.addStringProperty(
-                    "Bump Status",
-                    () -> {
-                        if (currentDriveMode == DriveMode.NORMAL) return Color.kLime.toHexString();
-                        if (onBump.getAsBoolean()) return Color.kRed.toHexString();
-                        return Color.kYellow.toHexString(); // in bump area, but not on the bump itself
-                    },
-                    null);
-        });
+        SmartDashboard.putData(
+                "Swerve Subsystem",
+                builder -> builder.addStringProperty(
+                        "Bump Status",
+                        () -> {
+                            if (!bumpManager.isRawBumpLockEnabledTrigger().getAsBoolean())
+                                return Color.kLime.toHexString();
+                            if (bumpManager.isOnBumpTrigger().getAsBoolean()) return Color.kRed.toHexString();
+                            return Color.kYellow.toHexString(); // in bump area, but not on the bump itself
+                        },
+                        null));
         SmartDashboard.putData(
                 "Swerve Controller Heading PID",
                 new PIDSendable(
@@ -483,32 +459,7 @@ public class SwerveSubsystem extends SubsystemBase {
                 VisionConstants.CAMERA_1_ROTATION));
     }
 
-    // check every 45° angle to find the quickest one that we can rotate to
-    private Rotation2d getBumpLockAngle() {
-        for (int angle = -135; angle < 180; angle += 90) {
-            if (Math.abs(MathUtil.inputModulus(getRobotPose().getRotation().getDegrees() - angle, -180, 180)) <= 45) {
-                return Rotation2d.fromDegrees(angle);
-            }
-        }
-        return Rotation2d.kZero;
-    }
-
-    private boolean isInBumpZone() {
-        final var pose = getRobotPose().getTranslation();
-        for (var zone : FieldConstants.BUMP_ZONES) {
-            if (zone.contains(pose)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     private CorePigeon2 getPigeon2() {
         return (CorePigeon2) swerveDrive.getGyro().getIMU();
-    }
-
-    private DriveMode getActualDriveMode() {
-        if (forceNormalDriveMode) return DriveMode.NORMAL;
-        return currentDriveMode;
     }
 }
