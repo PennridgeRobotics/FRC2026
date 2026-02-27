@@ -59,6 +59,12 @@ public class ShooterCalculator {
         return shot;
     }
 
+    public void addCurrentDataToMap(AngularVelocity shooterVelocity) {
+        final Pose2d robotPose = robotPoseSupplier.get();
+        final double distanceToTarget = getTarget().getDistance(robotPose.getTranslation());
+        shooterDistanceVelocityMap.put(distanceToTarget, shooterVelocity.in(RotationsPerSecond));
+    }
+
     private void addDistanceVelocityData(Distance distance, AngularVelocity velocity) {
         shooterDistanceVelocityMap.put(distance.in(Meters), velocity.in(RotationsPerSecond));
     }

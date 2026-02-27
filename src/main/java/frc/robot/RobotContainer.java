@@ -134,6 +134,9 @@ public class RobotContainer {
             operatorController.start().whileTrue(swerveSubsystem.straightenWheelsCommand());
             operatorController.x().onTrue(swerveSubsystem.setManualBumpLock(true));
             operatorController.x().onFalse(swerveSubsystem.setManualBumpLock(false));
+            if (fuelSubsystem != null) {
+                operatorController.a().onTrue(fuelSubsystem.addCurrentDataToShooterMap());
+            }
         }
     }
 

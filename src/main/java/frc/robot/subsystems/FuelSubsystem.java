@@ -199,6 +199,10 @@ public class FuelSubsystem extends SubsystemBase {
         return spinningUp;
     }
 
+    public Command addCurrentDataToShooterMap() {
+        return Commands.runOnce(() -> shooterCalculator.addCurrentDataToMap(intakeLauncher.getSpeed()));
+    }
+
     @Override
     public void periodic() {
         // This method will be called once per scheduler run
