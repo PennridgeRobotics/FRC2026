@@ -1,6 +1,10 @@
 package frc.robot.subsystems;
 
-import static edu.wpi.first.units.Units.*;
+import static edu.wpi.first.units.Units.DegreesPerSecond;
+import static edu.wpi.first.units.Units.Meter;
+import static edu.wpi.first.units.Units.MetersPerSecond;
+import static edu.wpi.first.units.Units.MetersPerSecondPerSecond;
+import static edu.wpi.first.units.Units.RadiansPerSecond;
 
 import com.ctre.phoenix6.hardware.core.CorePigeon2;
 import edu.wpi.first.math.MathUtil;
@@ -70,10 +74,6 @@ public class SwerveSubsystem extends SubsystemBase {
 
     private final SlewRateLimiter2d linearDriveLimiter =
             new SlewRateLimiter2d(DriveConstants.MAX_LINEAR_ACCELERATION.in(MetersPerSecondPerSecond));
-
-    private LinearVelocity latestVelocityX = MetersPerSecond.zero();
-    private LinearVelocity latestVelocityY = MetersPerSecond.zero();
-    private AngularVelocity latestAngularVelocity = RadiansPerSecond.zero();
 
     @SuppressWarnings("StaticAssignmentInConstructor")
     public SwerveSubsystem() throws IOException {
@@ -216,9 +216,6 @@ public class SwerveSubsystem extends SubsystemBase {
                     translationX.getAsDouble() * swerveDrive.getMaximumChassisVelocity(),
                     translationY.getAsDouble() * swerveDrive.getMaximumChassisVelocity(),
                     angularRotationX.getAsDouble() * swerveDrive.getMaximumChassisAngularVelocity());
-            latestVelocityX = MetersPerSecond.of(chassisSpeeds.vxMetersPerSecond);
-            latestVelocityY = MetersPerSecond.of(chassisSpeeds.vyMetersPerSecond);
-            latestAngularVelocity = RadiansPerSecond.of(chassisSpeeds.omegaRadiansPerSecond);
             swerveDrive.drive(chassisSpeeds, false, new Translation2d());
         });
     }
@@ -368,6 +365,10 @@ public class SwerveSubsystem extends SubsystemBase {
         });
     }
 
+    public Pose2d getPose() {
+        return swerveDrive.getPose();
+    }
+
     private AngularVelocity getTargetAngularVelocity(Rotation2d targetAngle) {
         final var currentHeading = swerveDrive.getOdometryHeading().getRadians();
         final var targetHeading = targetAngle.getRadians();
@@ -432,9 +433,6 @@ public class SwerveSubsystem extends SubsystemBase {
                         return Color.kYellow.toHexString(); // in bump area, but not on the bump itself
                     },
                     null);
-            builder.addDoubleProperty("Velocity X", () -> latestVelocityX.in(MetersPerSecond), null);
-            builder.addDoubleProperty("Velocity Y", () -> latestVelocityY.in(MetersPerSecond), null);
-            builder.addDoubleProperty("Angular Velocity", () -> latestAngularVelocity.in(DegreesPerSecond), null);
         });
         SmartDashboard.putData(
                 "Swerve Controller Heading PID",

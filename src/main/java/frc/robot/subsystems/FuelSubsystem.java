@@ -17,6 +17,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
+import frc.robot.util.ShooterCalculator;
 import frc.robot.util.dashboard.PIDSendable;
 import frc.robot.util.enums.Constants.FuelConstants;
 import org.jspecify.annotations.NullMarked;
@@ -32,6 +33,8 @@ import yams.motorcontrollers.local.SparkWrapper;
 public class FuelSubsystem extends SubsystemBase {
 
     private FuelAction currentState;
+    private final ShooterCalculator shooterCalculator;
+
     private final Trigger launching;
     private final Trigger ejecting;
     private final Trigger intaking;
@@ -43,7 +46,9 @@ public class FuelSubsystem extends SubsystemBase {
     private final FlyWheel intakeLauncher;
     private final FlyWheel indexer;
 
-    public FuelSubsystem() {
+    public FuelSubsystem(ShooterCalculator shooterCalculator) {
+        this.shooterCalculator = shooterCalculator;
+
         final var baseIntakeLauncherSMCConfig = new SmartMotorControllerConfig(this)
                 .withGearing(FuelConstants.INTAKE_LAUNCHER_GEARING)
                 .withOpenLoopRampRate(FuelConstants.INTAKE_LAUNCHER_RAMP_RATE)
