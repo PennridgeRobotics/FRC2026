@@ -9,6 +9,7 @@ import frc.robot.util.lib.Elastic;
 public class CANBusLoadSendable implements Sendable {
     int elapsed = 0;
     double utilPercent = RobotController.getCANStatus().percentBusUtilization;
+    double preUtilPrecent = 0.0;
     double utilPercents = 0.0;
     java.util.List<Double> utilPercentsList = new java.util.ArrayList<>();
     int red = 0;
@@ -78,13 +79,14 @@ public class CANBusLoadSendable implements Sendable {
     }
 
     public String updateColor() {
+        preUtilPrecent = utilPercent;
         utilPercent = RobotController.getCANStatus().percentBusUtilization;
 
         // Notifications
-        if (utilPercent > 0.7) {
+        if (utilPercent > 0.7 && preUtilPrecent >= 0.7) {
             Notify("highBusPercentWarning");
         }
-        if (utilPercent > 0.8) {
+        if (utilPercent > 0.8 && preUtilPrecent >= 0.8) {
             Notify("highBusPercentCritical");
         }
 
