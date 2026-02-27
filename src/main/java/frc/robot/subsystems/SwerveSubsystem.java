@@ -1,10 +1,6 @@
 package frc.robot.subsystems;
 
-import static edu.wpi.first.units.Units.DegreesPerSecond;
-import static edu.wpi.first.units.Units.Meter;
-import static edu.wpi.first.units.Units.MetersPerSecond;
-import static edu.wpi.first.units.Units.MetersPerSecondPerSecond;
-import static edu.wpi.first.units.Units.RadiansPerSecond;
+import static edu.wpi.first.units.Units.*;
 
 import com.ctre.phoenix6.hardware.core.CorePigeon2;
 import edu.wpi.first.math.MathUtil;
@@ -75,6 +71,10 @@ public class SwerveSubsystem extends SubsystemBase {
     private final SlewRateLimiter2d linearDriveLimiter =
             new SlewRateLimiter2d(DriveConstants.MAX_LINEAR_ACCELERATION.in(MetersPerSecondPerSecond));
 
+    private LinearVelocity latestVelocityX = MetersPerSecond.zero();
+    private LinearVelocity latestVelocityY = MetersPerSecond.zero();
+    private AngularVelocity latestAngularVelocity = RadiansPerSecond.zero();
+
     @SuppressWarnings("StaticAssignmentInConstructor")
     public SwerveSubsystem() throws IOException {
         SwerveDriveTelemetry.verbosity = SwerveDriveTelemetry.TelemetryVerbosity.HIGH;
@@ -83,12 +83,17 @@ public class SwerveSubsystem extends SubsystemBase {
                 .createSwerveDrive(
                         DriveConstants.MAX_LINEAR_SPEED.in(MetersPerSecond),
                         new Pose2d(new Translation2d(Meter.of(2), Meter.of(0)), Rotation2d.kZero));
-        swerveDrive.setHeadingCorrection(false); // enable this after testing/tuning PID
-        swerveDrive.setCosineCompensator(!SwerveDriveTelemetry.isSimulation); // disable for simulations
-        swerveDrive.setAngularVelocityCompensation(true, true, 0.1); // may need to adjust; see docs
+        // swerveDrive.setHeadingCorrection(false); // enable this after testing/tuning PID
+        // swerveDrive.setCosineCompensator(!SwerveDriveTelemetry.isSimulation); // disable for simulations
+        // swerveDrive.setAngularVelocityCompensation(true, true, 0.1); // may need to adjust; see docs
         // swerveDrive.useExternalFeedbackSensor();
-        swerveDrive.setModuleEncoderAutoSynchronize(false, 1); // can set to true, but I want to test
-        swerveDrive.setMotorIdleMode(true);
+        // swerveDrive.setModuleEncoderAutoSynchronize(false, 1); // can set to true, but I want to test
+        // swerveDrive.setMotorIdleMode(true);
+
+        // swerveDrive.setHeadingCorrection(false);
+        // swerveDrive.setCosineCompensator(false);
+        // swerveDrive.setAngularVelocityCompensation(false, false, 0.1);
+        // swerveDrive.setModuleEncoderAutoSynchronize(false, 1);
 
         inBumpZone = new Trigger(this::isInBumpZone).debounce(0.1);
         inBumpZone.onTrue(updateDriveMode(DriveMode.BUMP_LOCK, () -> "entered bump zone"));
@@ -193,6 +198,56 @@ public class SwerveSubsystem extends SubsystemBase {
             final Supplier<LinearVelocity> yVelocity,
             final Supplier<Rotation2d> heading) {
         return run(() -> driveFieldOriented(xVelocity.get(), yVelocity.get(), getTargetAngularVelocity(heading.get())));
+    }
+
+    /**
+     * Command to drive the robot using translative values and heading as angular velocity.
+     *
+     * @param translationX Translation in the X direction.
+     * @param translationY Translation in the Y direction.
+     * @param angularRotationX Rotation of the robot to set
+     * @return Drive command.
+     */
+    public Command driveRobotOrientedCommand(
+            DoubleSupplier translationX, DoubleSupplier translationY, DoubleSupplier angularRotationX) {
+        return run(() -> {
+            // Make the robot move
+            final var chassisSpeeds = new ChassisSpeeds(
+                    translationX.getAsDouble() * swerveDrive.getMaximumChassisVelocity(),
+                    translationY.getAsDouble() * swerveDrive.getMaximumChassisVelocity(),
+                    angularRotationX.getAsDouble() * swerveDrive.getMaximumChassisAngularVelocity());
+            latestVelocityX = MetersPerSecond.of(chassisSpeeds.vxMetersPerSecond);
+            latestVelocityY = MetersPerSecond.of(chassisSpeeds.vyMetersPerSecond);
+            latestAngularVelocity = RadiansPerSecond.of(chassisSpeeds.omegaRadiansPerSecond);
+            swerveDrive.drive(chassisSpeeds, false, new Translation2d());
+        });
+    }
+
+    /**
+     * @param xInput [-1,1] Positive = towards the other alliance
+     * @param yInput [-1,1] Positive = towards the left wall
+     * @param angularInput [-1,1] Positive = CCW
+     * @param headingX [-1,1] Heading X (positive = front) - OVERRIDES {@code angularInput}
+     * @param headingY [-1,1] Heading Y (positive = left) - OVERRIDES {@code angularInput}
+     */
+    public Command driveFieldAndRobotOrientedCommand(
+            final DoubleSupplier xInput,
+            final DoubleSupplier yInput,
+            final DoubleSupplier angularInput,
+            final DoubleSupplier headingX,
+            final DoubleSupplier headingY) {
+        return run(() -> {
+            final var xVelocity = joystickToLinearVelocity(xInput.getAsDouble());
+            final var yVelocity = joystickToLinearVelocity(yInput.getAsDouble());
+            final var headingXValue = headingX.getAsDouble();
+            final var headingYValue = headingY.getAsDouble();
+            if (!swerveDrive.swerveController.withinHypotDeadband(headingXValue, headingYValue)) {
+                driveFieldOriented(xVelocity, yVelocity, headingXValue, headingYValue);
+                return;
+            }
+            final var angularVelocity = joystickToAngularVelocity(angularInput.getAsDouble());
+            driveFieldOriented(xVelocity, yVelocity, angularVelocity);
+        });
     }
 
     public Command centerModulesCommand() {
@@ -303,6 +358,16 @@ public class SwerveSubsystem extends SubsystemBase {
         });
     }
 
+    public Command straightenWheelsCommand() {
+        return run(() -> {
+            SwerveModuleState[] states = new SwerveModuleState[4];
+            for (int i = 0; i < 4; i++) {
+                states[i] = new SwerveModuleState(0, Rotation2d.kZero);
+            }
+            swerveDrive.setModuleStates(states, false);
+        });
+    }
+
     private AngularVelocity getTargetAngularVelocity(Rotation2d targetAngle) {
         final var currentHeading = swerveDrive.getOdometryHeading().getRadians();
         final var targetHeading = targetAngle.getRadians();
@@ -316,10 +381,7 @@ public class SwerveSubsystem extends SubsystemBase {
     }
 
     private Rotation2d calculateTargetAngle(double headingX, double headingY) {
-        return Rotation2d.fromRadians(
-                swerveDrive.swerveController.withinHypotDeadband(headingX, headingY)
-                        ? swerveDrive.swerveController.lastAngleScalar
-                        : Math.atan2(headingX, headingY));
+        return Rotation2d.fromRadians(swerveDrive.swerveController.getJoystickAngle(headingX, headingY));
     }
 
     private LinearVelocity joystickToLinearVelocity(final double input) {
@@ -370,6 +432,9 @@ public class SwerveSubsystem extends SubsystemBase {
                         return Color.kYellow.toHexString(); // in bump area, but not on the bump itself
                     },
                     null);
+            builder.addDoubleProperty("Velocity X", () -> latestVelocityX.in(MetersPerSecond), null);
+            builder.addDoubleProperty("Velocity Y", () -> latestVelocityY.in(MetersPerSecond), null);
+            builder.addDoubleProperty("Angular Velocity", () -> latestAngularVelocity.in(DegreesPerSecond), null);
         });
         SmartDashboard.putData(
                 "Swerve Controller Heading PID",

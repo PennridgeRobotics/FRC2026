@@ -98,8 +98,8 @@ public final class Constants {
     public static final class DriveConstants {
         public static final String SWERVE_CONFIG_DIRECTORY = "swerve"; // + deploy
 
-        public static final LinearAcceleration MAX_LINEAR_ACCELERATION = MetersPerSecondPerSecond.of(20);
-        public static final LinearVelocity MAX_LINEAR_SPEED = MetersPerSecond.of(1.0);
+        public static final LinearAcceleration MAX_LINEAR_ACCELERATION = MetersPerSecondPerSecond.of(10);
+        public static final LinearVelocity MAX_LINEAR_SPEED = MetersPerSecond.of(1.3);
 
         public static final Current DRIVE_MOTOR_CURRENT_LIMIT = Amps.of(40);
         public static final Distance WHEEL_DIAMETER = Inches.of(4);
@@ -162,6 +162,8 @@ public final class Constants {
     public static final class ControllerConstants {
         public static final int DRIVER_CONTROLLER_PORT = 0;
         public static final int OPERATOR_CONTROLLER_PORT = 1;
+
+        public static final boolean OPERATOR_ENABLED = true;
 
         public static final double DRIVE_MIN_INPUT = 0.01; // deadband
         public static final double DRIVE_MAX_INPUT = 0.98;
