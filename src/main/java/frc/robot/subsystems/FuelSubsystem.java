@@ -3,8 +3,8 @@
 // the WPILib BSD license file in the root directory of this project.
 package frc.robot.subsystems;
 
-import static edu.wpi.first.units.Units.DegreesPerSecond;
 import static edu.wpi.first.units.Units.Inches;
+import static edu.wpi.first.units.Units.RotationsPerSecond;
 
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
@@ -38,12 +38,11 @@ public class FuelSubsystem extends SubsystemBase {
     private final Trigger spinningUp;
 
     private final SmartMotorController intakeLauncherMotorController;
-    private final SmartMotorController feederMotorController;
+    private final SmartMotorController indexerMotorController;
 
     private final FlyWheel intakeLauncher;
-    private final FlyWheel feeder;
+    private final FlyWheel indexer;
 
-    /** Creates a new FeederSubsystem. */
     public FuelSubsystem() {
         final var baseIntakeLauncherSMCConfig = new SmartMotorControllerConfig(this)
                 .withGearing(FuelConstants.INTAKE_LAUNCHER_GEARING)
@@ -58,24 +57,24 @@ public class FuelSubsystem extends SubsystemBase {
                 .withClosedLoopController(new PIDController(0.0, 0.0, 0.0))
                 .withControlMode(ControlMode.CLOSED_LOOP)
                 .withTelemetry("LauncherMotor", TelemetryVerbosity.HIGH);
-        final var feederSMCConfig = new SmartMotorControllerConfig(this)
+        final var indexerSMCConfig = new SmartMotorControllerConfig(this)
                 .withFeedforward(new SimpleMotorFeedforward(0.0, 0.0))
                 .withClosedLoopController(new PIDController(0.0, 0.0, 0.0))
                 .withControlMode(ControlMode.CLOSED_LOOP)
-                .withTelemetry("FeederMotor", TelemetryVerbosity.HIGH)
-                .withGearing(FuelConstants.FEEDER_GEARING)
-                .withOpenLoopRampRate(FuelConstants.FEEDER_RAMP_RATE)
-                .withMotorInverted(FuelConstants.FEEDER_INVERTED)
-                .withVoltageCompensation(FuelConstants.FEEDER_VOLTAGE_COMP)
-                .withIdleMode(FuelConstants.FEEDER_MOTOR_MODE)
-                .withStatorCurrentLimit(FuelConstants.FEEDER_CURRENT_LIMIT)
+                .withTelemetry("IndexerMotor", TelemetryVerbosity.HIGH)
+                .withGearing(FuelConstants.INDEXER_GEARING)
+                .withOpenLoopRampRate(FuelConstants.INDEXER_RAMP_RATE)
+                .withMotorInverted(FuelConstants.INDEXER_INVERTED)
+                .withVoltageCompensation(FuelConstants.INDEXER_VOLTAGE_COMP)
+                .withIdleMode(FuelConstants.INDEXER_MOTOR_MODE)
+                .withStatorCurrentLimit(FuelConstants.INDEXER_CURRENT_LIMIT)
                 .withFollowers();
 
         final var intakeLauncherLeftSparkMax =
                 new SparkMax(FuelConstants.INTAKE_LAUNCHER_LEFT_MOTOR_ID, MotorType.kBrushless);
         final var intakeLauncherRightSparkMax =
                 new SparkMax(FuelConstants.INTAKE_LAUNCHER_RIGHT_MOTOR_ID, MotorType.kBrushless);
-        final var feederSparkMax = new SparkMax(FuelConstants.FEEDER_MOTOR_ID, MotorType.kBrushless);
+        final var indexerSparkMax = new SparkMax(FuelConstants.INDEXER_MOTOR_ID, MotorType.kBrushless);
 
         // apply config
         new SparkWrapper(intakeLauncherRightSparkMax, DCMotor.getNEO(1), baseIntakeLauncherSMCConfig);
@@ -83,19 +82,19 @@ public class FuelSubsystem extends SubsystemBase {
         intakeLauncherLeftSMCConfig.withFollowers(Pair.of(intakeLauncherRightSparkMax, true));
         intakeLauncherMotorController =
                 new SparkWrapper(intakeLauncherLeftSparkMax, DCMotor.getNEO(2), intakeLauncherLeftSMCConfig);
-        feederMotorController = new SparkWrapper(feederSparkMax, DCMotor.getNEO(1), feederSMCConfig);
+        indexerMotorController = new SparkWrapper(indexerSparkMax, DCMotor.getNEO(1), indexerSMCConfig);
 
         intakeLauncher = new FlyWheel(new FlyWheelConfig(intakeLauncherMotorController)
                 .withDiameter(Inches.of(4))
                 .withTelemetry("LauncherMotor", TelemetryVerbosity.HIGH));
-        feeder = new FlyWheel(new FlyWheelConfig(feederMotorController)
+        indexer = new FlyWheel(new FlyWheelConfig(indexerMotorController)
                 .withDiameter(Inches.of(4))
-                .withTelemetry("FeederMotor", TelemetryVerbosity.HIGH));
+                .withTelemetry("IndexerMotor", TelemetryVerbosity.HIGH));
 
         setDefaultCommand(run(() -> {
             currentState = FuelAction.NONE;
             intakeLauncherMotorController.setDutyCycle(0);
-            feederMotorController.setDutyCycle(0);
+            indexerMotorController.setDutyCycle(0);
         }));
         currentState = FuelAction.NONE;
         launching = new Trigger(() -> currentState == FuelAction.LAUNCHING);
@@ -107,28 +106,29 @@ public class FuelSubsystem extends SubsystemBase {
     }
 
     private void setupSmartDashboard() {
-        SmartDashboard.putNumber("Intaking feeder roller value", FuelConstants.INDEXER_INTAKING_PERCENT);
+        SmartDashboard.putNumber("Intaking indexer roller value", FuelConstants.INDEXER_INTAKING_PERCENT);
         SmartDashboard.putNumber("Intaking intake roller value", FuelConstants.INTAKE_INTAKING_PERCENT);
-        SmartDashboard.putNumber("Launching feeder roller value", FuelConstants.INDEXER_LAUNCHING_PERCENT);
+        SmartDashboard.putNumber("Launching indexer roller value", FuelConstants.INDEXER_LAUNCHING_PERCENT);
         SmartDashboard.putNumber("Launching launcher roller value", FuelConstants.LAUNCHING_LAUNCHER_PERCENT);
         SmartDashboard.putData("Intake/Launcher", (builder) -> {
             builder.addDoubleProperty(
-                    "Velocity", () -> intakeLauncher.getSpeed().in(DegreesPerSecond), null);
+                    "Velocity", () -> intakeLauncher.getSpeed().in(RotationsPerSecond), null);
             builder.addDoubleProperty(
                     "DutyCycle",
                     intakeLauncherMotorController::getDutyCycle,
                     intakeLauncherMotorController::setDutyCycle);
         });
-        SmartDashboard.putData("Feeder", (builder) -> {
-            builder.addDoubleProperty("Velocity", () -> feeder.getSpeed().in(DegreesPerSecond), null);
+        SmartDashboard.putData("Indexer", (builder) -> {
+            builder.addDoubleProperty("Velocity", () -> indexer.getSpeed().in(RotationsPerSecond), null);
             builder.addDoubleProperty(
-                    "DutyCycle", feederMotorController::getDutyCycle, feederMotorController::setDutyCycle);
+                    "DutyCycle", indexerMotorController::getDutyCycle, indexerMotorController::setDutyCycle);
         });
         SmartDashboard.putData(
                 "Intake/Launcher PID",
                 new PIDSendable(intakeLauncherMotorController, PIDSendable.Type.PID | PIDSendable.Type.BASE_FF));
         SmartDashboard.putData(
-                "Feeder PID", new PIDSendable(feederMotorController, PIDSendable.Type.PID | PIDSendable.Type.BASE_FF));
+                "Indexer PID",
+                new PIDSendable(indexerMotorController, PIDSendable.Type.PID | PIDSendable.Type.BASE_FF));
         SmartDashboard.putData(
                 "Fuel Subsystem",
                 (builder) -> builder.addStringProperty("Current State", () -> currentState.toString(), null));
@@ -139,7 +139,7 @@ public class FuelSubsystem extends SubsystemBase {
             currentState = FuelAction.EJECTING;
             intakeLauncherMotorController.setDutyCycle(
                     -1 * SmartDashboard.getNumber("Intaking intake roller value", FuelConstants.INTAKE_EJECT_PERCENT));
-            feederMotorController.setDutyCycle(
+            indexerMotorController.setDutyCycle(
                     SmartDashboard.getNumber("Intaking intake roller value", FuelConstants.INDEXER_LAUNCHING_PERCENT));
         });
     }
@@ -149,8 +149,8 @@ public class FuelSubsystem extends SubsystemBase {
             currentState = FuelAction.INTAKING;
             intakeLauncherMotorController.setDutyCycle(
                     SmartDashboard.getNumber("Intaking intake roller value", FuelConstants.INTAKE_INTAKING_PERCENT));
-            feederMotorController.setDutyCycle(
-                    SmartDashboard.getNumber("Intaking feeder roller value", FuelConstants.INDEXER_INTAKING_PERCENT));
+            indexerMotorController.setDutyCycle(
+                    SmartDashboard.getNumber("Intaking indexer roller value", FuelConstants.INDEXER_INTAKING_PERCENT));
         });
     }
 
@@ -159,8 +159,8 @@ public class FuelSubsystem extends SubsystemBase {
             currentState = FuelAction.LAUNCHING;
             intakeLauncherMotorController.setDutyCycle(SmartDashboard.getNumber(
                     "Launching launcher roller value", FuelConstants.LAUNCHING_LAUNCHER_PERCENT));
-            feederMotorController.setDutyCycle(
-                    SmartDashboard.getNumber("Launching feeder roller value", FuelConstants.INDEXER_LAUNCHING_PERCENT));
+            indexerMotorController.setDutyCycle(SmartDashboard.getNumber(
+                    "Launching indexer roller value", FuelConstants.INDEXER_LAUNCHING_PERCENT));
         });
     }
 
@@ -169,8 +169,8 @@ public class FuelSubsystem extends SubsystemBase {
             currentState = FuelAction.SPINNING_UP;
             intakeLauncherMotorController.setDutyCycle(SmartDashboard.getNumber(
                     "Launching launcher roller value", FuelConstants.LAUNCHING_LAUNCHER_PERCENT));
-            feederMotorController.setDutyCycle(SmartDashboard.getNumber(
-                    "Launching spin-up feeder value", FuelConstants.INDEXER_SPIN_UP_PRE_LAUNCH_PERCENT));
+            indexerMotorController.setDutyCycle(SmartDashboard.getNumber(
+                    "Launching spin-up indexer value", FuelConstants.INDEXER_SPIN_UP_PRE_LAUNCH_PERCENT));
         });
     }
 
@@ -197,13 +197,13 @@ public class FuelSubsystem extends SubsystemBase {
     @Override
     public void periodic() {
         // This method will be called once per scheduler run
-        feeder.updateTelemetry();
+        indexer.updateTelemetry();
     }
 
     @Override
     public void simulationPeriodic() {
         // This method will be called once per scheduler run during simulation
-        feeder.simIterate();
+        indexer.simIterate();
     }
 
     // COMMANDS:
