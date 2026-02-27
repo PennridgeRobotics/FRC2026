@@ -333,6 +333,10 @@ public class SwerveSubsystem extends SubsystemBase {
         return swerveDrive.getPose();
     }
 
+    public Command setManualBumpLock(final boolean locked) {
+        return bumpManager.setManualBumpLock(locked);
+    }
+
     private Rotation2d getVelocityAngle() {
         final var fieldVelocity = swerveDrive.getFieldVelocity();
         return getVelocityAngle(

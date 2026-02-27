@@ -132,6 +132,8 @@ public class RobotContainer {
 
         if (operatorController != null) {
             operatorController.start().whileTrue(swerveSubsystem.straightenWheelsCommand());
+            operatorController.x().onTrue(swerveSubsystem.setManualBumpLock(true));
+            operatorController.x().onFalse(swerveSubsystem.setManualBumpLock(false));
         }
     }
 

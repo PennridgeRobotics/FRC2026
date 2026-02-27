@@ -21,16 +21,17 @@ import org.jspecify.annotations.Nullable;
 
 public class BumpManager {
     private boolean rawBumpLockEnabled; // doesn't take into account forceNormalDriveMode
+    private boolean manualBumpLock;
 
     private final Trigger inBumpZoneTrigger;
     private final Trigger onBumpTrigger;
     private final Trigger bumpLockOverriddenTrigger;
     private final Trigger rawBumpLockEnabledTrigger; // doesn't take into account forceNormalDriveMode
     private final Trigger bumpLockEnabledTrigger; // takes into account forceNormalDriveMode
+    private final Trigger manualBumpLockTrigger;
 
     private final Supplier<Pose2d> poseSupplier;
 
-    @SuppressWarnings("resource")
     public BumpManager(
             CorePigeon2 pigeon2,
             Supplier<Rotation3d> rotation3dSupplier,
@@ -63,6 +64,7 @@ public class BumpManager {
                 updateBumpLock(false, () -> inBumpZoneTrigger.getAsBoolean() ? "no longer on bump" : null));
 
         bumpLockOverriddenTrigger = rawBumpLockEnabledTrigger.and(forceNormalDriveMode);
+        manualBumpLockTrigger = new Trigger(() -> manualBumpLock);
 
         final var topicPrefix = "Bump/";
         final BooleanPublisher inBumpZonePublisher = NetworkTableInstance.getDefault()
@@ -80,16 +82,20 @@ public class BumpManager {
         final BooleanPublisher bumpLockEnabledPublisher = NetworkTableInstance.getDefault()
                 .getBooleanTopic(topicPrefix + "Bump Lock Enabled")
                 .publish();
-        inBumpZoneTrigger.onTrue(Commands.runOnce(() -> inBumpZonePublisher.set(true)));
-        inBumpZoneTrigger.onFalse(Commands.runOnce(() -> inBumpZonePublisher.set(false)));
-        onBumpTrigger.onTrue(Commands.runOnce(() -> onBumpPublisher.set(true)));
-        onBumpTrigger.onFalse(Commands.runOnce(() -> onBumpPublisher.set(false)));
-        bumpLockOverriddenTrigger.onTrue(Commands.runOnce(() -> bumpLockOverriddenPublisher.set(true)));
-        bumpLockOverriddenTrigger.onFalse(Commands.runOnce(() -> bumpLockOverriddenPublisher.set(false)));
-        rawBumpLockEnabledTrigger.onTrue(Commands.runOnce(() -> rawBumpLockEnabledPublisher.set(true)));
-        rawBumpLockEnabledTrigger.onFalse(Commands.runOnce(() -> rawBumpLockEnabledPublisher.set(false)));
-        bumpLockEnabledTrigger.onTrue(Commands.runOnce(() -> bumpLockEnabledPublisher.set(true)));
-        bumpLockEnabledTrigger.onFalse(Commands.runOnce(() -> bumpLockEnabledPublisher.set(false)));
+        final BooleanPublisher manualBumpLockPublisher = NetworkTableInstance.getDefault()
+                .getBooleanTopic(topicPrefix + "Manual Bump Lock")
+                .publish();
+        linkTriggerToPublisher(inBumpZoneTrigger, inBumpZonePublisher);
+        linkTriggerToPublisher(onBumpTrigger, onBumpPublisher);
+        linkTriggerToPublisher(bumpLockOverriddenTrigger, bumpLockOverriddenPublisher);
+        linkTriggerToPublisher(rawBumpLockEnabledTrigger, rawBumpLockEnabledPublisher);
+        linkTriggerToPublisher(bumpLockEnabledTrigger, bumpLockEnabledPublisher);
+        linkTriggerToPublisher(manualBumpLockTrigger, manualBumpLockPublisher);
+    }
+
+    private void linkTriggerToPublisher(Trigger trigger, BooleanPublisher publisher) {
+        trigger.onTrue(Commands.runOnce(() -> publisher.set(true)));
+        trigger.onFalse(Commands.runOnce(() -> publisher.set(false)));
     }
 
     private Command updateBumpLock(boolean bumpLockEnabled, @Nullable Supplier<@Nullable String> cause) {
@@ -158,5 +164,9 @@ public class BumpManager {
 
     public Trigger isBumpLockEnabledTrigger() {
         return bumpLockEnabledTrigger;
+    }
+
+    public Command setManualBumpLock(final boolean locked) {
+        return Commands.runOnce(() -> manualBumpLock = locked);
     }
 }
