@@ -82,14 +82,13 @@ public final class Constants {
         public static final String SWERVE_CONFIG_DIRECTORY = "swerve"; // + deploy
 
         public static final LinearAcceleration MAX_LINEAR_ACCELERATION = MetersPerSecondPerSecond.of(10);
-        public static final LinearVelocity MAX_LINEAR_SPEED = MetersPerSecond.of(1.3);
+        public static final LinearVelocity MAX_LINEAR_SPEED = MetersPerSecond.of(2.5);
 
-        public static final Current DRIVE_MOTOR_CURRENT_LIMIT = Amps.of(40);
         public static final Distance WHEEL_DIAMETER = Inches.of(4);
     }
 
     public static final class FuelConstants {
-        public static final boolean FUEL_SUBSYSTEM_ENABLED = false;
+        public static final boolean FUEL_SUBSYSTEM_ENABLED = true;
 
         public static final int INTAKE_LAUNCHER_LEFT_MOTOR_ID = 10;
         public static final int INTAKE_LAUNCHER_RIGHT_MOTOR_ID = 11;
@@ -100,10 +99,10 @@ public final class Constants {
         public static final Voltage INTAKE_LAUNCHER_VOLTAGE_COMP = Volts.of(12);
         public static final Voltage INDEXER_VOLTAGE_COMP = Volts.of(12);
         public static final Current INTAKE_LAUNCHER_CURRENT_LIMIT = Amps.of(40);
-        public static final Current INDEXER_CURRENT_LIMIT = Amps.of(40);
+        public static final Current INDEXER_CURRENT_LIMIT = Amps.of(30);
         public static final Time INTAKE_LAUNCHER_RAMP_RATE = Seconds.of(0.2);
         public static final Time INDEXER_RAMP_RATE = Seconds.of(0.2);
-        public static final MotorMode INTAKE_LAUNCHER_MOTOR_MODE = MotorMode.BRAKE;
+        public static final MotorMode INTAKE_LAUNCHER_MOTOR_MODE = MotorMode.COAST;
         public static final MotorMode INDEXER_MOTOR_MODE = MotorMode.BRAKE;
         public static final MechanismGearing INTAKE_LAUNCHER_GEARING = new MechanismGearing(60.0 / 40);
         public static final MechanismGearing INDEXER_GEARING = new MechanismGearing(32.0 / 18);

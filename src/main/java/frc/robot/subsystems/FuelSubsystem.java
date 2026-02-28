@@ -3,16 +3,15 @@
 // the WPILib BSD license file in the root directory of this project.
 package frc.robot.subsystems;
 
-import static edu.wpi.first.units.Units.Inches;
-import static edu.wpi.first.units.Units.RotationsPerSecond;
+import static edu.wpi.first.units.Units.*;
 
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
-import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.units.measure.AngularVelocity;
+import edu.wpi.first.units.measure.Voltage;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
@@ -53,6 +52,9 @@ public class FuelSubsystem extends SubsystemBase {
     private boolean useCustomVelocity;
     private AngularVelocity customVelocity = RotationsPerSecond.zero();
 
+    private boolean intakeLauncherClosedLoop = false;
+    private Voltage intakeLauncherCustomVoltage = Volts.zero();
+
     public FuelSubsystem(ShooterCalculator shooterCalculator) {
         this.shooterCalculator = shooterCalculator;
 
@@ -62,12 +64,21 @@ public class FuelSubsystem extends SubsystemBase {
                 .withMotorInverted(FuelConstants.INTAKE_LAUNCHER_INVERTED)
                 .withVoltageCompensation(FuelConstants.INTAKE_LAUNCHER_VOLTAGE_COMP)
                 .withIdleMode(FuelConstants.INTAKE_LAUNCHER_MOTOR_MODE)
-                .withStatorCurrentLimit(FuelConstants.INTAKE_LAUNCHER_CURRENT_LIMIT);
-        final var intakeLauncherLeftSMCConfig = baseIntakeLauncherSMCConfig
-                .clone()
+                .withStatorCurrentLimit(FuelConstants.INTAKE_LAUNCHER_CURRENT_LIMIT)
                 .withFeedforward(new SimpleMotorFeedforward(0.0, 0.0))
                 .withClosedLoopController(new PIDController(0.0, 0.0, 0.0))
-                .withControlMode(ControlMode.CLOSED_LOOP)
+                .withControlMode(ControlMode.CLOSED_LOOP);
+        final var intakeLauncherLeftSMCConfig = new SmartMotorControllerConfig(this)
+                .withGearing(FuelConstants.INTAKE_LAUNCHER_GEARING)
+                .withOpenLoopRampRate(FuelConstants.INTAKE_LAUNCHER_RAMP_RATE)
+                .withMotorInverted(FuelConstants.INTAKE_LAUNCHER_INVERTED)
+                .withVoltageCompensation(FuelConstants.INTAKE_LAUNCHER_VOLTAGE_COMP)
+                .withIdleMode(FuelConstants.INTAKE_LAUNCHER_MOTOR_MODE)
+                .withStatorCurrentLimit(FuelConstants.INTAKE_LAUNCHER_CURRENT_LIMIT)
+                .withFeedforward(new SimpleMotorFeedforward(0.0, 0.0))
+                .withClosedLoopController(new PIDController(0.0, 0.0, 0.0))
+                .withControlMode(ControlMode.OPEN_LOOP)
+                .withMotorInverted(false)
                 .withTelemetry("LauncherMotor", TelemetryVerbosity.HIGH);
         final var indexerSMCConfig = new SmartMotorControllerConfig(this)
                 .withFeedforward(new SimpleMotorFeedforward(0.0, 0.0))
@@ -91,7 +102,7 @@ public class FuelSubsystem extends SubsystemBase {
         // apply config
         new SparkWrapper(intakeLauncherRightSparkMax, DCMotor.getNEO(1), baseIntakeLauncherSMCConfig);
 
-        intakeLauncherLeftSMCConfig.withFollowers(Pair.of(intakeLauncherRightSparkMax, true));
+        // intakeLauncherLeftSMCConfig.withFollowers(Pair.of(intakeLauncherRightSparkMax, false));
         intakeLauncherController =
                 new SparkWrapper(intakeLauncherLeftSparkMax, DCMotor.getNEO(2), intakeLauncherLeftSMCConfig);
         indexerController = new SparkWrapper(indexerSparkMax, DCMotor.getNEO(1), indexerSMCConfig);
@@ -117,12 +128,35 @@ public class FuelSubsystem extends SubsystemBase {
         setupSmartDashboard();
     }
 
+    public Command setCustomVoltage() {
+        return Commands.runOnce(intakeLauncherController::stopClosedLoopController)
+                .andThen(intakeLauncher.setVoltage(() -> intakeLauncherCustomVoltage))
+                .finallyDo(() -> {
+                    if (intakeLauncherClosedLoop) intakeLauncherController.startClosedLoopController();
+                });
+    }
+
     private void setupSmartDashboard() {
         SmartDashboard.putData("Intake/Launcher", (builder) -> {
             builder.addDoubleProperty(
                     "Velocity", () -> intakeLauncher.getSpeed().in(RotationsPerSecond), null);
             builder.addDoubleProperty(
                     "DutyCycle", intakeLauncherController::getDutyCycle, intakeLauncherController::setDutyCycle);
+            builder.addDoubleProperty(
+                    "Voltage", () -> intakeLauncherController.getVoltage().in(Volts), null);
+            builder.addDoubleProperty(
+                    "Custom Voltage",
+                    () -> intakeLauncherCustomVoltage.in(Volts),
+                    v -> intakeLauncherCustomVoltage = Volts.of(v));
+            builder.addBooleanProperty("Closed Loop Control", () -> intakeLauncherClosedLoop, v -> {
+                if (v) {
+                    intakeLauncherClosedLoop = true;
+                    intakeLauncherController.startClosedLoopController();
+                } else {
+                    intakeLauncherClosedLoop = false;
+                    intakeLauncherController.stopClosedLoopController();
+                }
+            });
         });
         SmartDashboard.putData("Indexer", (builder) -> {
             builder.addDoubleProperty("Velocity", () -> indexer.getSpeed().in(RotationsPerSecond), null);

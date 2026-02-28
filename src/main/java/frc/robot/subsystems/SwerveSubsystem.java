@@ -1,9 +1,6 @@
 package frc.robot.subsystems;
 
-import static edu.wpi.first.units.Units.Meter;
-import static edu.wpi.first.units.Units.MetersPerSecond;
-import static edu.wpi.first.units.Units.MetersPerSecondPerSecond;
-import static edu.wpi.first.units.Units.RadiansPerSecond;
+import static edu.wpi.first.units.Units.*;
 
 import com.ctre.phoenix6.hardware.core.CorePigeon2;
 import edu.wpi.first.math.MathUtil;
@@ -34,12 +31,7 @@ import frc.robot.util.BumpManager;
 import frc.robot.util.SlewRateLimiter2d;
 import frc.robot.util.dashboard.PIDSendable;
 import frc.robot.util.dashboard.PIDSendable.PIDValues;
-import frc.robot.util.enums.Constants.BLineConstants;
-import frc.robot.util.enums.Constants.ControllerConstants;
-import frc.robot.util.enums.Constants.DriveConstants;
-import frc.robot.util.enums.Constants.FieldConstants;
-import frc.robot.util.enums.Constants.PhysicalConstants;
-import frc.robot.util.enums.Constants.VisionConstants;
+import frc.robot.util.enums.Constants.*;
 import frc.robot.util.enums.PositionCalibrationLocation;
 import frc.robot.vision.PhotonCamera;
 import frc.robot.vision.VisionManager;
@@ -83,17 +75,12 @@ public class SwerveSubsystem extends SubsystemBase {
                 .createSwerveDrive(
                         DriveConstants.MAX_LINEAR_SPEED.in(MetersPerSecond),
                         new Pose2d(new Translation2d(Meter.of(2), Meter.of(0)), Rotation2d.kZero));
-        // swerveDrive.setHeadingCorrection(false); // enable this after testing/tuning PID
-        // swerveDrive.setCosineCompensator(!SwerveDriveTelemetry.isSimulation); // disable for simulations
-        // swerveDrive.setAngularVelocityCompensation(true, true, 0.1); // may need to adjust; see docs
+        swerveDrive.setHeadingCorrection(true); // enable this after testing/tuning PID
+        swerveDrive.setCosineCompensator(!SwerveDriveTelemetry.isSimulation); // disable for simulations
+        swerveDrive.setAngularVelocityCompensation(true, true, 0.1); // may need to adjust; see docs
         // swerveDrive.useExternalFeedbackSensor();
-        // swerveDrive.setModuleEncoderAutoSynchronize(false, 1); // can set to true, but I want to test
+        swerveDrive.setModuleEncoderAutoSynchronize(false, 1); // can set to true, but I want to test
         // swerveDrive.setMotorIdleMode(true);
-
-        // swerveDrive.setHeadingCorrection(false);
-        // swerveDrive.setCosineCompensator(false);
-        // swerveDrive.setAngularVelocityCompensation(false, false, 0.1);
-        // swerveDrive.setModuleEncoderAutoSynchronize(false, 1);
 
         bumpManager = new BumpManager(
                 getPigeon2(), swerveDrive::getGyroRotation3d, this::getRobotPose, forceNormalDriveModeTrigger);
@@ -130,11 +117,6 @@ public class SwerveSubsystem extends SubsystemBase {
                         swerveDrive.swerveController.thetaController,
                         PIDSendable.Type.PID,
                         PIDValues.from(swerveDrive.swerveController.thetaController)));
-    }
-
-    @Override
-    public void periodic() {
-        bumpManager.periodic();
     }
 
     private void updateOdometry() {
@@ -376,7 +358,7 @@ public class SwerveSubsystem extends SubsystemBase {
     }
 
     public Command faceTowardsHubCommand() {
-        return startEnd(() -> faceTowardsHub = true, () -> faceTowardsHub = false);
+        return Commands.startEnd(() -> faceTowardsHub = true, () -> faceTowardsHub = false);
     }
 
     public Rotation2d getAngleToHub() {
@@ -388,11 +370,11 @@ public class SwerveSubsystem extends SubsystemBase {
     }
 
     public Command straightenWheelsCommand() {
-        return run(() -> setModuleOrientations(Rotation2d.kZero));
+        return Commands.run(() -> setModuleOrientations(Rotation2d.kZero));
     }
 
     public Command lockYawTowardsVelocity() {
-        return startEnd(() -> lockYawTowardsVelocity = true, () -> lockYawTowardsVelocity = false);
+        return Commands.startEnd(() -> lockYawTowardsVelocity = true, () -> lockYawTowardsVelocity = false);
     }
 
     public Command enableManualBumpLock() {

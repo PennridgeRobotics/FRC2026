@@ -6,6 +6,7 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.subsystems.ClimberSubsystem;
@@ -116,7 +117,7 @@ public class RobotContainer {
                     () -> -driverController.getRightX()));
         }
 
-        // driverController.start().onTrue(new InstantCommand(swerveSubsystem::zeroGyroWithAlliance));
+        driverController.start().onTrue(new InstantCommand(swerveSubsystem::zeroGyroWithAlliance));
         driverController.y().whileTrue(swerveSubsystem.faceTowardsHubCommand());
 
         if (operatorController != null) {
@@ -138,6 +139,13 @@ public class RobotContainer {
                     .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
                             PositionCalibrationLocation.RIGHT_OUTPOST_CORNER));
             operatorController.x().whileTrue(swerveSubsystem.enableManualBumpLock());
+        }
+
+        if (fuelSubsystem != null && operatorController != null) {
+            operatorController.a().whileTrue(fuelSubsystem.intake());
+            // operatorController.y().whileTrue(fuelSubsystem.eject());
+            operatorController.y().whileTrue(fuelSubsystem.setCustomVoltage());
+            operatorController.b().whileTrue(fuelSubsystem.windUpAndLaunch());
         }
     }
 

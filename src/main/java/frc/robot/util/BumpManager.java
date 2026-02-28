@@ -9,9 +9,7 @@ import edu.wpi.first.math.filter.Debouncer;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
-import edu.wpi.first.networktables.BooleanPublisher;
-import edu.wpi.first.networktables.BooleanSubscriber;
-import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
@@ -24,7 +22,7 @@ import org.jspecify.annotations.Nullable;
 public class BumpManager {
     private boolean rawBumpLockEnabled; // doesn't take into account forceNormalDriveMode
     private boolean manualBumpLock;
-    private boolean autoBumpLockPermitted = true;
+    private boolean autoBumpLockPermitted = false;
 
     private final Trigger inBumpZoneTrigger;
     private final Trigger onBumpTrigger;
@@ -35,8 +33,6 @@ public class BumpManager {
     private final Trigger autoBumpLockPermittedTrigger;
 
     private final Supplier<Pose2d> poseSupplier;
-
-    private final BooleanSubscriber autoBumpLockPermittedSubscriber;
 
     public BumpManager(
             CorePigeon2 pigeon2,
@@ -77,46 +73,16 @@ public class BumpManager {
 
         bumpLockOverriddenTrigger = rawBumpLockEnabledTrigger.and(forceNormalDriveMode);
 
-        final var topicPrefix = "Bump/";
-        final BooleanPublisher inBumpZonePublisher = NetworkTableInstance.getDefault()
-                .getBooleanTopic(topicPrefix + "In Bump Zone")
-                .publish();
-        final BooleanPublisher onBumpPublisher = NetworkTableInstance.getDefault()
-                .getBooleanTopic(topicPrefix + "On Bump")
-                .publish();
-        final BooleanPublisher bumpLockOverriddenPublisher = NetworkTableInstance.getDefault()
-                .getBooleanTopic(topicPrefix + "Bump Lock Overridden")
-                .publish();
-        final BooleanPublisher rawBumpLockEnabledPublisher = NetworkTableInstance.getDefault()
-                .getBooleanTopic(topicPrefix + "Raw Bump Lock Enabled")
-                .publish();
-        final BooleanPublisher bumpLockEnabledPublisher = NetworkTableInstance.getDefault()
-                .getBooleanTopic(topicPrefix + "Bump Lock Enabled")
-                .publish();
-        final BooleanPublisher manualBumpLockPublisher = NetworkTableInstance.getDefault()
-                .getBooleanTopic(topicPrefix + "Manual Bump Lock")
-                .publish();
-        final BooleanPublisher autoBumpLockPermittedPublisher = NetworkTableInstance.getDefault()
-                .getBooleanTopic(topicPrefix + "Automatic Bump Lock Permitted")
-                .publish();
-        linkTriggerToPublisher(inBumpZoneTrigger, inBumpZonePublisher);
-        linkTriggerToPublisher(onBumpTrigger, onBumpPublisher);
-        linkTriggerToPublisher(bumpLockOverriddenTrigger, bumpLockOverriddenPublisher);
-        linkTriggerToPublisher(rawBumpLockEnabledTrigger, rawBumpLockEnabledPublisher);
-        linkTriggerToPublisher(bumpLockEnabledTrigger, bumpLockEnabledPublisher);
-        linkTriggerToPublisher(manualBumpLockTrigger, manualBumpLockPublisher);
-        linkTriggerToPublisher(autoBumpLockPermittedTrigger, autoBumpLockPermittedPublisher);
-        autoBumpLockPermittedSubscriber =
-                autoBumpLockPermittedPublisher.getTopic().subscribe(autoBumpLockPermitted);
-    }
-
-    public void periodic() {
-        autoBumpLockPermitted = autoBumpLockPermittedSubscriber.get();
-    }
-
-    private void linkTriggerToPublisher(Trigger trigger, BooleanPublisher publisher) {
-        trigger.onTrue(Commands.runOnce(() -> publisher.set(true)));
-        trigger.onFalse(Commands.runOnce(() -> publisher.set(false)));
+        SmartDashboard.putData("Bump", builder -> {
+            builder.addBooleanProperty("In Bump Zone", inBumpZoneTrigger, null);
+            builder.addBooleanProperty("On Bump", onBumpTrigger, null);
+            builder.addBooleanProperty("Bump Lock Overridden", bumpLockOverriddenTrigger, null);
+            builder.addBooleanProperty("Raw Bump Lock Enabled", rawBumpLockEnabledTrigger, null);
+            builder.addBooleanProperty("Bump Lock Enabled", bumpLockEnabledTrigger, null);
+            builder.addBooleanProperty("Manual Bump Lock", manualBumpLockTrigger, null);
+            builder.addBooleanProperty(
+                    "Automatic Bump Lock Permitted", autoBumpLockPermittedTrigger, v -> autoBumpLockPermitted = v);
+        });
     }
 
     private Command updateBumpLock(boolean bumpLockEnabled, @Nullable Supplier<@Nullable String> cause) {
