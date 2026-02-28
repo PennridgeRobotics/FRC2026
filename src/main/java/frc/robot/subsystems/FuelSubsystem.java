@@ -12,6 +12,7 @@ import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.math.system.plant.DCMotor;
+import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
@@ -19,7 +20,10 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.util.ShooterCalculator;
 import frc.robot.util.dashboard.PIDSendable;
+import frc.robot.util.dashboard.SplitButtonChooser;
 import frc.robot.util.enums.Constants.FuelConstants;
+import java.util.List;
+import java.util.Set;
 import org.jspecify.annotations.NullMarked;
 import yams.mechanisms.config.FlyWheelConfig;
 import yams.mechanisms.velocity.FlyWheel;
@@ -45,6 +49,9 @@ public class FuelSubsystem extends SubsystemBase {
 
     private final FlyWheel intakeLauncher;
     private final FlyWheel indexer;
+
+    private boolean useCustomVelocity;
+    private AngularVelocity customVelocity = RotationsPerSecond.zero();
 
     public FuelSubsystem(ShooterCalculator shooterCalculator) {
         this.shooterCalculator = shooterCalculator;
@@ -126,9 +133,22 @@ public class FuelSubsystem extends SubsystemBase {
                 new PIDSendable(intakeLauncherController, PIDSendable.Type.PID | PIDSendable.Type.BASE_FF));
         SmartDashboard.putData(
                 "Indexer PID", new PIDSendable(indexerController, PIDSendable.Type.PID | PIDSendable.Type.BASE_FF));
+        SmartDashboard.putData("Fuel Subsystem", (builder) -> {
+            builder.addStringProperty("Current State", () -> currentState.toString(), null);
+            builder.addDoubleProperty(
+                    "Shooter Velocity",
+                    () -> customVelocity.in(RotationsPerSecond),
+                    v -> customVelocity = RotationsPerSecond.of(v));
+        });
         SmartDashboard.putData(
-                "Fuel Subsystem",
-                (builder) -> builder.addStringProperty("Current State", () -> currentState.toString(), null));
+                "Fuel Subsystem/Launcher Mode",
+                new SplitButtonChooser<>(
+                        () -> useCustomVelocity,
+                        List.of(false, true),
+                        Set.of(v -> useCustomVelocity = v),
+                        useCustomVelocity,
+                        str -> str.equals("Custom"),
+                        bool -> bool ? "Custom" : "Calculator"));
     }
 
     public Command eject() {
@@ -150,8 +170,7 @@ public class FuelSubsystem extends SubsystemBase {
     public Command launch() {
         return run(() -> {
             currentState = FuelAction.LAUNCHING;
-            intakeLauncherController.setVelocity(
-                    shooterCalculator.calculateVelocity().velocity());
+            intakeLauncherController.setVelocity(getShooterVelocity());
             indexerController.setVelocity(FuelConstants.LAUNCH_VELOCITY_INDEXER);
         });
     }
@@ -159,20 +178,22 @@ public class FuelSubsystem extends SubsystemBase {
     public Command windUp() {
         return run(() -> {
             currentState = FuelAction.WINDING_UP;
-            intakeLauncherController.setVelocity(
-                    shooterCalculator.calculateVelocity().velocity());
+            intakeLauncherController.setVelocity(getShooterVelocity());
             indexerController.setVelocity(FuelConstants.WINDUP_VELOCITY_INDEXER);
         });
+    }
+
+    private AngularVelocity getShooterVelocity() {
+        return useCustomVelocity
+                ? customVelocity
+                : shooterCalculator.calculateVelocity().velocity();
     }
 
     public Command windUpAndLaunch() {
         return Commands.sequence(
                 windUp().until(() -> intakeLauncherController
                         .getMechanismVelocity()
-                        .gte(shooterCalculator
-                                .calculateVelocity()
-                                .velocity()
-                                .plus(FuelConstants.LAUNCH_VELOCITY_TOLERANCE))),
+                        .gte(getShooterVelocity().plus(FuelConstants.LAUNCH_VELOCITY_TOLERANCE))),
                 launch());
     }
 

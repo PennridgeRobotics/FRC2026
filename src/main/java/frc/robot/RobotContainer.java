@@ -1,16 +1,11 @@
 package frc.robot;
 
-import static edu.wpi.first.units.Units.DegreesPerSecond;
-import static edu.wpi.first.units.Units.MetersPerSecond;
-
 import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.subsystems.ClimberSubsystem;
 import frc.robot.subsystems.FuelSubsystem;
@@ -114,24 +109,8 @@ public class RobotContainer {
                     () -> -driverController.getRightX()));
         }
 
-        driverController
-                .y()
-                .whileTrue(swerveSubsystem.driveFieldOrientedCommand(
-                        () -> MetersPerSecond.of(0.5), MetersPerSecond::zero, DegreesPerSecond::zero));
-        driverController
-                .b()
-                .whileTrue(swerveSubsystem.driveFieldOrientedHeadingCommand(
-                        MetersPerSecond::zero, MetersPerSecond::zero, () -> Rotation2d.kCW_90deg));
-        driverController
-                .x()
-                .whileTrue(swerveSubsystem.driveFieldOrientedHeadingCommand(
-                        MetersPerSecond::zero, MetersPerSecond::zero, () -> Rotation2d.kCCW_90deg));
-        driverController
-                .a()
-                .whileTrue(swerveSubsystem.driveFieldOrientedHeadingCommand(
-                        MetersPerSecond::zero, MetersPerSecond::zero, () -> Rotation2d.k180deg));
-
-        driverController.start().onTrue(new InstantCommand(swerveSubsystem::zeroGyroWithAlliance));
+        // driverController.start().onTrue(new InstantCommand(swerveSubsystem::zeroGyroWithAlliance));
+        driverController.y().whileTrue(swerveSubsystem.faceTowardsHubCommand());
 
         if (operatorController != null) {
             operatorController.start().whileTrue(swerveSubsystem.straightenWheelsCommand());
@@ -143,11 +122,7 @@ public class RobotContainer {
                     .rightTrigger()
                     .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
                             PositionCalibrationLocation.RIGHT_OUTPOST));
-            operatorController.x().onTrue(swerveSubsystem.setManualBumpLock(true));
-            operatorController.x().onFalse(swerveSubsystem.setManualBumpLock(false));
-            if (fuelSubsystem != null) {
-                operatorController.a().onTrue(fuelSubsystem.addCurrentDataToShooterMap());
-            }
+            operatorController.x().whileTrue(swerveSubsystem.enableManualBumpLock());
         }
     }
 

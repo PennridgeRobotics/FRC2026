@@ -168,7 +168,7 @@ public class BumpManager {
         return bumpLockEnabledTrigger;
     }
 
-    public Command setManualBumpLock(final boolean locked) {
-        return Commands.runOnce(() -> manualBumpLock = locked);
+    public Command enableManualBumpLock() {
+        return Commands.startEnd(() -> manualBumpLock = true, () -> manualBumpLock = false);
     }
 }
