@@ -7,6 +7,7 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
+import edu.wpi.first.networktables.BooleanPublisher;
 import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.units.measure.AngularVelocity;
@@ -15,6 +16,7 @@ import edu.wpi.first.wpilibj.DriverStation;
 import frc.robot.util.enums.Constants.FieldConstants;
 import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 // Credits to
 // https://github.com/FRCTeam360/RainMaker26/blob/main/src/main/java/frc/robot/subsystems/Shooter/ShotCalculator.java
@@ -22,9 +24,12 @@ import org.jspecify.annotations.NullMarked;
 public class ShooterCalculator {
     private final Supplier<Pose2d> robotPoseSupplier;
     private final InterpolatingDoubleTreeMap shooterDistanceVelocityMap = new InterpolatingDoubleTreeMap();
+    private @Nullable ShotData cachedShotData;
+
     private final DoublePublisher shotDistancePublisher;
     private final DoublePublisher shotVelocityPublisher;
     private final DoublePublisher shotHeadingPublisher;
+    private final BooleanPublisher cachedPublisher;
 
     public ShooterCalculator(Supplier<Pose2d> robotPoseSupplier) {
         this.robotPoseSupplier = robotPoseSupplier;
@@ -39,9 +44,17 @@ public class ShooterCalculator {
         shotHeadingPublisher = NetworkTableInstance.getDefault()
                 .getDoubleTopic(topicPrefix + "Shot Heading")
                 .publish();
+        cachedPublisher = NetworkTableInstance.getDefault()
+                .getBooleanTopic(topicPrefix + "Used Cached Shot Data")
+                .publish();
     }
 
     public ShotData calculateVelocity() {
+        if (cachedShotData != null) {
+            cachedPublisher.set(true);
+            return cachedShotData;
+        }
+        cachedPublisher.set(false);
         final Pose2d robotPose = robotPoseSupplier.get();
         final Translation2d robotTranslation = robotPose.getTranslation();
         final Translation2d target = getTarget();
@@ -56,6 +69,7 @@ public class ShooterCalculator {
         shotDistancePublisher.set(shot.distance().in(Meters));
         shotVelocityPublisher.set(shot.velocity().in(RotationsPerSecond));
         shotHeadingPublisher.set(shot.heading().getDegrees());
+        cachedShotData = shot;
         return shot;
     }
 
@@ -74,6 +88,10 @@ public class ShooterCalculator {
             return FieldConstants.HUB_RED;
         }
         return FieldConstants.HUB_BLUE;
+    }
+
+    public void clearShotCache() {
+        cachedShotData = null;
     }
 
     public record ShotData(Distance distance, AngularVelocity velocity, Rotation2d heading) {}

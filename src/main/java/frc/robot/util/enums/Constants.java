@@ -1,15 +1,6 @@
 package frc.robot.util.enums;
 
-import static edu.wpi.first.units.Units.Amps;
-import static edu.wpi.first.units.Units.Degrees;
-import static edu.wpi.first.units.Units.DegreesPerSecond;
-import static edu.wpi.first.units.Units.DegreesPerSecondPerSecond;
-import static edu.wpi.first.units.Units.Inches;
-import static edu.wpi.first.units.Units.Meters;
-import static edu.wpi.first.units.Units.MetersPerSecond;
-import static edu.wpi.first.units.Units.MetersPerSecondPerSecond;
-import static edu.wpi.first.units.Units.Seconds;
-import static edu.wpi.first.units.Units.Volts;
+import static edu.wpi.first.units.Units.*;
 
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
@@ -21,15 +12,7 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
-import edu.wpi.first.units.measure.Angle;
-import edu.wpi.first.units.measure.AngularAcceleration;
-import edu.wpi.first.units.measure.AngularVelocity;
-import edu.wpi.first.units.measure.Current;
-import edu.wpi.first.units.measure.Distance;
-import edu.wpi.first.units.measure.LinearAcceleration;
-import edu.wpi.first.units.measure.LinearVelocity;
-import edu.wpi.first.units.measure.Time;
-import edu.wpi.first.units.measure.Voltage;
+import edu.wpi.first.units.measure.*;
 import frc.robot.lib.BLine.Path;
 import org.jspecify.annotations.NullMarked;
 import yams.gearing.MechanismGearing;
@@ -49,8 +32,8 @@ public final class Constants {
     public static final class PhysicalConstants { // TODO update length/width depending on bumper size
         public static final Distance ROBOT_LENGTH_X = Inches.of(26.5);
         public static final Distance ROBOT_WIDTH_Y = Inches.of(31.5);
-        public static final Distance WHEEL_CENTERS_DISTANCE_LENGTH = Inches.of(18.5);
-        public static final Distance WHEEL_CENTERS_DISTANCE_WIDTH = Inches.of(23.5);
+        public static final Distance WHEEL_CENTERS_DISTANCE_LENGTH_X = Inches.of(18.5);
+        public static final Distance WHEEL_CENTERS_DISTANCE_WIDTH_Y = Inches.of(23.5);
     }
 
     public static final class BLineConstants {
@@ -127,6 +110,15 @@ public final class Constants {
 
         public static final Current MOTOR_CURRENT_LIMIT = Amps.of(40);
 
+        public static final AngularVelocity INTAKE_VELOCITY_INTAKE_LAUNCHER = RotationsPerSecond.of(5);
+        public static final AngularVelocity INTAKE_VELOCITY_INDEXER = RotationsPerSecond.of(5);
+        public static final AngularVelocity EJECT_VELOCITY_INTAKE_LAUNCHER = RotationsPerSecond.of(-5);
+        public static final AngularVelocity EJECT_VELOCITY_INDEXER = RotationsPerSecond.of(-5);
+        public static final AngularVelocity LAUNCH_VELOCITY_INDEXER = RotationsPerSecond.of(-5);
+        public static final AngularVelocity WINDUP_VELOCITY_INDEXER = RotationsPerSecond.of(0);
+        // calculated velocity + LAUNCH_VELOCITY_TOLERANCE = velocity needed to finish winding up
+        public static final AngularVelocity LAUNCH_VELOCITY_TOLERANCE = RotationsPerSecond.of(0.0);
+
         public static final double INDEXER_INTAKING_PERCENT = -.8;
         public static final double INDEXER_LAUNCHING_PERCENT = 0.6;
         public static final double INDEXER_SPIN_UP_PRE_LAUNCH_PERCENT = -0.5;
@@ -140,7 +132,6 @@ public final class Constants {
         public static final Voltage LAUNCHING_INDEXER_VOLTAGE = Volts.of(9);
         public static final Voltage LAUNCHING_LAUNCHER_VOLTAGE = Volts.of(10.6);
         public static final Voltage SPIN_UP_INDEXER_VOLTAGE = Volts.of(-6);
-        public static final Time SPIN_UP_SECONDS = Seconds.of(1);
     }
 
     public static final class ClimberConstants {
@@ -149,7 +140,7 @@ public final class Constants {
         public static final int CLIMBER_MOTOR_ID = 9;
         public static final boolean CLIMBER_INVERTED = false;
         public static final MotorMode IDLE_MODE = MotorMode.BRAKE;
-        public static final MechanismGearing CLIMBER_GEARING = new MechanismGearing(100.0, 60.0 / 20, 28.0 / 10);
+        public static final MechanismGearing CLIMBER_GEARING = new MechanismGearing(80.0, 60.0 / 20, 28.0 / 10);
         public static final Current CURRENT_LIMIT = Amps.of(40);
         public static final Current STALL_CURRENT = Amps.of(10);
         public static final Time RAMP_RATE = Seconds.of(0.25);
@@ -173,14 +164,14 @@ public final class Constants {
         public static final AprilTagFieldLayout APRIL_TAGS =
                 AprilTagFieldLayout.loadField(AprilTagFields.k2026RebuiltWelded);
 
-        public static final Distance FIELD_LENGTH = Inches.of(651.22);
-        public static final Distance FIELD_WIDTH = Inches.of(317.69);
+        public static final Distance FIELD_LENGTH_X = Inches.of(651.22);
+        public static final Distance FIELD_WIDTH_Y = Inches.of(317.69);
 
         public static final Distance ALLIANCE_ZONE = Inches.of(156.61);
 
-        public static final Translation2d HUB_BLUE = new Translation2d(Inches.of(182.11), FIELD_WIDTH.div(2));
+        public static final Translation2d HUB_BLUE = new Translation2d(Inches.of(182.11), FIELD_WIDTH_Y.div(2));
         public static final Translation2d HUB_RED =
-                new Translation2d(FIELD_LENGTH.minus(Inches.of(182.11)), FIELD_WIDTH.div(2));
+                new Translation2d(FIELD_LENGTH_X.minus(Inches.of(182.11)), FIELD_WIDTH_Y.div(2));
 
         private static final Distance BUMP_X = Inches.of(182.11);
         private static final Distance BUMP_TO_EDGE_Y = Inches.of(50.35 + 12);
@@ -203,21 +194,21 @@ public final class Constants {
             new Rectangle2d(
                     new Translation2d(
                             BUMP_X.minus(BUMP_EXTENSION_X),
-                            FIELD_WIDTH.minus(BUMP_TO_EDGE_Y.plus(BUMP_LENGTH).minus(BUMP_CLEARANCE_Y))),
+                            FIELD_WIDTH_Y.minus(BUMP_TO_EDGE_Y.plus(BUMP_LENGTH).minus(BUMP_CLEARANCE_Y))),
                     new Translation2d(
-                            BUMP_X.plus(BUMP_EXTENSION_X), FIELD_WIDTH.minus(BUMP_TO_EDGE_Y.plus(BUMP_CLEARANCE_Y)))),
+                            BUMP_X.plus(BUMP_EXTENSION_X), FIELD_WIDTH_Y.minus(BUMP_TO_EDGE_Y.plus(BUMP_CLEARANCE_Y)))),
             new Rectangle2d(
                     new Translation2d(
-                            FIELD_LENGTH.minus(BUMP_X.plus(BUMP_EXTENSION_X)),
-                            FIELD_WIDTH.minus(BUMP_TO_EDGE_Y.plus(BUMP_LENGTH).minus(BUMP_CLEARANCE_Y))),
+                            FIELD_LENGTH_X.minus(BUMP_X.plus(BUMP_EXTENSION_X)),
+                            FIELD_WIDTH_Y.minus(BUMP_TO_EDGE_Y.plus(BUMP_LENGTH).minus(BUMP_CLEARANCE_Y))),
                     new Translation2d(
-                            FIELD_LENGTH.minus(BUMP_X.minus(BUMP_EXTENSION_X)),
-                            FIELD_WIDTH.minus(BUMP_TO_EDGE_Y.plus(BUMP_CLEARANCE_Y)))),
+                            FIELD_LENGTH_X.minus(BUMP_X.minus(BUMP_EXTENSION_X)),
+                            FIELD_WIDTH_Y.minus(BUMP_TO_EDGE_Y.plus(BUMP_CLEARANCE_Y)))),
             new Rectangle2d(
                     new Translation2d(
-                            FIELD_LENGTH.minus(BUMP_X.plus(BUMP_EXTENSION_X)), BUMP_TO_EDGE_Y.plus(BUMP_CLEARANCE_Y)),
+                            FIELD_LENGTH_X.minus(BUMP_X.plus(BUMP_EXTENSION_X)), BUMP_TO_EDGE_Y.plus(BUMP_CLEARANCE_Y)),
                     new Translation2d(
-                            FIELD_LENGTH.minus(BUMP_X.minus(BUMP_EXTENSION_X)),
+                            FIELD_LENGTH_X.minus(BUMP_X.minus(BUMP_EXTENSION_X)),
                             BUMP_TO_EDGE_Y.plus(BUMP_LENGTH).minus(BUMP_CLEARANCE_Y)))
         };
     }

@@ -4,7 +4,7 @@ Welcome to Ridge Robotics' repository for the FRC 2026 season!
 ## Controls
 | Button | Action |
 |--------|--------|
-| TBD    | TBD    |
+|        |        |
 
 ## LED Signals
 Note: Ordered by priority

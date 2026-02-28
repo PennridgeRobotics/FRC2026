@@ -1,9 +1,6 @@
 package frc.robot.subsystems;
 
-import static edu.wpi.first.units.Units.Meter;
-import static edu.wpi.first.units.Units.MetersPerSecond;
-import static edu.wpi.first.units.Units.MetersPerSecondPerSecond;
-import static edu.wpi.first.units.Units.RadiansPerSecond;
+import static edu.wpi.first.units.Units.*;
 
 import com.ctre.phoenix6.hardware.core.CorePigeon2;
 import edu.wpi.first.math.MathUtil;
@@ -22,6 +19,7 @@ import edu.wpi.first.wpilibj.Notifier;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.util.Color;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
@@ -32,10 +30,8 @@ import frc.robot.util.BumpManager;
 import frc.robot.util.SlewRateLimiter2d;
 import frc.robot.util.dashboard.PIDSendable;
 import frc.robot.util.dashboard.PIDSendable.PIDValues;
-import frc.robot.util.enums.Constants.BLineConstants;
-import frc.robot.util.enums.Constants.ControllerConstants;
-import frc.robot.util.enums.Constants.DriveConstants;
-import frc.robot.util.enums.Constants.VisionConstants;
+import frc.robot.util.enums.Constants.*;
+import frc.robot.util.enums.PositionCalibrationLocation;
 import frc.robot.vision.PhotonCamera;
 import frc.robot.vision.VisionManager;
 import java.io.File;
@@ -325,16 +321,30 @@ public class SwerveSubsystem extends SubsystemBase {
         return run(() -> setModuleOrientations(Rotation2d.kZero));
     }
 
-    public Command lockYawTowardsVelocity(final boolean lockEnabled) {
-        return runOnce(() -> lockYawTowardsVelocity = lockEnabled);
-    }
-
-    public Pose2d getPose() {
-        return swerveDrive.getPose();
+    public Command lockYawTowardsVelocity() {
+        return startEnd(() -> lockYawTowardsVelocity = true, () -> lockYawTowardsVelocity = false);
     }
 
     public Command setManualBumpLock(final boolean locked) {
         return bumpManager.setManualBumpLock(locked);
+    }
+
+    public Command resetPoseFromCalibrationPosition(PositionCalibrationLocation location) {
+        return Commands.run(() -> {
+            final var currentRot = getRobotPose().getRotation().getDegrees();
+            final var flip = DriverStation.getAlliance().orElse(null) == DriverStation.Alliance.Red;
+            final var invertXY = MathUtil.isNear(90.0, Math.abs(currentRot) % 180, 45.0);
+            var xPos = (invertXY ? PhysicalConstants.ROBOT_WIDTH_Y : PhysicalConstants.ROBOT_LENGTH_X).div(2);
+            var yPos = (invertXY ? PhysicalConstants.ROBOT_LENGTH_X : PhysicalConstants.ROBOT_WIDTH_Y).div(2);
+            if (location == PositionCalibrationLocation.LEFT_DEPOT && !flip) {
+                yPos = FieldConstants.FIELD_WIDTH_Y.minus(yPos);
+            }
+            if (flip) {
+                xPos = FieldConstants.FIELD_LENGTH_X.minus(xPos);
+            }
+            final Pose2d newPose = new Pose2d(xPos, yPos, getRobotPose().getRotation());
+            resetPose(newPose);
+        });
     }
 
     private Rotation2d getVelocityAngle() {
@@ -430,7 +440,7 @@ public class SwerveSubsystem extends SubsystemBase {
         return swerveDrive.kinematics;
     }
 
-    private Pose2d getRobotPose() {
+    public Pose2d getRobotPose() {
         return swerveDrive.getPose();
     }
 

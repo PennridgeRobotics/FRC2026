@@ -5,6 +5,7 @@ import static edu.wpi.first.units.Units.MetersPerSecond;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -20,6 +21,7 @@ import frc.robot.util.enums.Constants.ClimberConstants;
 import frc.robot.util.enums.Constants.ControllerConstants;
 import frc.robot.util.enums.Constants.FuelConstants;
 import frc.robot.util.enums.Constants.LightConstants;
+import frc.robot.util.enums.PositionCalibrationLocation;
 import java.io.IOException;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -55,7 +57,7 @@ public class RobotContainer {
                     "Error instantiating Swerve Subsystem: " + ex.getMessage(), finalException.getStackTrace());
             throw finalException;
         }
-        shooterCalculator = new ShooterCalculator(swerveSubsystem::getPose);
+        shooterCalculator = new ShooterCalculator(swerveSubsystem::getRobotPose);
         fuelSubsystem = FuelConstants.FUEL_SUBSYSTEM_ENABLED ? new FuelSubsystem(shooterCalculator) : null;
         climberSubsystem = ClimberConstants.CLIMBER_ENABLED ? new ClimberSubsystem() : null;
         lightsSubsystem = LightConstants.LIGHTS_ENABLED
@@ -97,6 +99,7 @@ public class RobotContainer {
                         () -> -driverController.getRightX(),
                         () -> -operatorController.getLeftX(),
                         () -> -operatorController.getLeftY()));
+                driverController.rightStick().whileTrue(swerveSubsystem.lockYawTowardsVelocity());
             } else {
                 swerveSubsystem.setDefaultCommand(swerveSubsystem.driveFieldOrientedHeadingCommand(
                         () -> -driverController.getLeftY(),
@@ -132,6 +135,14 @@ public class RobotContainer {
 
         if (operatorController != null) {
             operatorController.start().whileTrue(swerveSubsystem.straightenWheelsCommand());
+            operatorController
+                    .leftTrigger()
+                    .whileTrue(
+                            swerveSubsystem.resetPoseFromCalibrationPosition(PositionCalibrationLocation.LEFT_DEPOT));
+            operatorController
+                    .rightTrigger()
+                    .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
+                            PositionCalibrationLocation.RIGHT_OUTPOST));
             operatorController.x().onTrue(swerveSubsystem.setManualBumpLock(true));
             operatorController.x().onFalse(swerveSubsystem.setManualBumpLock(false));
             if (fuelSubsystem != null) {
@@ -141,4 +152,12 @@ public class RobotContainer {
     }
 
     public void initSmartDashboard() {}
+
+    public void preSchedulerUpdate() {
+        shooterCalculator.clearShotCache();
+    }
+
+    public void postSchedulerUpdate() {
+        NetworkTableInstance.getDefault().flush();
+    }
 }

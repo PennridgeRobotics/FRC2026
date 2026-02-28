@@ -15,6 +15,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.util.enums.Constants;
+import frc.robot.util.enums.Constants.PhysicalConstants;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
@@ -40,7 +41,8 @@ public class BumpManager {
         this.poseSupplier = poseSupplier;
 
         rawBumpLockEnabledTrigger = new Trigger(() -> rawBumpLockEnabled);
-        bumpLockEnabledTrigger = rawBumpLockEnabledTrigger.and(() -> !forceNormalDriveMode.getAsBoolean());
+        bumpLockEnabledTrigger =
+                rawBumpLockEnabledTrigger.or(() -> manualBumpLock).and(() -> !forceNormalDriveMode.getAsBoolean());
 
         inBumpZoneTrigger = new Trigger(this::isInBumpZone).debounce(0.1);
         inBumpZoneTrigger.onTrue(updateBumpLock(true, () -> "entered bump zone"));
@@ -108,10 +110,10 @@ public class BumpManager {
     }
 
     public Rotation2d getBumpLockAngle() {
-        final var botLength = Constants.PhysicalConstants.ROBOT_LENGTH_X.in(Meters);
-        final var botWidth = Constants.PhysicalConstants.ROBOT_WIDTH_Y.in(Meters);
+        final var botLength = PhysicalConstants.WHEEL_CENTERS_DISTANCE_LENGTH_X.in(Meters);
+        final var botWidth = PhysicalConstants.WHEEL_CENTERS_DISTANCE_WIDTH_Y.in(Meters);
 
-        final var angleDegrees = Math.toDegrees(Math.atan2(botWidth, botLength));
+        final var angleDegrees = Math.toDegrees(Math.atan2(botLength, botWidth));
 
         // candidates: +theta, -theta, 180 - theta, theta - 180 (normalized equivalents of the four diagonal directions)
         final double[] candidates = new double[] {

@@ -35,13 +35,13 @@ public class FuelSubsystem extends SubsystemBase {
     private FuelAction currentState;
     private final ShooterCalculator shooterCalculator;
 
-    private final Trigger launching;
-    private final Trigger ejecting;
-    private final Trigger intaking;
-    private final Trigger spinningUp;
+    private final Trigger launchingTrigger;
+    private final Trigger ejectingTrigger;
+    private final Trigger intakingTrigger;
+    private final Trigger windingUpTrigger;
 
-    private final SmartMotorController intakeLauncherMotorController;
-    private final SmartMotorController indexerMotorController;
+    private final SmartMotorController intakeLauncherController;
+    private final SmartMotorController indexerController;
 
     private final FlyWheel intakeLauncher;
     private final FlyWheel indexer;
@@ -85,55 +85,47 @@ public class FuelSubsystem extends SubsystemBase {
         new SparkWrapper(intakeLauncherRightSparkMax, DCMotor.getNEO(1), baseIntakeLauncherSMCConfig);
 
         intakeLauncherLeftSMCConfig.withFollowers(Pair.of(intakeLauncherRightSparkMax, true));
-        intakeLauncherMotorController =
+        intakeLauncherController =
                 new SparkWrapper(intakeLauncherLeftSparkMax, DCMotor.getNEO(2), intakeLauncherLeftSMCConfig);
-        indexerMotorController = new SparkWrapper(indexerSparkMax, DCMotor.getNEO(1), indexerSMCConfig);
+        indexerController = new SparkWrapper(indexerSparkMax, DCMotor.getNEO(1), indexerSMCConfig);
 
-        intakeLauncher = new FlyWheel(new FlyWheelConfig(intakeLauncherMotorController)
+        intakeLauncher = new FlyWheel(new FlyWheelConfig(intakeLauncherController)
                 .withDiameter(Inches.of(4))
                 .withTelemetry("LauncherMotor", TelemetryVerbosity.HIGH));
-        indexer = new FlyWheel(new FlyWheelConfig(indexerMotorController)
+        indexer = new FlyWheel(new FlyWheelConfig(indexerController)
                 .withDiameter(Inches.of(4))
                 .withTelemetry("IndexerMotor", TelemetryVerbosity.HIGH));
 
         setDefaultCommand(run(() -> {
             currentState = FuelAction.NONE;
-            intakeLauncherMotorController.setDutyCycle(0);
-            indexerMotorController.setDutyCycle(0);
+            intakeLauncherController.setDutyCycle(0);
+            indexerController.setDutyCycle(0);
         }));
         currentState = FuelAction.NONE;
-        launching = new Trigger(() -> currentState == FuelAction.LAUNCHING);
-        ejecting = new Trigger(() -> currentState == FuelAction.EJECTING);
-        intaking = new Trigger(() -> currentState == FuelAction.INTAKING);
-        spinningUp = new Trigger(() -> currentState == FuelAction.SPINNING_UP);
+        launchingTrigger = new Trigger(() -> currentState == FuelAction.LAUNCHING);
+        ejectingTrigger = new Trigger(() -> currentState == FuelAction.EJECTING);
+        intakingTrigger = new Trigger(() -> currentState == FuelAction.INTAKING);
+        windingUpTrigger = new Trigger(() -> currentState == FuelAction.WINDING_UP);
 
         setupSmartDashboard();
     }
 
     private void setupSmartDashboard() {
-        SmartDashboard.putNumber("Intaking indexer roller value", FuelConstants.INDEXER_INTAKING_PERCENT);
-        SmartDashboard.putNumber("Intaking intake roller value", FuelConstants.INTAKE_INTAKING_PERCENT);
-        SmartDashboard.putNumber("Launching indexer roller value", FuelConstants.INDEXER_LAUNCHING_PERCENT);
-        SmartDashboard.putNumber("Launching launcher roller value", FuelConstants.LAUNCHING_LAUNCHER_PERCENT);
         SmartDashboard.putData("Intake/Launcher", (builder) -> {
             builder.addDoubleProperty(
                     "Velocity", () -> intakeLauncher.getSpeed().in(RotationsPerSecond), null);
             builder.addDoubleProperty(
-                    "DutyCycle",
-                    intakeLauncherMotorController::getDutyCycle,
-                    intakeLauncherMotorController::setDutyCycle);
+                    "DutyCycle", intakeLauncherController::getDutyCycle, intakeLauncherController::setDutyCycle);
         });
         SmartDashboard.putData("Indexer", (builder) -> {
             builder.addDoubleProperty("Velocity", () -> indexer.getSpeed().in(RotationsPerSecond), null);
-            builder.addDoubleProperty(
-                    "DutyCycle", indexerMotorController::getDutyCycle, indexerMotorController::setDutyCycle);
+            builder.addDoubleProperty("DutyCycle", indexerController::getDutyCycle, indexerController::setDutyCycle);
         });
         SmartDashboard.putData(
                 "Intake/Launcher PID",
-                new PIDSendable(intakeLauncherMotorController, PIDSendable.Type.PID | PIDSendable.Type.BASE_FF));
+                new PIDSendable(intakeLauncherController, PIDSendable.Type.PID | PIDSendable.Type.BASE_FF));
         SmartDashboard.putData(
-                "Indexer PID",
-                new PIDSendable(indexerMotorController, PIDSendable.Type.PID | PIDSendable.Type.BASE_FF));
+                "Indexer PID", new PIDSendable(indexerController, PIDSendable.Type.PID | PIDSendable.Type.BASE_FF));
         SmartDashboard.putData(
                 "Fuel Subsystem",
                 (builder) -> builder.addStringProperty("Current State", () -> currentState.toString(), null));
@@ -142,61 +134,62 @@ public class FuelSubsystem extends SubsystemBase {
     public Command eject() {
         return run(() -> {
             currentState = FuelAction.EJECTING;
-            intakeLauncherMotorController.setDutyCycle(
-                    -1 * SmartDashboard.getNumber("Intaking intake roller value", FuelConstants.INTAKE_EJECT_PERCENT));
-            indexerMotorController.setDutyCycle(
-                    SmartDashboard.getNumber("Intaking intake roller value", FuelConstants.INDEXER_LAUNCHING_PERCENT));
+            intakeLauncherController.setVelocity(FuelConstants.EJECT_VELOCITY_INTAKE_LAUNCHER);
+            indexerController.setVelocity(FuelConstants.EJECT_VELOCITY_INDEXER);
         });
     }
 
     public Command intake() {
         return run(() -> {
             currentState = FuelAction.INTAKING;
-            intakeLauncherMotorController.setDutyCycle(
-                    SmartDashboard.getNumber("Intaking intake roller value", FuelConstants.INTAKE_INTAKING_PERCENT));
-            indexerMotorController.setDutyCycle(
-                    SmartDashboard.getNumber("Intaking indexer roller value", FuelConstants.INDEXER_INTAKING_PERCENT));
+            intakeLauncherController.setVelocity(FuelConstants.INTAKE_VELOCITY_INTAKE_LAUNCHER);
+            indexerController.setVelocity(FuelConstants.INTAKE_VELOCITY_INDEXER);
         });
     }
 
     public Command launch() {
         return run(() -> {
             currentState = FuelAction.LAUNCHING;
-            intakeLauncherMotorController.setDutyCycle(SmartDashboard.getNumber(
-                    "Launching launcher roller value", FuelConstants.LAUNCHING_LAUNCHER_PERCENT));
-            indexerMotorController.setDutyCycle(SmartDashboard.getNumber(
-                    "Launching indexer roller value", FuelConstants.INDEXER_LAUNCHING_PERCENT));
+            intakeLauncherController.setVelocity(
+                    shooterCalculator.calculateVelocity().velocity());
+            indexerController.setVelocity(FuelConstants.LAUNCH_VELOCITY_INDEXER);
         });
     }
 
-    public Command spinUp() {
+    public Command windUp() {
         return run(() -> {
-            currentState = FuelAction.SPINNING_UP;
-            intakeLauncherMotorController.setDutyCycle(SmartDashboard.getNumber(
-                    "Launching launcher roller value", FuelConstants.LAUNCHING_LAUNCHER_PERCENT));
-            indexerMotorController.setDutyCycle(SmartDashboard.getNumber(
-                    "Launching spin-up indexer value", FuelConstants.INDEXER_SPIN_UP_PRE_LAUNCH_PERCENT));
+            currentState = FuelAction.WINDING_UP;
+            intakeLauncherController.setVelocity(
+                    shooterCalculator.calculateVelocity().velocity());
+            indexerController.setVelocity(FuelConstants.WINDUP_VELOCITY_INDEXER);
         });
     }
 
-    public Command launchSequence() {
-        return Commands.sequence(spinUp().withTimeout(FuelConstants.SPIN_UP_SECONDS), launch());
+    public Command windUpAndLaunch() {
+        return Commands.sequence(
+                windUp().until(() -> intakeLauncherController
+                        .getMechanismVelocity()
+                        .gte(shooterCalculator
+                                .calculateVelocity()
+                                .velocity()
+                                .plus(FuelConstants.LAUNCH_VELOCITY_TOLERANCE))),
+                launch());
     }
 
     public Trigger isLaunchingTrigger() {
-        return launching;
+        return launchingTrigger;
     }
 
     public Trigger isIntakingTrigger() {
-        return intaking;
+        return intakingTrigger;
     }
 
     public Trigger isEjectingTrigger() {
-        return ejecting;
+        return ejectingTrigger;
     }
 
-    public Trigger isSpinningUpTrigger() {
-        return spinningUp;
+    public Trigger isWindingUpTrigger() {
+        return windingUpTrigger;
     }
 
     public Command addCurrentDataToShooterMap() {
@@ -229,7 +222,7 @@ public class FuelSubsystem extends SubsystemBase {
         EJECTING,
         LAUNCHING,
         INTAKING,
-        SPINNING_UP,
+        WINDING_UP,
         NONE
     };
 }
