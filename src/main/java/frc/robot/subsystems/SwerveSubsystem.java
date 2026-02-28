@@ -1,6 +1,9 @@
 package frc.robot.subsystems;
 
-import static edu.wpi.first.units.Units.*;
+import static edu.wpi.first.units.Units.Meter;
+import static edu.wpi.first.units.Units.MetersPerSecond;
+import static edu.wpi.first.units.Units.MetersPerSecondPerSecond;
+import static edu.wpi.first.units.Units.RadiansPerSecond;
 
 import com.ctre.phoenix6.hardware.core.CorePigeon2;
 import edu.wpi.first.math.MathUtil;
@@ -31,7 +34,12 @@ import frc.robot.util.BumpManager;
 import frc.robot.util.SlewRateLimiter2d;
 import frc.robot.util.dashboard.PIDSendable;
 import frc.robot.util.dashboard.PIDSendable.PIDValues;
-import frc.robot.util.enums.Constants.*;
+import frc.robot.util.enums.Constants.BLineConstants;
+import frc.robot.util.enums.Constants.ControllerConstants;
+import frc.robot.util.enums.Constants.DriveConstants;
+import frc.robot.util.enums.Constants.FieldConstants;
+import frc.robot.util.enums.Constants.PhysicalConstants;
+import frc.robot.util.enums.Constants.VisionConstants;
 import frc.robot.util.enums.PositionCalibrationLocation;
 import frc.robot.vision.PhotonCamera;
 import frc.robot.vision.VisionManager;
@@ -122,6 +130,11 @@ public class SwerveSubsystem extends SubsystemBase {
                         swerveDrive.swerveController.thetaController,
                         PIDSendable.Type.PID,
                         PIDValues.from(swerveDrive.swerveController.thetaController)));
+    }
+
+    @Override
+    public void periodic() {
+        bumpManager.periodic();
     }
 
     private void updateOdometry() {
@@ -273,7 +286,7 @@ public class SwerveSubsystem extends SubsystemBase {
         if (alliance.isEmpty()) {
             return;
         }
-        final var shouldFlip = alliance.get() == Alliance.Red;
+        final var shouldFlip = DriverStation.getAlliance().orElse(null) == DriverStation.Alliance.Red;
         final var adjustedXVelocity = shouldFlip ? xVelocity.unaryMinus() : xVelocity;
         final var adjustedYVelocity = shouldFlip ? yVelocity.unaryMinus() : yVelocity;
         final Translation2d limitedLinearVelocity = linearDriveLimiter.calculate(
@@ -393,11 +406,30 @@ public class SwerveSubsystem extends SubsystemBase {
             final var invertXY = MathUtil.isNear(90.0, Math.abs(currentRot) % 180, 45.0);
             var xPos = (invertXY ? PhysicalConstants.ROBOT_WIDTH_Y : PhysicalConstants.ROBOT_LENGTH_X).div(2);
             var yPos = (invertXY ? PhysicalConstants.ROBOT_LENGTH_X : PhysicalConstants.ROBOT_WIDTH_Y).div(2);
-            if (location == PositionCalibrationLocation.LEFT_DEPOT && !flip) {
-                yPos = FieldConstants.FIELD_WIDTH_Y.minus(yPos);
+
+            switch (location) {
+                case LEFT_DEPOT_CORNER -> yPos = FieldConstants.FIELD_WIDTH_Y.minus(yPos);
+                case RIGHT_OUTPOST_CORNER -> {} // (0, 0) is the top-right corner
+                case LEFT_TRENCH_INNER -> {
+                    xPos = FieldConstants.TRENCH_X.minus(xPos);
+                    yPos = FieldConstants.FIELD_WIDTH_Y
+                            .minus(FieldConstants.TRENCH_TO_EDGE_Y)
+                            .plus(yPos);
+                }
+                case RIGHT_TRENCH_INNER -> {
+                    xPos = FieldConstants.TRENCH_X.minus(xPos);
+                    yPos = FieldConstants.TRENCH_TO_EDGE_Y.minus(yPos);
+                }
+                case LEFT_TRENCH_OUTER -> {
+                    xPos = FieldConstants.TRENCH_X.minus(xPos);
+                    yPos = FieldConstants.FIELD_WIDTH_Y.minus(yPos);
+                }
+                case RIGHT_TRENCH_OUTER -> xPos = FieldConstants.TRENCH_X.minus(xPos);
             }
+
             if (flip) {
                 xPos = FieldConstants.FIELD_LENGTH_X.minus(xPos);
+                yPos = FieldConstants.FIELD_WIDTH_Y.minus(yPos);
             }
             final Pose2d newPose = new Pose2d(xPos, yPos, getRobotPose().getRotation());
             resetPose(newPose);

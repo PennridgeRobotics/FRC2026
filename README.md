@@ -19,12 +19,11 @@ X   B
 | Button    | Action                           |
 |-----------|----------------------------------|
 | Start     | Straighten Wheels                |
-| L Trigger | Calibrate left corner (depot)    |
-| R Trigger | Calibrate right corner (outpost) |
+| L Bumper  | Calibrate left corner (depot)    |
+| R Bumper  | Calibrate right corner (outpost) |
+| L Trigger | Calibrate left trench (outer)    |
+| R Trigger | Calibrate right trench (outer)   |
 | X         | Manual bump lock                 |
-|           |                                  |
-|           |                                  |
-|           |                                  |
 
 ## LED Signals
 Note: Ordered by priority

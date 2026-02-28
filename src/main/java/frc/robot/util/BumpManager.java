@@ -10,6 +10,7 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.networktables.BooleanPublisher;
+import edu.wpi.first.networktables.BooleanSubscriber;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
@@ -23,6 +24,7 @@ import org.jspecify.annotations.Nullable;
 public class BumpManager {
     private boolean rawBumpLockEnabled; // doesn't take into account forceNormalDriveMode
     private boolean manualBumpLock;
+    private boolean autoBumpLockPermitted = true;
 
     private final Trigger inBumpZoneTrigger;
     private final Trigger onBumpTrigger;
@@ -30,8 +32,11 @@ public class BumpManager {
     private final Trigger rawBumpLockEnabledTrigger; // doesn't take into account forceNormalDriveMode
     private final Trigger bumpLockEnabledTrigger; // takes into account forceNormalDriveMode
     private final Trigger manualBumpLockTrigger;
+    private final Trigger autoBumpLockPermittedTrigger;
 
     private final Supplier<Pose2d> poseSupplier;
+
+    private final BooleanSubscriber autoBumpLockPermittedSubscriber;
 
     public BumpManager(
             CorePigeon2 pigeon2,
@@ -40,9 +45,14 @@ public class BumpManager {
             BooleanSupplier forceNormalDriveMode) {
         this.poseSupplier = poseSupplier;
 
+        manualBumpLockTrigger = new Trigger(() -> manualBumpLock);
+        autoBumpLockPermittedTrigger = new Trigger(() -> autoBumpLockPermitted);
+
         rawBumpLockEnabledTrigger = new Trigger(() -> rawBumpLockEnabled);
-        bumpLockEnabledTrigger =
-                rawBumpLockEnabledTrigger.or(() -> manualBumpLock).and(() -> !forceNormalDriveMode.getAsBoolean());
+        bumpLockEnabledTrigger = rawBumpLockEnabledTrigger
+                .and(autoBumpLockPermittedTrigger)
+                .or(() -> manualBumpLock)
+                .and(() -> !forceNormalDriveMode.getAsBoolean());
 
         inBumpZoneTrigger = new Trigger(this::isInBumpZone).debounce(0.1);
         inBumpZoneTrigger.onTrue(updateBumpLock(true, () -> "entered bump zone"));
@@ -66,7 +76,6 @@ public class BumpManager {
                 updateBumpLock(false, () -> inBumpZoneTrigger.getAsBoolean() ? "no longer on bump" : null));
 
         bumpLockOverriddenTrigger = rawBumpLockEnabledTrigger.and(forceNormalDriveMode);
-        manualBumpLockTrigger = new Trigger(() -> manualBumpLock);
 
         final var topicPrefix = "Bump/";
         final BooleanPublisher inBumpZonePublisher = NetworkTableInstance.getDefault()
@@ -87,12 +96,22 @@ public class BumpManager {
         final BooleanPublisher manualBumpLockPublisher = NetworkTableInstance.getDefault()
                 .getBooleanTopic(topicPrefix + "Manual Bump Lock")
                 .publish();
+        final BooleanPublisher autoBumpLockPermittedPublisher = NetworkTableInstance.getDefault()
+                .getBooleanTopic(topicPrefix + "Automatic Bump Lock Permitted")
+                .publish();
         linkTriggerToPublisher(inBumpZoneTrigger, inBumpZonePublisher);
         linkTriggerToPublisher(onBumpTrigger, onBumpPublisher);
         linkTriggerToPublisher(bumpLockOverriddenTrigger, bumpLockOverriddenPublisher);
         linkTriggerToPublisher(rawBumpLockEnabledTrigger, rawBumpLockEnabledPublisher);
         linkTriggerToPublisher(bumpLockEnabledTrigger, bumpLockEnabledPublisher);
         linkTriggerToPublisher(manualBumpLockTrigger, manualBumpLockPublisher);
+        linkTriggerToPublisher(autoBumpLockPermittedTrigger, autoBumpLockPermittedPublisher);
+        autoBumpLockPermittedSubscriber =
+                autoBumpLockPermittedPublisher.getTopic().subscribe(autoBumpLockPermitted);
+    }
+
+    public void periodic() {
+        autoBumpLockPermitted = autoBumpLockPermittedSubscriber.get();
     }
 
     private void linkTriggerToPublisher(Trigger trigger, BooleanPublisher publisher) {

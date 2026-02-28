@@ -7,6 +7,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.subsystems.ClimberSubsystem;
 import frc.robot.subsystems.FuelSubsystem;
 import frc.robot.subsystems.LightsSubsystem;
@@ -41,6 +42,9 @@ public class RobotContainer {
 
     private final SendableChooser<Command> autoChooser;
 
+    private boolean useOdometry = true;
+    private final Trigger useOdometryTrigger = new Trigger(() -> useOdometry);
+
     /** The container for the robot. Contains subsystems, I/O devices, and commands. */
     public RobotContainer() {
         try {
@@ -67,6 +71,9 @@ public class RobotContainer {
 
         // Add the auto chooser to SmartDashboard
         SmartDashboard.putData("Auto Chooser", autoChooser);
+        SmartDashboard.putData(
+                "RobotContainer",
+                builder -> builder.addBooleanProperty("Use Odometry", () -> useOdometry, v -> useOdometry = v));
     }
 
     private void setupPathPlanner() {}
@@ -116,12 +123,20 @@ public class RobotContainer {
             operatorController.start().whileTrue(swerveSubsystem.straightenWheelsCommand());
             operatorController
                     .leftTrigger()
-                    .whileTrue(
-                            swerveSubsystem.resetPoseFromCalibrationPosition(PositionCalibrationLocation.LEFT_DEPOT));
+                    .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
+                            PositionCalibrationLocation.LEFT_TRENCH_OUTER));
+            operatorController
+                    .leftBumper()
+                    .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
+                            PositionCalibrationLocation.LEFT_DEPOT_CORNER));
             operatorController
                     .rightTrigger()
                     .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
-                            PositionCalibrationLocation.RIGHT_OUTPOST));
+                            PositionCalibrationLocation.RIGHT_TRENCH_OUTER));
+            operatorController
+                    .rightBumper()
+                    .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
+                            PositionCalibrationLocation.RIGHT_OUTPOST_CORNER));
             operatorController.x().whileTrue(swerveSubsystem.enableManualBumpLock());
         }
     }

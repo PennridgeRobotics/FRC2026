@@ -30,8 +30,8 @@ import yams.motorcontrollers.SmartMotorControllerConfig.MotorMode;
 public final class Constants {
 
     public static final class PhysicalConstants { // TODO update length/width depending on bumper size
-        public static final Distance ROBOT_LENGTH_X = Inches.of(26.5);
-        public static final Distance ROBOT_WIDTH_Y = Inches.of(31.5);
+        public static final Distance ROBOT_LENGTH_X = Inches.of(18.5 /*26.5*/);
+        public static final Distance ROBOT_WIDTH_Y = Inches.of(23.5 /*31.5*/);
         public static final Distance WHEEL_CENTERS_DISTANCE_LENGTH_X = Inches.of(18.5);
         public static final Distance WHEEL_CENTERS_DISTANCE_WIDTH_Y = Inches.of(23.5);
     }
@@ -173,8 +173,11 @@ public final class Constants {
         public static final Translation2d HUB_RED =
                 new Translation2d(FIELD_LENGTH_X.minus(Inches.of(182.11)), FIELD_WIDTH_Y.div(2));
 
+        public static final Distance TRENCH_X = Inches.of(182.11 - (3.5 / 2.0)); // account for trench bar width
+        public static final Distance TRENCH_TO_EDGE_Y = Inches.of(50.35);
+
         private static final Distance BUMP_X = Inches.of(182.11);
-        private static final Distance BUMP_TO_EDGE_Y = Inches.of(50.35 + 12);
+        private static final Distance BUMP_TO_EDGE_Y = TRENCH_TO_EDGE_Y.plus(Inches.of(12));
         private static final Distance BUMP_LENGTH = Inches.of(73);
 
         // 3.5 feet away from robot width
