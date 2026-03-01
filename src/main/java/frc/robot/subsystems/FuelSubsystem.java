@@ -7,6 +7,7 @@ import static edu.wpi.first.units.Units.*;
 
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
+import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.math.system.plant.DCMotor;
@@ -50,24 +51,23 @@ public class FuelSubsystem extends SubsystemBase {
     private final FlyWheel indexer;
 
     private boolean useCustomVelocity;
-    private AngularVelocity customVelocity = RotationsPerSecond.zero();
 
-    private boolean intakeLauncherClosedLoop = false;
+    private AngularVelocity intakeLauncherCustomVelocity = RotationsPerSecond.of(40.0);
+    private AngularVelocity intakeCustomVelocity = RotationsPerSecond.of(20.0);
+    private AngularVelocity indexerCustomVelocity = RotationsPerSecond.of(-16.0);
     private Voltage intakeLauncherCustomVoltage = Volts.zero();
 
     public FuelSubsystem(ShooterCalculator shooterCalculator) {
         this.shooterCalculator = shooterCalculator;
 
-        final var baseIntakeLauncherSMCConfig = new SmartMotorControllerConfig(this)
+        final var followerIntakeLauncherSMCConfig = new SmartMotorControllerConfig(this)
                 .withGearing(FuelConstants.INTAKE_LAUNCHER_GEARING)
                 .withOpenLoopRampRate(FuelConstants.INTAKE_LAUNCHER_RAMP_RATE)
                 .withMotorInverted(FuelConstants.INTAKE_LAUNCHER_INVERTED)
                 .withVoltageCompensation(FuelConstants.INTAKE_LAUNCHER_VOLTAGE_COMP)
                 .withIdleMode(FuelConstants.INTAKE_LAUNCHER_MOTOR_MODE)
                 .withStatorCurrentLimit(FuelConstants.INTAKE_LAUNCHER_CURRENT_LIMIT)
-                .withFeedforward(new SimpleMotorFeedforward(0.0, 0.0))
-                .withClosedLoopController(new PIDController(0.0, 0.0, 0.0))
-                .withControlMode(ControlMode.CLOSED_LOOP);
+                .withControlMode(ControlMode.OPEN_LOOP);
         final var intakeLauncherLeftSMCConfig = new SmartMotorControllerConfig(this)
                 .withGearing(FuelConstants.INTAKE_LAUNCHER_GEARING)
                 .withOpenLoopRampRate(FuelConstants.INTAKE_LAUNCHER_RAMP_RATE)
@@ -75,14 +75,14 @@ public class FuelSubsystem extends SubsystemBase {
                 .withVoltageCompensation(FuelConstants.INTAKE_LAUNCHER_VOLTAGE_COMP)
                 .withIdleMode(FuelConstants.INTAKE_LAUNCHER_MOTOR_MODE)
                 .withStatorCurrentLimit(FuelConstants.INTAKE_LAUNCHER_CURRENT_LIMIT)
-                .withFeedforward(new SimpleMotorFeedforward(0.0, 0.0))
-                .withClosedLoopController(new PIDController(0.0, 0.0, 0.0))
-                .withControlMode(ControlMode.OPEN_LOOP)
-                .withMotorInverted(false)
+                .withFeedforward(new SimpleMotorFeedforward(0.37, 0.1805))
+                .withClosedLoopController(new PIDController(0.01, 0.0, 0.3))
+                .withControlMode(ControlMode.CLOSED_LOOP)
+                .withMotorInverted(true)
                 .withTelemetry("LauncherMotor", TelemetryVerbosity.HIGH);
         final var indexerSMCConfig = new SmartMotorControllerConfig(this)
-                .withFeedforward(new SimpleMotorFeedforward(0.0, 0.0))
-                .withClosedLoopController(new PIDController(0.0, 0.0, 0.0))
+                .withFeedforward(new SimpleMotorFeedforward(0.3, 0.17))
+                .withClosedLoopController(new PIDController(0.01, 0.0, 0.0))
                 .withControlMode(ControlMode.CLOSED_LOOP)
                 .withTelemetry("IndexerMotor", TelemetryVerbosity.HIGH)
                 .withGearing(FuelConstants.INDEXER_GEARING)
@@ -91,6 +91,7 @@ public class FuelSubsystem extends SubsystemBase {
                 .withVoltageCompensation(FuelConstants.INDEXER_VOLTAGE_COMP)
                 .withIdleMode(FuelConstants.INDEXER_MOTOR_MODE)
                 .withStatorCurrentLimit(FuelConstants.INDEXER_CURRENT_LIMIT)
+                .withMotorInverted(true)
                 .withFollowers();
 
         final var intakeLauncherLeftSparkMax =
@@ -100,9 +101,9 @@ public class FuelSubsystem extends SubsystemBase {
         final var indexerSparkMax = new SparkMax(FuelConstants.INDEXER_MOTOR_ID, MotorType.kBrushless);
 
         // apply config
-        new SparkWrapper(intakeLauncherRightSparkMax, DCMotor.getNEO(1), baseIntakeLauncherSMCConfig);
+        new SparkWrapper(intakeLauncherRightSparkMax, DCMotor.getNEO(1), followerIntakeLauncherSMCConfig);
 
-        // intakeLauncherLeftSMCConfig.withFollowers(Pair.of(intakeLauncherRightSparkMax, false));
+        intakeLauncherLeftSMCConfig.withFollowers(Pair.of(intakeLauncherRightSparkMax, true));
         intakeLauncherController =
                 new SparkWrapper(intakeLauncherLeftSparkMax, DCMotor.getNEO(2), intakeLauncherLeftSMCConfig);
         indexerController = new SparkWrapper(indexerSparkMax, DCMotor.getNEO(1), indexerSMCConfig);
@@ -131,9 +132,7 @@ public class FuelSubsystem extends SubsystemBase {
     public Command setCustomVoltage() {
         return Commands.runOnce(intakeLauncherController::stopClosedLoopController)
                 .andThen(intakeLauncher.setVoltage(() -> intakeLauncherCustomVoltage))
-                .finallyDo(() -> {
-                    if (intakeLauncherClosedLoop) intakeLauncherController.startClosedLoopController();
-                });
+                .finallyDo(intakeLauncherController::startClosedLoopController);
     }
 
     private void setupSmartDashboard() {
@@ -148,19 +147,22 @@ public class FuelSubsystem extends SubsystemBase {
                     "Custom Voltage",
                     () -> intakeLauncherCustomVoltage.in(Volts),
                     v -> intakeLauncherCustomVoltage = Volts.of(v));
-            builder.addBooleanProperty("Closed Loop Control", () -> intakeLauncherClosedLoop, v -> {
-                if (v) {
-                    intakeLauncherClosedLoop = true;
-                    intakeLauncherController.startClosedLoopController();
-                } else {
-                    intakeLauncherClosedLoop = false;
-                    intakeLauncherController.stopClosedLoopController();
-                }
-            });
+            builder.addDoubleProperty(
+                    "Custom Shooter Velocity",
+                    () -> intakeLauncherCustomVelocity.in(RotationsPerSecond),
+                    v -> intakeLauncherCustomVelocity = RotationsPerSecond.of(v));
+            builder.addDoubleProperty(
+                    "Custom Intake Velocity",
+                    () -> intakeCustomVelocity.in(RotationsPerSecond),
+                    v -> intakeCustomVelocity = RotationsPerSecond.of(v));
         });
         SmartDashboard.putData("Indexer", (builder) -> {
             builder.addDoubleProperty("Velocity", () -> indexer.getSpeed().in(RotationsPerSecond), null);
             builder.addDoubleProperty("DutyCycle", indexerController::getDutyCycle, indexerController::setDutyCycle);
+            builder.addDoubleProperty(
+                    "Custom Velocity",
+                    () -> indexerCustomVelocity.in(RotationsPerSecond),
+                    v -> indexerCustomVelocity = RotationsPerSecond.of(v));
         });
         SmartDashboard.putData(
                 "Intake/Launcher PID",
@@ -169,10 +171,6 @@ public class FuelSubsystem extends SubsystemBase {
                 "Indexer PID", new PIDSendable(indexerController, PIDSendable.Type.PID | PIDSendable.Type.BASE_FF));
         SmartDashboard.putData("Fuel Subsystem", (builder) -> {
             builder.addStringProperty("Current State", () -> currentState.toString(), null);
-            builder.addDoubleProperty(
-                    "Shooter Velocity",
-                    () -> customVelocity.in(RotationsPerSecond),
-                    v -> customVelocity = RotationsPerSecond.of(v));
         });
         SmartDashboard.putData(
                 "Fuel Subsystem/Launcher Mode",
@@ -196,8 +194,8 @@ public class FuelSubsystem extends SubsystemBase {
     public Command intake() {
         return run(() -> {
             currentState = FuelAction.INTAKING;
-            intakeLauncherController.setVelocity(FuelConstants.INTAKE_VELOCITY_INTAKE_LAUNCHER);
-            indexerController.setVelocity(FuelConstants.INTAKE_VELOCITY_INDEXER);
+            intakeLauncherController.setVelocity(getIntakeVelocity());
+            indexerController.setVelocity(getIndexerIntakeVelocity());
         });
     }
 
@@ -217,10 +215,18 @@ public class FuelSubsystem extends SubsystemBase {
         });
     }
 
+    private AngularVelocity getIntakeVelocity() {
+        return useCustomVelocity ? intakeCustomVelocity : FuelConstants.INTAKE_VELOCITY_INTAKE_LAUNCHER;
+    }
+
     private AngularVelocity getShooterVelocity() {
         return useCustomVelocity
-                ? customVelocity
+                ? intakeLauncherCustomVelocity
                 : shooterCalculator.calculateVelocity().velocity();
+    }
+
+    private AngularVelocity getIndexerIntakeVelocity() {
+        return useCustomVelocity ? indexerCustomVelocity : FuelConstants.INTAKE_VELOCITY_INDEXER;
     }
 
     public Command windUpAndLaunch() {

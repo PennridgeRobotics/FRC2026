@@ -30,10 +30,13 @@ import yams.motorcontrollers.SmartMotorControllerConfig.MotorMode;
 public final class Constants {
 
     public static final class PhysicalConstants { // TODO update length/width depending on bumper size
-        public static final Distance ROBOT_LENGTH_X = Inches.of(18.5 /*26.5*/);
-        public static final Distance ROBOT_WIDTH_Y = Inches.of(23.5 /*31.5*/);
-        public static final Distance WHEEL_CENTERS_DISTANCE_LENGTH_X = Inches.of(18.5);
-        public static final Distance WHEEL_CENTERS_DISTANCE_WIDTH_Y = Inches.of(23.5);
+        public static final Distance ROBOT_LENGTH_X = Inches.of(18.5 /*26.5*/); // 0.6731m
+        public static final Distance ROBOT_WIDTH_Y = Inches.of(23.5 /*31.5*/); // 0.8001m
+        public static final Distance WHEEL_CENTERS_DISTANCE_LENGTH_X = Inches.of(18.5); // 0.4699m
+        public static final Distance WHEEL_CENTERS_DISTANCE_WIDTH_Y = Inches.of(23.5); // 0.5969m
+        public static final Distance ROBOT_TRENCH_BACK_OFFSET = Inches.of(4.88);
+        public static final Distance ROBOT_TRENCH_FRONT_OFFSET = Inches.of(0.875);
+        public static final Distance ROBOT_WIDTH_Y_TRENCH = ROBOT_WIDTH_Y.minus(Inches.of(4.6 * 2));
     }
 
     public static final class BLineConstants {
@@ -113,24 +116,10 @@ public final class Constants {
         public static final AngularVelocity INTAKE_VELOCITY_INDEXER = RotationsPerSecond.of(5);
         public static final AngularVelocity EJECT_VELOCITY_INTAKE_LAUNCHER = RotationsPerSecond.of(-5);
         public static final AngularVelocity EJECT_VELOCITY_INDEXER = RotationsPerSecond.of(-5);
-        public static final AngularVelocity LAUNCH_VELOCITY_INDEXER = RotationsPerSecond.of(-5);
-        public static final AngularVelocity WINDUP_VELOCITY_INDEXER = RotationsPerSecond.of(0);
+        public static final AngularVelocity LAUNCH_VELOCITY_INDEXER = RotationsPerSecond.of(10);
+        public static final AngularVelocity WINDUP_VELOCITY_INDEXER = RotationsPerSecond.of(-0.5);
         // calculated velocity + LAUNCH_VELOCITY_TOLERANCE = velocity needed to finish winding up
-        public static final AngularVelocity LAUNCH_VELOCITY_TOLERANCE = RotationsPerSecond.of(0.0);
-
-        public static final double INDEXER_INTAKING_PERCENT = -.8;
-        public static final double INDEXER_LAUNCHING_PERCENT = 0.6;
-        public static final double INDEXER_SPIN_UP_PRE_LAUNCH_PERCENT = -0.5;
-
-        public static final double INTAKE_INTAKING_PERCENT = 0.6;
-        public static final double LAUNCHING_LAUNCHER_PERCENT = .85;
-        public static final double INTAKE_EJECT_PERCENT = -0.8;
-
-        public static final Voltage INTAKE_INDEXER_VOLTAGE = Volts.of(-12);
-        public static final Voltage INTAKE_INTAKE_VOLTAGE = Volts.of(10);
-        public static final Voltage LAUNCHING_INDEXER_VOLTAGE = Volts.of(9);
-        public static final Voltage LAUNCHING_LAUNCHER_VOLTAGE = Volts.of(10.6);
-        public static final Voltage SPIN_UP_INDEXER_VOLTAGE = Volts.of(-6);
+        public static final AngularVelocity LAUNCH_VELOCITY_TOLERANCE = RotationsPerSecond.of(-0.5);
     }
 
     public static final class ClimberConstants {
@@ -218,5 +207,9 @@ public final class Constants {
     public static class LightConstants {
         public static final boolean LIGHTS_ENABLED = false;
         public static final int CANDLE_ID = 16;
+    }
+
+    public static class MiscConstants {
+        public static final int POWER_DISTRIBUTION_HUB_ID = 14;
     }
 }

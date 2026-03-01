@@ -58,6 +58,7 @@ Note: Ordered by priority
 | Intake/Launcher Right Motor | 11     |
 | Indexer Motor               | 12     |
 | Pigeon 2                    | 13     |
+| Power Distribution Hub      | 14     |
 | CANdle (LEDs)               | 16     |
 
 ## Development
