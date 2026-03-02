@@ -13,6 +13,7 @@ import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.units.measure.AngularVelocity;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
@@ -199,6 +200,20 @@ public class FuelSubsystem extends SubsystemBase {
             currentState = FuelAction.LAUNCH;
             intakeLauncherController.setVelocity(getShooterVelocity());
             indexerController.setVelocity(launchVelocityIndexer.get());
+        });
+    }
+
+    public Command launchAll() {
+        Timer timer = new Timer();
+        return launch().until(() -> {
+            if (!timer.hasElapsed(4)) {
+                return false;
+            } else if (intakeLauncherController
+                    .getMechanismVelocity()
+                    .gt(getShooterVelocity().minus(RotationsPerSecond.of(20)))) {
+                return true;
+            }
+            return false;
         });
     }
 
