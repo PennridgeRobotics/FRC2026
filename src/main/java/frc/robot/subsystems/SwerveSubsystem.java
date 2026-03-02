@@ -92,7 +92,6 @@ public class SwerveSubsystem extends SubsystemBase {
         bumpManager = new BumpManager(
                 getPigeon2(), swerveDrive::getGyroRotation3d, this::getRobotPose, forceNormalDriveModeTrigger);
 
-
         setupVisionManager();
         pathBuilder = setupBLine();
         autoManager = new AutoManager(this, pathBuilder);
