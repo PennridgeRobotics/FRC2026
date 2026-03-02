@@ -76,6 +76,8 @@ public class RobotContainer {
         setupPathPlanner();
 
         configureBindings();
+
+        initSmartDashboard();
     }
 
     private void setupPathPlanner() {}
@@ -122,7 +124,7 @@ public class RobotContainer {
         driverController.y().whileTrue(swerveSubsystem.faceTowardsHubCommand());
 
         if (operatorController != null) {
-            operatorController.start().whileTrue(swerveSubsystem.straightenWheelsCommand());
+            // operatorController.start().whileTrue(swerveSubsystem.straightenWheelsCommand());
             operatorController
                     .leftTrigger()
                     .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
@@ -146,6 +148,7 @@ public class RobotContainer {
             operatorController.a().whileTrue(fuelSubsystem.intake());
             operatorController.y().whileTrue(fuelSubsystem.eject());
             operatorController.b().whileTrue(fuelSubsystem.windUpAndLaunch());
+            operatorController.start().whileTrue(fuelSubsystem.unJam());
         }
     }
 

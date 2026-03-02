@@ -56,9 +56,9 @@ public class FuelSubsystem extends SubsystemBase {
     private boolean useCustomVelocity;
 
     private final Supplier<AngularVelocity> ejectVelocityIntakeLauncher =
-            new LoggedNetworkUnit<>("Eject Velocity Intake-Launcher", FuelConstants.INTAKE_VELOCITY_INTAKE_LAUNCHER);
+            new LoggedNetworkUnit<>("Eject Velocity Intake-Launcher", FuelConstants.EJECT_VELOCITY_INTAKE_LAUNCHER);
     private final Supplier<AngularVelocity> ejectVelocityIndexer =
-            new LoggedNetworkUnit<>("Eject Velocity Indexer", FuelConstants.INTAKE_VELOCITY_INDEXER);
+            new LoggedNetworkUnit<>("Eject Velocity Indexer", FuelConstants.EJECT_VELOCITY_INDEXER);
     private final Supplier<AngularVelocity> unJamVelocityIntakeLauncher =
             new LoggedNetworkUnit<>("Unjam Velocity Intake-Launcher", FuelConstants.UNJAM_VELOCITY_INTAKE_LAUNCHER);
     private final Supplier<AngularVelocity> unJamVelocityIndexer =
