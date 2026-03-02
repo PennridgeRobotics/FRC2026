@@ -18,6 +18,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
+import frc.robot.util.dashboard.MultiMotorInfoSendable;
 import frc.robot.util.dashboard.PIDSendable;
 import frc.robot.util.enums.Constants.ClimberConstants;
 import org.jspecify.annotations.NullMarked;
@@ -38,7 +39,7 @@ public class ClimberSubsystem extends SubsystemBase {
     private final Trigger climbingTrigger = new Trigger(() -> isClimbing);
     private boolean closedLoopEnabled = true;
 
-    public ClimberSubsystem() {
+    public ClimberSubsystem(MultiMotorInfoSendable motorInfo) {
         final var motorConfig = new SmartMotorControllerConfig()
                 .withMotorInverted(ClimberConstants.CLIMBER_INVERTED)
                 .withIdleMode(ClimberConstants.IDLE_MODE)
@@ -56,6 +57,8 @@ public class ClimberSubsystem extends SubsystemBase {
                 .withStartingPosition(ClimberConstants.MINIMUM_ANGLE)
                 .withTelemetry("ClimberArm", TelemetryVerbosity.HIGH));
 
+        motorInfo.addMotor(sparkMaxMotor, "Climber");
+
         setupSmartDashboard();
     }
 
@@ -69,12 +72,6 @@ public class ClimberSubsystem extends SubsystemBase {
                 else motorController.stopClosedLoopController();
                 closedLoopEnabled = v;
             });
-            builder.addDoubleProperty(
-                    "Voltage",
-                    () -> motorController.getVoltage().in(Volts),
-                    (v) -> motorController.setVoltage(Volts.of(v)));
-            builder.addDoubleProperty(
-                    "Current", () -> motorController.getStatorCurrent().in(Amps), null);
             builder.addDoubleProperty("Angle", () -> climber.getAngle().in(Degrees), null);
         });
     }

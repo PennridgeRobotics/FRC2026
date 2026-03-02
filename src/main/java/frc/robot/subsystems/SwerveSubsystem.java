@@ -1,18 +1,13 @@
 package frc.robot.subsystems;
 
-import static edu.wpi.first.units.Units.DegreesPerSecond;
-import static edu.wpi.first.units.Units.Meter;
-import static edu.wpi.first.units.Units.MetersPerSecond;
-import static edu.wpi.first.units.Units.MetersPerSecondPerSecond;
-import static edu.wpi.first.units.Units.RadiansPerSecond;
+import static edu.wpi.first.units.Units.*;
 
 import com.ctre.phoenix6.hardware.core.CorePigeon2;
+import com.revrobotics.spark.SparkMax;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
-import edu.wpi.first.math.filter.Debouncer.DebounceType;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
@@ -20,11 +15,13 @@ import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj.Notifier;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.util.Color;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
@@ -32,24 +29,22 @@ import frc.robot.Robot;
 import frc.robot.classes.AutoManager;
 import frc.robot.lib.BLine.FollowPath;
 import frc.robot.lib.BLine.Path;
+import frc.robot.util.BumpManager;
 import frc.robot.util.SlewRateLimiter2d;
+import frc.robot.util.dashboard.MultiMotorInfoSendable;
 import frc.robot.util.dashboard.PIDSendable;
 import frc.robot.util.dashboard.PIDSendable.PIDValues;
-import frc.robot.util.enums.Constants.BLineConstants;
-import frc.robot.util.enums.Constants.ControllerConstants;
-import frc.robot.util.enums.Constants.DriveConstants;
-import frc.robot.util.enums.Constants.FieldConstants;
-import frc.robot.util.enums.Constants.VisionConstants;
-import frc.robot.util.enums.DriveMode;
+import frc.robot.util.enums.Constants.*;
+import frc.robot.util.enums.PositionCalibrationLocation;
 import frc.robot.vision.PhotonCamera;
 import frc.robot.vision.VisionManager;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
-import org.jspecify.annotations.Nullable;
 import swervelib.SwerveDrive;
 import swervelib.SwerveDriveTest;
 import swervelib.math.SwerveMath;
@@ -60,71 +55,83 @@ import swervelib.telemetry.SwerveDriveTelemetry;
 public class SwerveSubsystem extends SubsystemBase {
     private final SwerveDrive swerveDrive;
     private VisionManager visionManager;
+    private final BumpManager bumpManager;
+    private final MultiMotorInfoSendable motorInfo;
 
-    private DriveMode currentDriveMode = DriveMode.NORMAL; // does NOT account for forceNormalDriveMode
     private boolean forceNormalDriveMode = false;
+    private boolean lockYawTowardsVelocity = false;
+    private boolean faceTowardsHub = false;
 
-    private final Trigger inBumpZone;
-    private final Trigger onBump;
-    private final Trigger bumpLockOverridden;
+    private final Trigger forceNormalDriveModeTrigger = new Trigger(() -> forceNormalDriveMode);
 
     private final PIDController bLineTranslationPID = new PIDController(5.0, 0, 0);
     private final PIDController bLineRotationPID = new PIDController(3.0, 0, 0);
     private final PIDController bLineCrossTrackPID = new PIDController(2.0, 0, 0);
-
     private final FollowPath.Builder pathBuilder;
-
     private final AutoManager autoManager;
 
     private final SlewRateLimiter2d linearDriveLimiter =
             new SlewRateLimiter2d(DriveConstants.MAX_LINEAR_ACCELERATION.in(MetersPerSecondPerSecond));
 
     @SuppressWarnings("StaticAssignmentInConstructor")
-    public SwerveSubsystem() throws IOException {
+    public SwerveSubsystem(final MultiMotorInfoSendable motorInfo) throws IOException {
+        this.motorInfo = motorInfo;
         SwerveDriveTelemetry.verbosity = SwerveDriveTelemetry.TelemetryVerbosity.HIGH;
         swerveDrive = new SwerveParser(
                         new File(Filesystem.getDeployDirectory(), DriveConstants.SWERVE_CONFIG_DIRECTORY))
                 .createSwerveDrive(
                         DriveConstants.MAX_LINEAR_SPEED.in(MetersPerSecond),
                         new Pose2d(new Translation2d(Meter.of(2), Meter.of(0)), Rotation2d.kZero));
-        swerveDrive.setHeadingCorrection(false); // enable this after testing/tuning PID
+        swerveDrive.setHeadingCorrection(true); // enable this after testing/tuning PID
         swerveDrive.setCosineCompensator(!SwerveDriveTelemetry.isSimulation); // disable for simulations
         swerveDrive.setAngularVelocityCompensation(true, true, 0.1); // may need to adjust; see docs
         // swerveDrive.useExternalFeedbackSensor();
         swerveDrive.setModuleEncoderAutoSynchronize(false, 1); // can set to true, but I want to test
-        swerveDrive.setMotorIdleMode(true);
+        // swerveDrive.setMotorIdleMode(true);
 
-        inBumpZone = new Trigger(this::isInBumpZone).debounce(0.1);
-        inBumpZone.onTrue(updateDriveMode(DriveMode.BUMP_LOCK, () -> "entered bump zone"));
-        inBumpZone.onFalse(updateDriveMode(DriveMode.NORMAL, () -> "left bump zone"));
+        bumpManager = new BumpManager(
+                getPigeon2(), swerveDrive::getGyroRotation3d, this::getRobotPose, forceNormalDriveModeTrigger);
 
-        onBump = inBumpZone
-                .and(() -> {
-                    final var rotation3d = swerveDrive.getGyroRotation3d();
-                    final var angle =
-                            Math.toDegrees(new Rotation3d(rotation3d.getX(), rotation3d.getY(), 0).getAngle());
-                    final var rollVel = Math.abs(getPigeon2()
-                            .getAngularVelocityXWorld(false)
-                            .getValue()
-                            .in(DegreesPerSecond));
-                    final var pitchVel = Math.abs(getPigeon2()
-                            .getAngularVelocityYWorld(false)
-                            .getValue()
-                            .in(DegreesPerSecond));
-                    final var angularVelocity = Math.hypot(rollVel, pitchVel);
-                    return angle > 7.0 || (angle > 2.0 && angularVelocity > 50);
-                })
-                .debounce(0.25, DebounceType.kBoth);
-        onBump.onTrue(runOnce(() -> System.out.println("on bump")));
-        onBump.onFalse(updateDriveMode(DriveMode.NORMAL, () -> inBumpZone.getAsBoolean() ? "no longer on bump" : null));
 
-        bumpLockOverridden = new Trigger(() -> currentDriveMode == DriveMode.BUMP_LOCK && forceNormalDriveMode);
-
-        
         setupVisionManager();
         pathBuilder = setupBLine();
         autoManager = new AutoManager(this, pathBuilder);
         initSmartDashboard();
+    }
+
+    private void initSmartDashboard() {
+        final var moduleNames = List.of("Front-Left", "Front-Right", "Back-Right", "Back-Left");
+        for (int i = 0; i < swerveDrive.getModules().length; i++) {
+            final var swerveModule = swerveDrive.getModules()[i];
+            motorInfo.addMotor((SparkMax) swerveModule.getDriveMotor().getMotor(), moduleNames.get(i) + " Drive");
+            motorInfo.addMotor((SparkMax) swerveModule.getAngleMotor().getMotor(), moduleNames.get(i) + " Angle");
+        }
+        SmartDashboard.putData("Swerve Subsystem", builder -> {
+            builder.addStringProperty(
+                    "Bump Status",
+                    () -> {
+                        if (!bumpManager.isRawBumpLockEnabledTrigger().getAsBoolean()) return Color.kLime.toHexString();
+                        if (bumpManager.isOnBumpTrigger().getAsBoolean()) return Color.kRed.toHexString();
+                        return Color.kYellow.toHexString(); // in bump area, but not on the bump itself
+                    },
+                    null);
+            builder.addBooleanProperty(
+                    "Driver Overrides/Force Normal Drive Mode",
+                    () -> forceNormalDriveMode,
+                    v -> forceNormalDriveMode = v);
+            builder.addBooleanProperty(
+                    "Driver Overrides/Lock Yaw Towards Velocity",
+                    () -> lockYawTowardsVelocity,
+                    v -> lockYawTowardsVelocity = v);
+            builder.addBooleanProperty(
+                    "Driver Overrides/Face Towards Hub", () -> faceTowardsHub, v -> faceTowardsHub = v);
+        });
+        SmartDashboard.putData(
+                "Swerve Controller Heading PID",
+                new PIDSendable(
+                        swerveDrive.swerveController.thetaController,
+                        PIDSendable.Type.PID,
+                        PIDValues.from(swerveDrive.swerveController.thetaController)));
     }
 
     private void updateOdometry() {
@@ -201,62 +208,65 @@ public class SwerveSubsystem extends SubsystemBase {
         return run(() -> driveFieldOriented(xVelocity.get(), yVelocity.get(), getTargetAngularVelocity(heading.get())));
     }
 
-    public Command centerModulesCommand() {
-        return run(() -> Arrays.asList(swerveDrive.getModules()).forEach(mod -> mod.setAngle(0.0)));
-    }
+    /**
+     * Command to drive the robot using translative values and heading as angular velocity.
+     *
+     * @param translationX Translation in the X direction.
+     * @param translationY Translation in the Y direction.
+     * @param angularRotationX Rotation of the robot to set
+     * @return Drive command.
+     */
+    public Command driveRobotOrientedCommand(
+            DoubleSupplier translationX, DoubleSupplier translationY, DoubleSupplier angularRotationX) {
+        return run(() -> {
+            // Make the robot move
+            final var chassisSpeeds = new ChassisSpeeds(
+                    translationX.getAsDouble() * swerveDrive.getMaximumChassisVelocity(),
+                    translationY.getAsDouble() * swerveDrive.getMaximumChassisVelocity(),
+                    angularRotationX.getAsDouble() * swerveDrive.getMaximumChassisAngularVelocity());
 
-    public Command lockPoseCommand() {
-        return run(swerveDrive::lockPose);
-    }
+            final var fieldOriented = ChassisSpeeds.fromRobotRelativeSpeeds(
+                    chassisSpeeds, getRobotPose().getRotation());
+            driveFieldOriented(
+                    MetersPerSecond.of(fieldOriented.vxMetersPerSecond),
+                    MetersPerSecond.of(fieldOriented.vyMetersPerSecond),
+                    RadiansPerSecond.of(fieldOriented.omegaRadiansPerSecond));
 
-    public Command sysIdDriveMotorCommand() {
-        // Empty config defaults to 1 Volt/sec ramp rate and 7 Volt step voltage
-        return SwerveDriveTest.generateSysIdCommand(
-                SwerveDriveTest.setDriveSysIdRoutine(new SysIdRoutine.Config(), this, swerveDrive, 12, true),
-                3.0,
-                5.0,
-                3.0);
-    }
-
-    public Command sysIdAngleMotorCommand() {
-        return SwerveDriveTest.generateSysIdCommand(
-                SwerveDriveTest.setAngleSysIdRoutine(new SysIdRoutine.Config(), this, swerveDrive), 3.0, 5.0, 3.0);
-    }
-
-    public Command updateDriveMode(DriveMode newMode, @Nullable Supplier<@Nullable String> cause) {
-        return runOnce(() -> {
-            if (cause != null && cause.get() != null) {
-                System.out.println("Updated drive mode to " + newMode + " (" + cause.get() + ")");
+            /*if (lockYawTowardsVelocity && !forceNormalDriveMode) {
+                chassisSpeeds.omegaRadiansPerSecond = getVelocityAngle(
+                                MetersPerSecond.of(chassisSpeeds.vxMetersPerSecond),
+                                MetersPerSecond.of(chassisSpeeds.vyMetersPerSecond))
+                        .getRadians();
             }
-            currentDriveMode = newMode;
+            swerveDrive.drive(chassisSpeeds, false, new Translation2d());*/
         });
     }
 
-    public Command updateDriveMode(DriveMode newMode) {
-        return updateDriveMode(newMode, null);
-    }
-
-    public Command forceNormalDriveMode(boolean force) {
-        return runOnce(() -> forceNormalDriveMode = force);
-    }
-
-    public void zeroGyroWithAlliance() {
-        swerveDrive.zeroGyro();
-        if (DriverStation.Alliance.Red.equals(DriverStation.getAlliance().orElse(null))) {
-            swerveDrive.resetOdometry(new Pose2d(getRobotPose().getTranslation(), Rotation2d.k180deg));
-        }
-    }
-
-    public Trigger isInBumpZoneTrigger() {
-        return inBumpZone;
-    }
-
-    public Trigger isOnBumpTrigger() {
-        return onBump;
-    }
-
-    public Trigger isBumpLockOverriddenTrigger() {
-        return bumpLockOverridden;
+    /**
+     * @param xInput [-1,1] Positive = towards the other alliance
+     * @param yInput [-1,1] Positive = towards the left wall
+     * @param angularInput [-1,1] Positive = CCW
+     * @param headingX [-1,1] Heading X (positive = front) - OVERRIDES {@code angularInput}
+     * @param headingY [-1,1] Heading Y (positive = left) - OVERRIDES {@code angularInput}
+     */
+    public Command driveFieldAndRobotOrientedCommand(
+            final DoubleSupplier xInput,
+            final DoubleSupplier yInput,
+            final DoubleSupplier angularInput,
+            final DoubleSupplier headingX,
+            final DoubleSupplier headingY) {
+        return run(() -> {
+            final var xVelocity = joystickToLinearVelocity(xInput.getAsDouble());
+            final var yVelocity = joystickToLinearVelocity(yInput.getAsDouble());
+            final var headingXValue = headingX.getAsDouble();
+            final var headingYValue = headingY.getAsDouble();
+            if (!swerveDrive.swerveController.withinHypotDeadband(headingXValue, headingYValue)) {
+                driveFieldOriented(xVelocity, yVelocity, headingXValue, headingYValue);
+                return;
+            }
+            final var angularVelocity = joystickToAngularVelocity(angularInput.getAsDouble());
+            driveFieldOriented(xVelocity, yVelocity, angularVelocity);
+        });
     }
 
     private void driveFieldOriented(
@@ -273,19 +283,27 @@ public class SwerveSubsystem extends SubsystemBase {
         if (alliance.isEmpty()) {
             return;
         }
-        final var shouldFlip = alliance.get() == DriverStation.Alliance.Red;
+        final var shouldFlip = DriverStation.getAlliance().orElse(null) == DriverStation.Alliance.Red;
         final var adjustedXVelocity = shouldFlip ? xVelocity.unaryMinus() : xVelocity;
         final var adjustedYVelocity = shouldFlip ? yVelocity.unaryMinus() : yVelocity;
         final Translation2d limitedLinearVelocity = linearDriveLimiter.calculate(
                 adjustedXVelocity.in(MetersPerSecond), adjustedYVelocity.in(MetersPerSecond));
-        final double finalAngularVelocity =
-                switch (getActualDriveMode()) {
-                    case NORMAL -> angularVelocity.in(RadiansPerSecond);
-                    case BUMP_LOCK ->
-                        getTargetAngularVelocity(getBumpLockAngle()).in(RadiansPerSecond);
-                };
-        swerveDrive.driveFieldOriented(
-                new ChassisSpeeds(limitedLinearVelocity.getX(), limitedLinearVelocity.getY(), finalAngularVelocity));
+        final AngularVelocity finalAngularVelocity;
+        if (forceNormalDriveMode) {
+            finalAngularVelocity = angularVelocity;
+        } else if (faceTowardsHub) {
+            finalAngularVelocity = getTargetAngularVelocity(getAngleToHub());
+        } else if (lockYawTowardsVelocity) {
+            finalAngularVelocity = getTargetAngularVelocity(getVelocityAngle(
+                    MetersPerSecond.of(limitedLinearVelocity.getX()),
+                    MetersPerSecond.of(limitedLinearVelocity.getY())));
+        } else if (bumpManager.isBumpLockEnabledTrigger().getAsBoolean()) {
+            finalAngularVelocity = getTargetAngularVelocity(bumpManager.getBumpLockAngle());
+        } else {
+            finalAngularVelocity = angularVelocity;
+        }
+        swerveDrive.driveFieldOriented(new ChassisSpeeds(
+                limitedLinearVelocity.getX(), limitedLinearVelocity.getY(), finalAngularVelocity.in(RadiansPerSecond)));
     }
 
     public Command driveFieldOrientedTestCommand(
@@ -309,6 +327,124 @@ public class SwerveSubsystem extends SubsystemBase {
         });
     }
 
+    public Command centerModulesCommand() {
+        return run(() -> Arrays.asList(swerveDrive.getModules()).forEach(mod -> mod.setAngle(0.0)));
+    }
+
+    public Command lockPoseCommand() {
+        return run(swerveDrive::lockPose);
+    }
+
+    public Command sysIdDriveMotorCommand() {
+        // Empty config defaults to 1 Volt/sec ramp rate and 7 Volt step voltage
+        return SwerveDriveTest.generateSysIdCommand(
+                SwerveDriveTest.setDriveSysIdRoutine(new SysIdRoutine.Config(), this, swerveDrive, 12, true),
+                3.0,
+                5.0,
+                3.0);
+    }
+
+    public Command sysIdAngleMotorCommand() {
+        return SwerveDriveTest.generateSysIdCommand(
+                SwerveDriveTest.setAngleSysIdRoutine(new SysIdRoutine.Config(), this, swerveDrive), 3.0, 5.0, 3.0);
+    }
+
+    public Command forceNormalDriveMode(boolean force) {
+        return runOnce(() -> forceNormalDriveMode = force);
+    }
+
+    public void zeroGyroWithAlliance() {
+        swerveDrive.zeroGyro();
+        if (Alliance.Red.equals(DriverStation.getAlliance().orElse(null))) {
+            swerveDrive.resetOdometry(new Pose2d(getRobotPose().getTranslation(), Rotation2d.k180deg));
+        }
+    }
+
+    public Trigger isInBumpZoneTrigger() {
+        return bumpManager.isInBumpZoneTrigger();
+    }
+
+    public Trigger isOnBumpTrigger() {
+        return bumpManager.isOnBumpTrigger();
+    }
+
+    public Trigger isBumpLockOverriddenTrigger() {
+        return bumpManager.isBumpLockOverriddenTrigger();
+    }
+
+    public Command faceTowardsHubCommand() {
+        return Commands.startEnd(() -> faceTowardsHub = true, () -> faceTowardsHub = false);
+    }
+
+    public Rotation2d getAngleToHub() {
+        final var hubLoc = DriverStation.getAlliance().orElse(null) == Alliance.Red
+                ? FieldConstants.HUB_RED
+                : FieldConstants.HUB_BLUE;
+        final var currentLoc = getRobotPose().getTranslation();
+        return hubLoc.minus(currentLoc).getAngle();
+    }
+
+    public Command straightenWheelsCommand() {
+        return Commands.run(() -> setModuleOrientations(Rotation2d.kZero));
+    }
+
+    public Command lockYawTowardsVelocity() {
+        return Commands.startEnd(() -> lockYawTowardsVelocity = true, () -> lockYawTowardsVelocity = false);
+    }
+
+    public Command enableManualBumpLock() {
+        return bumpManager.enableManualBumpLock();
+    }
+
+    public Command resetPoseFromCalibrationPosition(PositionCalibrationLocation location) {
+        return Commands.run(() -> {
+            final var currentRot = getRobotPose().getRotation().getDegrees();
+            final var flip = DriverStation.getAlliance().orElse(null) == Alliance.Red;
+            final var invertXY = MathUtil.isNear(90.0, Math.abs(currentRot) % 180, 45.0);
+            var xPos = (invertXY ? PhysicalConstants.ROBOT_WIDTH_Y : PhysicalConstants.ROBOT_LENGTH_X).div(2);
+            var yPos = (invertXY ? PhysicalConstants.ROBOT_LENGTH_X : PhysicalConstants.ROBOT_WIDTH_Y).div(2);
+
+            switch (location) {
+                case LEFT_DEPOT_CORNER -> yPos = FieldConstants.FIELD_WIDTH_Y.minus(yPos);
+                case RIGHT_OUTPOST_CORNER -> {} // (0, 0) is the top-right corner
+                case LEFT_TRENCH_INNER -> {
+                    xPos = FieldConstants.TRENCH_X.minus(xPos);
+                    yPos = FieldConstants.FIELD_WIDTH_Y
+                            .minus(FieldConstants.TRENCH_TO_EDGE_Y)
+                            .plus(yPos);
+                }
+                case RIGHT_TRENCH_INNER -> {
+                    xPos = FieldConstants.TRENCH_X.minus(xPos);
+                    yPos = FieldConstants.TRENCH_TO_EDGE_Y.minus(yPos);
+                }
+                case LEFT_TRENCH_OUTER -> {
+                    xPos = FieldConstants.TRENCH_X.minus(xPos);
+                    yPos = FieldConstants.FIELD_WIDTH_Y.minus(yPos);
+                }
+                case RIGHT_TRENCH_OUTER -> xPos = FieldConstants.TRENCH_X.minus(xPos);
+            }
+
+            if (flip) {
+                xPos = FieldConstants.FIELD_LENGTH_X.minus(xPos);
+                yPos = FieldConstants.FIELD_WIDTH_Y.minus(yPos);
+            }
+            final Pose2d newPose = new Pose2d(xPos, yPos, getRobotPose().getRotation());
+            resetPose(newPose);
+        });
+    }
+
+    private Rotation2d getVelocityAngle() {
+        final var fieldVelocity = swerveDrive.getFieldVelocity();
+        return getVelocityAngle(
+                MetersPerSecond.of(fieldVelocity.vxMetersPerSecond),
+                MetersPerSecond.of(fieldVelocity.vyMetersPerSecond));
+    }
+
+    private Rotation2d getVelocityAngle(LinearVelocity xVelocity, LinearVelocity yVelocity) {
+        final double velocityAngle = Math.atan2(yVelocity.in(MetersPerSecond), xVelocity.in(MetersPerSecond));
+        return Rotation2d.fromRadians(velocityAngle);
+    }
+
     private AngularVelocity getTargetAngularVelocity(Rotation2d targetAngle) {
         final var currentHeading = swerveDrive.getOdometryHeading().getRadians();
         final var targetHeading = targetAngle.getRadians();
@@ -322,10 +458,7 @@ public class SwerveSubsystem extends SubsystemBase {
     }
 
     private Rotation2d calculateTargetAngle(double headingX, double headingY) {
-        return Rotation2d.fromRadians(
-                swerveDrive.swerveController.withinHypotDeadband(headingX, headingY)
-                        ? swerveDrive.swerveController.lastAngleScalar
-                        : Math.atan2(headingX, headingY));
+        return Rotation2d.fromRadians(swerveDrive.swerveController.getJoystickAngle(headingX, headingY));
     }
 
     private LinearVelocity joystickToLinearVelocity(final double input) {
@@ -365,26 +498,6 @@ public class SwerveSubsystem extends SubsystemBase {
                 .withPoseReset(this::resetPose);
     }
 
-    private void initSmartDashboard() {
-        SmartDashboard.putData("Swerve Subsystem", builder -> {
-            builder.addStringProperty("Drive Mode", currentDriveMode::getFriendlyName, null);
-            builder.addStringProperty(
-                    "Bump Status",
-                    () -> {
-                        if (currentDriveMode == DriveMode.NORMAL) return Color.kLime.toHexString();
-                        if (onBump.getAsBoolean()) return Color.kRed.toHexString();
-                        return Color.kYellow.toHexString(); // in bump area, but not on the bump itself
-                    },
-                    null);
-        });
-        SmartDashboard.putData(
-                "Swerve Controller Heading PID",
-                new PIDSendable(
-                        swerveDrive.swerveController.thetaController,
-                        PIDSendable.Type.PID,
-                        PIDValues.from(swerveDrive.swerveController.thetaController)));
-    }
-
     private void resetPose(Pose2d pose) {
         swerveDrive.resetOdometry(pose);
     }
@@ -393,7 +506,7 @@ public class SwerveSubsystem extends SubsystemBase {
         return swerveDrive.kinematics;
     }
 
-    private Pose2d getRobotPose() {
+    public Pose2d getRobotPose() {
         return swerveDrive.getPose();
     }
 
@@ -426,33 +539,8 @@ public class SwerveSubsystem extends SubsystemBase {
                 VisionConstants.CAMERA_1_ROTATION));
     }
 
-    // check every 45° angle to find the quickest one that we can rotate to
-    private Rotation2d getBumpLockAngle() {
-        for (int angle = -135; angle < 180; angle += 90) {
-            if (Math.abs(MathUtil.inputModulus(getRobotPose().getRotation().getDegrees() - angle, -180, 180)) <= 45) {
-                return Rotation2d.fromDegrees(angle);
-            }
-        }
-        return Rotation2d.kZero;
-    }
-
-    private boolean isInBumpZone() {
-        final var pose = getRobotPose().getTranslation();
-        for (var zone : FieldConstants.BUMP_ZONES) {
-            if (zone.contains(pose)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     private CorePigeon2 getPigeon2() {
         return (CorePigeon2) swerveDrive.getGyro().getIMU();
-    }
-
-    private DriveMode getActualDriveMode() {
-        if (forceNormalDriveMode) return DriveMode.NORMAL;
-        return currentDriveMode;
     }
 
     public AutoManager getAutoManager() {

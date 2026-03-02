@@ -2,7 +2,7 @@
 bline-lib = "0.7.2"
 caffeine = "3.2.3"
 error-prone = "2.42.0"
-error-prone-plugin = "5.0.0"
+error-prone-plugin = "5.1.0"
 gradle-rio = "2026.2.1"
 jspecify = "1.0.0"
 junit = "6.0.3"
