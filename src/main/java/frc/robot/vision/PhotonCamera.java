@@ -280,8 +280,8 @@ public class PhotonCamera extends Camera {
         double x = pose2d.getX();
         double y = pose2d.getY();
 
-        double fieldLength = FieldConstants.FIELD_LENGTH.in(Meters);
-        double fieldWidth = FieldConstants.FIELD_WIDTH.in(Meters);
+        double fieldLength = FieldConstants.FIELD_LENGTH_X.in(Meters);
+        double fieldWidth = FieldConstants.FIELD_WIDTH_Y.in(Meters);
         final double FIELD_MARGIN = 0.5;
 
         return !(x < -FIELD_MARGIN)

@@ -25,6 +25,7 @@ import com.ctre.phoenix6.signals.StripTypeValue;
 import com.ctre.phoenix6.signals.VBatOutputModeValue;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.MatchType;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.util.Color;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -69,6 +70,8 @@ public class LightsSubsystem extends SubsystemBase {
         CommandScheduler.getInstance().schedule(chooserCommand);
 
         addRules();
+
+        SmartDashboard.putData("CANdle", candle);
     }
 
     private void addRules() {

@@ -2,9 +2,28 @@
 Welcome to Ridge Robotics' repository for the FRC 2026 season!
 
 ## Controls
-| Button | Action |
-|--------|--------|
-| TBD    | TBD    |
+Layout:
+```
+  Y
+X   B
+  A
+```
+### Driver
+| Button              | Action                    |
+|---------------------|---------------------------|
+| Left Stick          | Drive (field-oriented)    |
+| Right Stick         | Rotate (robot-oriented)   |
+| Right Stick (press) | Lock yaw towards velocity |
+| Y                   | Face towards hub          |
+### Operator
+| Button    | Action                           |
+|-----------|----------------------------------|
+| Start     | Straighten Wheels                |
+| L Bumper  | Calibrate left corner (depot)    |
+| R Bumper  | Calibrate right corner (outpost) |
+| L Trigger | Calibrate left trench (outer)    |
+| R Trigger | Calibrate right trench (outer)   |
+| X         | Manual bump lock                 |
 
 ## LED Signals
 Note: Ordered by priority
@@ -39,6 +58,7 @@ Note: Ordered by priority
 | Intake/Launcher Right Motor | 11     |
 | Indexer Motor               | 12     |
 | Pigeon 2                    | 13     |
+| Power Distribution Hub      | 14     |
 | CANdle (LEDs)               | 16     |
 
 ## Development
