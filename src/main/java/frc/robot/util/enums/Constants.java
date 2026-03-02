@@ -102,18 +102,19 @@ public final class Constants {
         public static final Voltage INTAKE_LAUNCHER_VOLTAGE_COMP = Volts.of(12);
         public static final Voltage INDEXER_VOLTAGE_COMP = Volts.of(12);
         public static final Current INTAKE_LAUNCHER_CURRENT_LIMIT = Amps.of(40);
-        public static final Current INDEXER_CURRENT_LIMIT = Amps.of(30);
+        public static final Current INDEXER_CURRENT_LIMIT = Amps.of(40);
         public static final Time INTAKE_LAUNCHER_RAMP_RATE = Seconds.of(0.2);
         public static final Time INDEXER_RAMP_RATE = Seconds.of(0.2);
-        public static final MotorMode INTAKE_LAUNCHER_MOTOR_MODE = MotorMode.COAST;
+        public static final Time WINDUP_TIMEOUT = Seconds.of(15.0);
+        public static final MotorMode INTAKE_LAUNCHER_MOTOR_MODE = MotorMode.BRAKE;
         public static final MotorMode INDEXER_MOTOR_MODE = MotorMode.BRAKE;
         public static final MechanismGearing INTAKE_LAUNCHER_GEARING = new MechanismGearing(60.0 / 40);
         public static final MechanismGearing INDEXER_GEARING = new MechanismGearing(32.0 / 18);
 
-        public static final Current MOTOR_CURRENT_LIMIT = Amps.of(40);
-
-        public static final AngularVelocity INTAKE_VELOCITY_INTAKE_LAUNCHER = RotationsPerSecond.of(5);
-        public static final AngularVelocity INTAKE_VELOCITY_INDEXER = RotationsPerSecond.of(5);
+        public static final AngularVelocity INTAKE_VELOCITY_INTAKE_LAUNCHER = RotationsPerSecond.of(20);
+        public static final AngularVelocity INTAKE_VELOCITY_INDEXER = RotationsPerSecond.of(-16);
+        public static final AngularVelocity UNJAM_VELOCITY_INTAKE_LAUNCHER = RotationsPerSecond.of(-10);
+        public static final AngularVelocity UNJAM_VELOCITY_INDEXER = RotationsPerSecond.of(10);
         public static final AngularVelocity EJECT_VELOCITY_INTAKE_LAUNCHER = RotationsPerSecond.of(-5);
         public static final AngularVelocity EJECT_VELOCITY_INDEXER = RotationsPerSecond.of(-5);
         public static final AngularVelocity LAUNCH_VELOCITY_INDEXER = RotationsPerSecond.of(10);

@@ -3,6 +3,7 @@ package frc.robot.subsystems;
 import static edu.wpi.first.units.Units.*;
 
 import com.ctre.phoenix6.hardware.core.CorePigeon2;
+import com.revrobotics.spark.SparkMax;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose2d;
@@ -29,6 +30,7 @@ import frc.robot.lib.BLine.FollowPath;
 import frc.robot.lib.BLine.Path;
 import frc.robot.util.BumpManager;
 import frc.robot.util.SlewRateLimiter2d;
+import frc.robot.util.dashboard.MultiMotorInfoSendable;
 import frc.robot.util.dashboard.PIDSendable;
 import frc.robot.util.dashboard.PIDSendable.PIDValues;
 import frc.robot.util.enums.Constants.*;
@@ -38,6 +40,7 @@ import frc.robot.vision.VisionManager;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
@@ -52,6 +55,7 @@ public class SwerveSubsystem extends SubsystemBase {
     private final SwerveDrive swerveDrive;
     private VisionManager visionManager;
     private final BumpManager bumpManager;
+    private final MultiMotorInfoSendable motorInfo;
 
     private boolean forceNormalDriveMode = false;
     private boolean lockYawTowardsVelocity = false;
@@ -68,7 +72,8 @@ public class SwerveSubsystem extends SubsystemBase {
             new SlewRateLimiter2d(DriveConstants.MAX_LINEAR_ACCELERATION.in(MetersPerSecondPerSecond));
 
     @SuppressWarnings("StaticAssignmentInConstructor")
-    public SwerveSubsystem() throws IOException {
+    public SwerveSubsystem(final MultiMotorInfoSendable motorInfo) throws IOException {
+        this.motorInfo = motorInfo;
         SwerveDriveTelemetry.verbosity = SwerveDriveTelemetry.TelemetryVerbosity.HIGH;
         swerveDrive = new SwerveParser(
                         new File(Filesystem.getDeployDirectory(), DriveConstants.SWERVE_CONFIG_DIRECTORY))
@@ -91,6 +96,12 @@ public class SwerveSubsystem extends SubsystemBase {
     }
 
     private void initSmartDashboard() {
+        final var moduleNames = List.of("Front-Left", "Front-Right", "Back-Right", "Back-Left");
+        for (int i = 0; i < swerveDrive.getModules().length; i++) {
+            final var swerveModule = swerveDrive.getModules()[i];
+            motorInfo.addMotor((SparkMax) swerveModule.getDriveMotor().getMotor(), moduleNames.get(i) + " Drive");
+            motorInfo.addMotor((SparkMax) swerveModule.getAngleMotor().getMotor(), moduleNames.get(i) + " Angle");
+        }
         SmartDashboard.putData("Swerve Subsystem", builder -> {
             builder.addStringProperty(
                     "Bump Status",
