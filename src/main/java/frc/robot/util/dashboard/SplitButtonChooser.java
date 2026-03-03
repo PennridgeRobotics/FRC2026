@@ -12,7 +12,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
@@ -48,18 +47,19 @@ public class SplitButtonChooser<T> implements Sendable {
             final @Nullable Collection<String> options,
             final @Nullable Set<Consumer<String>> listeners,
             final @Nullable String defaultOption) {
+        //noinspection NullableProblems
         return new SplitButtonChooser<>(
                 active, options, listeners, defaultOption, Function.identity(), Function.identity());
     }
 
-    public void addOption(final @NonNull T option) {
+    public void addOption(final T option) {
         final String string = typeToString.apply(option);
         if (!options.contains(string)) {
             options.add(string);
         }
     }
 
-    public void setDefaultOption(final @NonNull T defaultOption) {
+    public void setDefaultOption(final T defaultOption) {
         this.defaultOption = typeToString.apply(defaultOption);
         addOption(defaultOption);
     }

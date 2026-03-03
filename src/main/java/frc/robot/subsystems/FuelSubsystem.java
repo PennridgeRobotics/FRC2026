@@ -24,7 +24,9 @@ import frc.robot.util.dashboard.MultiMotorInfoSendable;
 import frc.robot.util.dashboard.PIDSendable;
 import frc.robot.util.dashboard.SplitButtonChooser;
 import frc.robot.util.enums.Constants.FuelConstants;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
@@ -53,7 +55,8 @@ public class FuelSubsystem extends SubsystemBase {
     private final FlyWheel intakeLauncher;
     private final FlyWheel indexer;
 
-    private boolean useCustomVelocity;
+    private boolean useCustomVelocity = true;
+    private DashboardFuelAction dashboardFuelAction = DashboardFuelAction.IDLE;
 
     private final Supplier<AngularVelocity> ejectVelocityIntakeLauncher =
             new LoggedNetworkUnit<>("Eject Velocity Intake-Launcher", FuelConstants.EJECT_VELOCITY_INTAKE_LAUNCHER);
@@ -62,7 +65,7 @@ public class FuelSubsystem extends SubsystemBase {
     private final Supplier<AngularVelocity> unJamVelocityIntakeLauncher =
             new LoggedNetworkUnit<>("Unjam Velocity Intake-Launcher", FuelConstants.UNJAM_VELOCITY_INTAKE_LAUNCHER);
     private final Supplier<AngularVelocity> unJamVelocityIndexer =
-            new LoggedNetworkUnit<>("Indexer Unjam Velocity", FuelConstants.UNJAM_VELOCITY_INDEXER);
+            new LoggedNetworkUnit<>("Unjam Velocity Indexer", FuelConstants.UNJAM_VELOCITY_INDEXER);
     private final Supplier<AngularVelocity> intakeVelocityIntakeLauncher =
             new LoggedNetworkUnit<>("Intake Velocity Intake-Launcher", FuelConstants.INTAKE_VELOCITY_INTAKE_LAUNCHER);
     private final Supplier<AngularVelocity> intakeVelocityIndexer =
@@ -132,12 +135,15 @@ public class FuelSubsystem extends SubsystemBase {
                 .withDiameter(Inches.of(4))
                 .withTelemetry("IndexerMotor", TelemetryVerbosity.HIGH));
 
-        setDefaultCommand(run(() -> {
-            currentState = FuelAction.NONE;
-            intakeLauncherController.setDutyCycle(0);
-            indexerController.setDutyCycle(0);
-        }));
-        currentState = FuelAction.NONE;
+        setDefaultCommand(Commands.select(
+                Map.of(
+                        DashboardFuelAction.IDLE, idleCommand(),
+                        DashboardFuelAction.INTAKE, intakeCommand(),
+                        DashboardFuelAction.EJECT, ejectCommand(),
+                        DashboardFuelAction.LAUNCH, windUpAndLaunchCommand(),
+                        DashboardFuelAction.UNJAM, unjamCommand()),
+                () -> dashboardFuelAction));
+        currentState = FuelAction.IDLE;
         launchingTrigger = new Trigger(() -> currentState == FuelAction.LAUNCH);
         ejectingTrigger = new Trigger(() -> currentState == FuelAction.EJECT);
         intakingTrigger = new Trigger(() -> currentState == FuelAction.INTAKE);
@@ -176,9 +182,26 @@ public class FuelSubsystem extends SubsystemBase {
                         useCustomVelocity,
                         str -> str.equals("Custom"),
                         bool -> bool ? "Custom" : "Calculator"));
+        SmartDashboard.putData(
+                "Fuel Subsystem/Manual Controls",
+                new SplitButtonChooser<>(
+                        () -> dashboardFuelAction,
+                        Arrays.stream(DashboardFuelAction.values()).toList(),
+                        Set.of(newAction -> dashboardFuelAction = newAction),
+                        dashboardFuelAction,
+                        str -> DashboardFuelAction.valueOf(str.toUpperCase().replace(' ', '_')),
+                        DashboardFuelAction::getDashboardName));
     }
 
-    public Command eject() {
+    private Command idleCommand() {
+        return run(() -> {
+            currentState = FuelAction.IDLE;
+            intakeLauncherController.setDutyCycle(0);
+            indexerController.setDutyCycle(0);
+        });
+    }
+
+    public Command ejectCommand() {
         return run(() -> {
             currentState = FuelAction.EJECT;
             intakeLauncherController.setVelocity(ejectVelocityIntakeLauncher.get());
@@ -186,7 +209,7 @@ public class FuelSubsystem extends SubsystemBase {
         });
     }
 
-    public Command intake() {
+    public Command intakeCommand() {
         return run(() -> {
             currentState = FuelAction.INTAKE;
             intakeLauncherController.setVelocity(intakeVelocityIntakeLauncher.get());
@@ -194,23 +217,29 @@ public class FuelSubsystem extends SubsystemBase {
         });
     }
 
-    public Command launch() {
+    public Command launchCommand() {
         return run(() -> {
             currentState = FuelAction.LAUNCH;
             intakeLauncherController.setVelocity(getShooterVelocity());
-            indexerController.setVelocity(launchVelocityIndexer.get());
+            indexerController.setVelocity(
+                    launchVelocityIndexer.get().gt(getShooterVelocity())
+                            ? getShooterVelocity()
+                            : launchVelocityIndexer.get());
         });
     }
 
-    public Command windUp() {
+    public Command windUpCommand() {
         return run(() -> {
             currentState = FuelAction.WIND_UP;
             intakeLauncherController.setVelocity(getShooterVelocity());
-            indexerController.setVelocity(windUpVelocityIndexer.get());
+            indexerController.setVelocity(
+                    windUpVelocityIndexer.get().gt(getShooterVelocity())
+                            ? getShooterVelocity()
+                            : windUpVelocityIndexer.get());
         });
     }
 
-    public Command unJam() {
+    public Command unjamCommand() {
         return run(() -> {
             currentState = FuelAction.UNJAM;
             intakeLauncherController.setVelocity(unJamVelocityIntakeLauncher.get());
@@ -224,13 +253,14 @@ public class FuelSubsystem extends SubsystemBase {
                 : shooterCalculator.calculateVelocity().velocity();
     }
 
-    public Command windUpAndLaunch() {
+    public Command windUpAndLaunchCommand() {
         return Commands.sequence(
-                windUp().until(() -> intakeLauncherController
+                windUpCommand()
+                        .until(() -> intakeLauncherController
                                 .getMechanismVelocity()
                                 .gte(getShooterVelocity().plus(FuelConstants.LAUNCH_VELOCITY_TOLERANCE)))
                         .withTimeout(FuelConstants.WINDUP_TIMEOUT),
-                launch());
+                launchCommand());
     }
 
     public Trigger isLaunchingTrigger() {
@@ -266,11 +296,36 @@ public class FuelSubsystem extends SubsystemBase {
     }
 
     enum FuelAction {
+        IDLE,
+        INTAKE,
         EJECT,
         LAUNCH,
-        INTAKE,
-        WIND_UP,
         UNJAM,
-        NONE
+        WIND_UP
+    }
+
+    private enum DashboardFuelAction {
+        IDLE,
+        INTAKE,
+        EJECT,
+        LAUNCH,
+        UNJAM;
+
+        private final String dashboardName = createDashboardName();
+
+        private String createDashboardName() {
+            final char[] nameChars = name().replace('_', ' ').toLowerCase().toCharArray();
+            nameChars[0] = Character.toUpperCase(nameChars[0]);
+            for (int i = 1; i < nameChars.length - 1; i++) {
+                if (Character.isSpaceChar(nameChars[i])) {
+                    nameChars[i + 1] = Character.toUpperCase(nameChars[i + 1]);
+                }
+            }
+            return new String(nameChars);
+        }
+
+        public String getDashboardName() {
+            return dashboardName;
+        }
     }
 }

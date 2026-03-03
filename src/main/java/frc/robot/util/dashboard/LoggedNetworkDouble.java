@@ -14,6 +14,8 @@ public class LoggedNetworkDouble extends LoggedNetworkInput implements DoubleSup
     public LoggedNetworkDouble(String rawTopicName, double defaultValue) {
         super(rawTopicName);
         entry = NetworkTableInstance.getDefault().getDoubleTopic(topicName).getEntry(defaultValue);
+        entry.set(defaultValue);
+        currentValue = entry.get();
     }
 
     public void set(double value) {

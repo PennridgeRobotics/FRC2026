@@ -122,33 +122,38 @@ public class RobotContainer {
 
         driverController.start().onTrue(new InstantCommand(swerveSubsystem::zeroGyroWithAlliance));
         driverController.y().whileTrue(swerveSubsystem.faceTowardsHubCommand());
+        driverController
+                .a()
+                .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
+                        PositionCalibrationLocation.FRONT_LEFT_OF_HUB));
 
-        if (operatorController != null) {
-            // operatorController.start().whileTrue(swerveSubsystem.straightenWheelsCommand());
-            operatorController
-                    .leftTrigger()
-                    .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
-                            PositionCalibrationLocation.LEFT_TRENCH_OUTER));
-            operatorController
-                    .leftBumper()
-                    .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
-                            PositionCalibrationLocation.LEFT_DEPOT_CORNER));
-            operatorController
-                    .rightTrigger()
-                    .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
-                            PositionCalibrationLocation.RIGHT_TRENCH_OUTER));
-            operatorController
-                    .rightBumper()
-                    .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
-                            PositionCalibrationLocation.RIGHT_OUTPOST_CORNER));
-            operatorController.x().whileTrue(swerveSubsystem.enableManualBumpLock());
+        if (operatorController == null) {
+            return;
         }
+        // operatorController.start().whileTrue(swerveSubsystem.straightenWheelsCommand());
+        operatorController
+                .leftTrigger()
+                .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
+                        PositionCalibrationLocation.LEFT_TRENCH_OUTER));
+        operatorController
+                .leftBumper()
+                .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
+                        PositionCalibrationLocation.LEFT_DEPOT_CORNER));
+        operatorController
+                .rightTrigger()
+                .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
+                        PositionCalibrationLocation.RIGHT_TRENCH_OUTER));
+        operatorController
+                .rightBumper()
+                .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
+                        PositionCalibrationLocation.RIGHT_OUTPOST_CORNER));
+        operatorController.x().whileTrue(swerveSubsystem.enableManualBumpLock());
 
-        if (fuelSubsystem != null && operatorController != null) {
-            operatorController.a().whileTrue(fuelSubsystem.intake());
-            operatorController.y().whileTrue(fuelSubsystem.eject());
-            operatorController.b().whileTrue(fuelSubsystem.windUpAndLaunch());
-            operatorController.start().whileTrue(fuelSubsystem.unJam());
+        if (fuelSubsystem != null) {
+            operatorController.a().whileTrue(fuelSubsystem.intakeCommand());
+            operatorController.y().whileTrue(fuelSubsystem.ejectCommand());
+            operatorController.b().whileTrue(fuelSubsystem.windUpAndLaunchCommand());
+            operatorController.start().whileTrue(fuelSubsystem.unjamCommand());
         }
     }
 
@@ -162,7 +167,7 @@ public class RobotContainer {
     }
 
     public void preSchedulerUpdate() {
-        shooterCalculator.clearShotCache();
+        shooterCalculator.prePeriodic();
         LoggedNetworkInput.runAllPeriodic();
     }
 

@@ -418,6 +418,20 @@ public class SwerveSubsystem extends SubsystemBase {
                     yPos = FieldConstants.FIELD_WIDTH_Y.minus(yPos);
                 }
                 case RIGHT_TRENCH_OUTER -> xPos = FieldConstants.TRENCH_X.minus(xPos);
+                case FRONT_LEFT_OF_HUB -> {
+                    xPos = FieldConstants.HUB_BLUE
+                            .getMeasureX()
+                            .minus(FieldConstants.HUB_WIDTH.div(2))
+                            .minus(xPos);
+                    yPos = FieldConstants.HUB_BLUE.getMeasureY().minus(yPos);
+                }
+                case FRONT_CENTER_OF_HUB -> {
+                    xPos = FieldConstants.HUB_BLUE
+                            .getMeasureX()
+                            .minus(FieldConstants.HUB_WIDTH.div(2))
+                            .minus(xPos);
+                    yPos = FieldConstants.HUB_BLUE.getMeasureY();
+                }
             }
 
             if (flip) {
