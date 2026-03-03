@@ -2,7 +2,9 @@ package frc.robot.util.dashboard;
 
 import edu.wpi.first.util.sendable.Sendable;
 import edu.wpi.first.util.sendable.SendableBuilder;
+import frc.robot.util.StringUtils;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Objects;
@@ -40,6 +42,21 @@ public class SplitButtonChooser<T> implements Sendable {
         this.defaultOption = defaultOption == null ? null : typeToString.apply(defaultOption);
         this.stringToType = stringToType;
         this.typeToString = typeToString;
+    }
+
+    public static <T extends Enum<T>> SplitButtonChooser<T> withEnum(
+            final @Nullable Supplier<@Nullable T> active,
+            final @Nullable Set<Consumer<T>> listeners,
+            final @Nullable T defaultOption,
+            final Class<T> enumClass) {
+        //noinspection NullableProblems
+        return new SplitButtonChooser<>(
+                active,
+                Arrays.stream(enumClass.getEnumConstants()).toList(),
+                listeners,
+                defaultOption,
+                str -> Enum.valueOf(enumClass, str.toUpperCase().replace(' ', '_')),
+                obj -> StringUtils.capitalizeFully(obj.name()));
     }
 
     public static SplitButtonChooser<String> withStrings(

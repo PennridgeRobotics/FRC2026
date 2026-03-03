@@ -3,7 +3,8 @@
 // the WPILib BSD license file in the root directory of this project.
 package frc.robot.subsystems;
 
-import static edu.wpi.first.units.Units.Inches;
+import static edu.wpi.first.units.Units.Meters;
+import static edu.wpi.first.units.Units.MetersPerSecond;
 import static edu.wpi.first.units.Units.RotationsPerSecond;
 
 import com.revrobotics.spark.SparkLowLevel.MotorType;
@@ -13,6 +14,7 @@ import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.units.measure.AngularVelocity;
+import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
@@ -24,7 +26,6 @@ import frc.robot.util.dashboard.MultiMotorInfoSendable;
 import frc.robot.util.dashboard.PIDSendable;
 import frc.robot.util.dashboard.SplitButtonChooser;
 import frc.robot.util.enums.Constants.FuelConstants;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -129,10 +130,10 @@ public class FuelSubsystem extends SubsystemBase {
         indexerController = new SparkWrapper(indexerSparkMax, DCMotor.getNEO(1), indexerSMCConfig);
 
         intakeLauncher = new FlyWheel(new FlyWheelConfig(intakeLauncherController)
-                .withDiameter(Inches.of(4))
+                .withDiameter(FuelConstants.WHEEL_RADIUS.times(2))
                 .withTelemetry("LauncherMotor", TelemetryVerbosity.HIGH));
         indexer = new FlyWheel(new FlyWheelConfig(indexerController)
-                .withDiameter(Inches.of(4))
+                .withDiameter(FuelConstants.WHEEL_RADIUS.times(2))
                 .withTelemetry("IndexerMotor", TelemetryVerbosity.HIGH));
 
         setDefaultCommand(Commands.select(
@@ -184,13 +185,11 @@ public class FuelSubsystem extends SubsystemBase {
                         bool -> bool ? "Custom" : "Calculator"));
         SmartDashboard.putData(
                 "Fuel Subsystem/Manual Controls",
-                new SplitButtonChooser<>(
+                SplitButtonChooser.withEnum(
                         () -> dashboardFuelAction,
-                        Arrays.stream(DashboardFuelAction.values()).toList(),
                         Set.of(newAction -> dashboardFuelAction = newAction),
                         dashboardFuelAction,
-                        str -> DashboardFuelAction.valueOf(str.toUpperCase().replace(' ', '_')),
-                        DashboardFuelAction::getDashboardName));
+                        DashboardFuelAction.class));
     }
 
     private Command idleCommand() {
@@ -263,6 +262,11 @@ public class FuelSubsystem extends SubsystemBase {
                 launchCommand());
     }
 
+    private LinearVelocity getBallVelocity(AngularVelocity angularVelocity) {
+        return MetersPerSecond.of(
+                angularVelocity.in(RotationsPerSecond) * Math.PI * FuelConstants.WHEEL_RADIUS.in(Meters));
+    }
+
     public Trigger isLaunchingTrigger() {
         return launchingTrigger;
     }
@@ -309,23 +313,6 @@ public class FuelSubsystem extends SubsystemBase {
         INTAKE,
         EJECT,
         LAUNCH,
-        UNJAM;
-
-        private final String dashboardName = createDashboardName();
-
-        private String createDashboardName() {
-            final char[] nameChars = name().replace('_', ' ').toLowerCase().toCharArray();
-            nameChars[0] = Character.toUpperCase(nameChars[0]);
-            for (int i = 1; i < nameChars.length - 1; i++) {
-                if (Character.isSpaceChar(nameChars[i])) {
-                    nameChars[i + 1] = Character.toUpperCase(nameChars[i + 1]);
-                }
-            }
-            return new String(nameChars);
-        }
-
-        public String getDashboardName() {
-            return dashboardName;
-        }
+        UNJAM
     }
 }

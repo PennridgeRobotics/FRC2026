@@ -97,6 +97,8 @@ public final class Constants {
         public static final int INTAKE_LAUNCHER_RIGHT_MOTOR_ID = 11;
         public static final int INDEXER_MOTOR_ID = 12;
 
+        public static final Distance WHEEL_RADIUS = Inches.of(2);
+
         public static final boolean INTAKE_LAUNCHER_INVERTED = false;
         public static final boolean INDEXER_INVERTED = false;
         public static final Voltage INTAKE_LAUNCHER_VOLTAGE_COMP = Volts.of(12);

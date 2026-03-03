@@ -12,16 +12,25 @@ import edu.wpi.first.networktables.BooleanPublisher;
 import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StringEntry;
+import edu.wpi.first.networktables.StringSubscriber;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import frc.robot.util.dashboard.SplitButtonChooser;
 import frc.robot.util.enums.Constants.FieldConstants;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import redempt.crunch.CompiledExpression;
+import redempt.crunch.Crunch;
+import redempt.crunch.exceptions.ExpressionCompilationException;
+import redempt.crunch.exceptions.ExpressionEvaluationException;
+import redempt.crunch.functional.EvaluationEnvironment;
 
 // Credits to
 // https://github.com/FRCTeam360/RainMaker26/blob/main/src/main/java/frc/robot/subsystems/Shooter/ShotCalculator.java
@@ -33,6 +42,10 @@ public class ShooterCalculator {
             new TreeMap<>(); // because InterpolatingDoubleTreeMap won't let us extract its values
     private @Nullable ShotData lastShotData;
     private boolean lastShotDataValidForCache;
+    private CalculationMode calculationMode = CalculationMode.INTERPOLATION;
+    private CompiledExpression compiledExpression = Crunch.compileExpression("0");
+    private String originalExpression = "x";
+    private long lastUpdateTimestampMillis;
 
     private final DoublePublisher shotDistancePublisher;
     private final DoublePublisher shotVelocityPublisher;
@@ -40,6 +53,7 @@ public class ShooterCalculator {
     private final BooleanPublisher cachedPublisher;
     private final StringEntry savedShooterDistanceVelocityMapEntry;
     private final BooleanEntry saveCurrentDataButtonEntry;
+    private final StringSubscriber equationSubscriber;
 
     private static final String NO_DATA_TEXT = "(No Data)";
 
@@ -67,6 +81,21 @@ public class ShooterCalculator {
                 .getBooleanTopic(topicPrefix + "Save Current Distance and Velocity")
                 .getEntry(false);
         saveCurrentDataButtonEntry.set(false);
+        try (var equationPublisher = NetworkTableInstance.getDefault()
+                .getStringTopic(topicPrefix + "Equation")
+                .publish()) {
+            equationPublisher.set(originalExpression);
+            equationSubscriber = equationPublisher.getTopic().subscribe(originalExpression);
+            compileEquation();
+        }
+
+        SmartDashboard.putData(
+                topicPrefix + "Calculation Mode",
+                SplitButtonChooser.withEnum(
+                        () -> calculationMode,
+                        Set.of(newMode -> calculationMode = newMode),
+                        calculationMode,
+                        CalculationMode.class));
 
         addPreviouslySavedData();
     }
@@ -82,12 +111,13 @@ public class ShooterCalculator {
             return lastShotData;
         }
         cachedPublisher.set(false);
+        lastUpdateTimestampMillis = System.currentTimeMillis();
         final Pose2d robotPose = robotPoseSupplier.get();
         final Translation2d robotTranslation = robotPose.getTranslation();
         final Translation2d target = getTarget();
         final double distanceToTarget = target.getDistance(robotTranslation);
 
-        final double targetVelocity = Objects.requireNonNullElse(shooterDistanceVelocityMap.get(distanceToTarget), 0.0);
+        final double targetVelocity = calculateAngularVelocity(distanceToTarget);
         // rotate 180° because the shooter faces the back of the robot
         final Rotation2d targetHeading =
                 target.minus(robotTranslation).getAngle().rotateBy(Rotation2d.k180deg);
@@ -123,6 +153,13 @@ public class ShooterCalculator {
             return FieldConstants.HUB_RED;
         }
         return FieldConstants.HUB_BLUE;
+    }
+
+    private double calculateAngularVelocity(double distanceToTarget) {
+        return switch (calculationMode) {
+            case INTERPOLATION -> Objects.requireNonNullElse(shooterDistanceVelocityMap.get(distanceToTarget), 0.0);
+            case EQUATION -> compiledExpression.evaluate(distanceToTarget);
+        };
     }
 
     private String exportData() {
@@ -164,7 +201,36 @@ public class ShooterCalculator {
         if (!currentDashboardData.equals(exportedData)) {
             importData();
         }
+
+        if (!equationSubscriber.get().equals(originalExpression)) {
+            originalExpression = equationSubscriber.get();
+            compileEquation();
+        }
+
+        if (System.currentTimeMillis() - lastUpdateTimestampMillis >= 100L) {
+            calculateVelocity();
+        }
+    }
+
+    private void compileEquation() {
+        final var env = new EvaluationEnvironment();
+        env.setVariableNames("x");
+        final var rawExpression = equationSubscriber.get();
+        CompiledExpression compiled;
+        try {
+            compiled = Crunch.compileExpression(rawExpression, env);
+        } catch (ExpressionCompilationException | ExpressionEvaluationException ex) {
+            DriverStation.reportError("Error compiling equation for shooter: " + ex.getMessage(), ex.getStackTrace());
+            compiled = Crunch.compileExpression("0");
+        }
+        originalExpression = rawExpression;
+        this.compiledExpression = compiled;
     }
 
     public record ShotData(Distance distance, AngularVelocity velocity, Rotation2d heading) {}
+
+    private enum CalculationMode {
+        INTERPOLATION,
+        EQUATION
+    }
 }
