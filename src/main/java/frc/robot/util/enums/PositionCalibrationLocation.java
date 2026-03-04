@@ -11,5 +11,6 @@ public enum PositionCalibrationLocation {
     LEFT_TRENCH_OUTER,
     RIGHT_TRENCH_OUTER,
     FRONT_LEFT_OF_HUB,
+    FRONT_RIGHT_OF_HUB,
     FRONT_CENTER_OF_HUB,
 }

@@ -88,8 +88,8 @@ public class FuelSubsystem extends SubsystemBase {
                 .withVoltageCompensation(FuelConstants.INTAKE_LAUNCHER_VOLTAGE_COMP)
                 .withIdleMode(FuelConstants.INTAKE_LAUNCHER_MOTOR_MODE)
                 .withStatorCurrentLimit(FuelConstants.INTAKE_LAUNCHER_CURRENT_LIMIT)
-                .withFeedforward(new SimpleMotorFeedforward(0.37, 0.1805))
-                .withClosedLoopController(new PIDController(0.01, 0.0, 0.3))
+                .withFeedforward(new SimpleMotorFeedforward(0.15, 0.188))
+                .withClosedLoopController(new PIDController(0.003, 0.0, 0.3))
                 .withControlMode(ControlMode.CLOSED_LOOP)
                 .withMotorInverted(true)
                 .withTelemetry("LauncherMotor", TelemetryVerbosity.HIGH);
@@ -102,8 +102,8 @@ public class FuelSubsystem extends SubsystemBase {
                 .withStatorCurrentLimit(FuelConstants.INTAKE_LAUNCHER_CURRENT_LIMIT)
                 .withControlMode(ControlMode.OPEN_LOOP);
         final var indexerSMCConfig = new SmartMotorControllerConfig(this)
-                .withFeedforward(new SimpleMotorFeedforward(0.3, 0.17))
-                .withClosedLoopController(new PIDController(0.01, 0.0, 0.0))
+                .withFeedforward(new SimpleMotorFeedforward(0.03, 0.23))
+                .withClosedLoopController(new PIDController(0.002, 0.0, 0.0))
                 .withControlMode(ControlMode.CLOSED_LOOP)
                 .withTelemetry("IndexerMotor", TelemetryVerbosity.HIGH)
                 .withGearing(FuelConstants.INDEXER_GEARING)

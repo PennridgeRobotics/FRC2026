@@ -30,10 +30,15 @@ import yams.motorcontrollers.SmartMotorControllerConfig.MotorMode;
 public final class Constants {
 
     public static final class PhysicalConstants { // TODO update length/width depending on bumper size
-        public static final Distance ROBOT_LENGTH_X = Inches.of(18.5 /*26.5*/); // 0.6731m
-        public static final Distance ROBOT_WIDTH_Y = Inches.of(23.5 /*31.5*/); // 0.8001m
+        public static final Distance BUMPERS_WIDTH = Inches.of(3.375);
         public static final Distance WHEEL_CENTERS_DISTANCE_LENGTH_X = Inches.of(18.5); // 0.4699m
         public static final Distance WHEEL_CENTERS_DISTANCE_WIDTH_Y = Inches.of(23.5); // 0.5969m
+        public static final Distance ROBOT_FULL_LENGTH_X =
+                WHEEL_CENTERS_DISTANCE_LENGTH_X.plus(BUMPERS_WIDTH.times(2)); // 25.25in/0.6414m
+        public static final Distance ROBOT_FULL_WIDTH_Y =
+                WHEEL_CENTERS_DISTANCE_WIDTH_Y.plus(BUMPERS_WIDTH.times(2)); // 30.25in/0.7684m
+        public static final Distance ROBOT_LENGTH_X = WHEEL_CENTERS_DISTANCE_LENGTH_X;
+        public static final Distance ROBOT_WIDTH_Y = WHEEL_CENTERS_DISTANCE_WIDTH_Y;
         public static final Distance ROBOT_TRENCH_BACK_OFFSET = Inches.of(4.88);
         public static final Distance ROBOT_TRENCH_FRONT_OFFSET = Inches.of(0.875);
         public static final Distance ROBOT_WIDTH_Y_TRENCH = ROBOT_WIDTH_Y.minus(Inches.of(4.6 * 2));
@@ -103,11 +108,12 @@ public final class Constants {
         public static final boolean INDEXER_INVERTED = false;
         public static final Voltage INTAKE_LAUNCHER_VOLTAGE_COMP = Volts.of(12);
         public static final Voltage INDEXER_VOLTAGE_COMP = Volts.of(12);
-        public static final Current INTAKE_LAUNCHER_CURRENT_LIMIT = Amps.of(40);
+        public static final Current INTAKE_LAUNCHER_CURRENT_LIMIT = Amps.of(60);
         public static final Current INDEXER_CURRENT_LIMIT = Amps.of(40);
         public static final Time INTAKE_LAUNCHER_RAMP_RATE = Seconds.of(0.2);
         public static final Time INDEXER_RAMP_RATE = Seconds.of(0.2);
         public static final Time WINDUP_TIMEOUT = Seconds.of(15.0);
+        public static final Time UNJAM_AFTER_LAUNCH_TIME = Seconds.of(0);
         public static final MotorMode INTAKE_LAUNCHER_MOTOR_MODE = MotorMode.BRAKE;
         public static final MotorMode INDEXER_MOTOR_MODE = MotorMode.BRAKE;
         public static final MechanismGearing INTAKE_LAUNCHER_GEARING = new MechanismGearing(60.0 / 40);
@@ -119,7 +125,7 @@ public final class Constants {
         public static final AngularVelocity UNJAM_VELOCITY_INDEXER = RotationsPerSecond.of(10);
         public static final AngularVelocity EJECT_VELOCITY_INTAKE_LAUNCHER = RotationsPerSecond.of(-5);
         public static final AngularVelocity EJECT_VELOCITY_INDEXER = RotationsPerSecond.of(-5);
-        public static final AngularVelocity LAUNCH_VELOCITY_INDEXER = RotationsPerSecond.of(10);
+        public static final AngularVelocity LAUNCH_VELOCITY_INDEXER = RotationsPerSecond.of(20);
         public static final AngularVelocity WINDUP_VELOCITY_INDEXER = RotationsPerSecond.of(-0.5);
         // calculated velocity + LAUNCH_VELOCITY_TOLERANCE = velocity needed to finish winding up
         public static final AngularVelocity LAUNCH_VELOCITY_TOLERANCE = RotationsPerSecond.of(-0.5);
@@ -164,7 +170,8 @@ public final class Constants {
         public static final Translation2d HUB_RED =
                 new Translation2d(FIELD_LENGTH_X.minus(Inches.of(182.11)), FIELD_WIDTH_Y.div(2));
 
-        public static final Distance HUB_WIDTH = Inches.of(47.0);
+        public static final Distance HUB_LENGTH_Y = Inches.of(44.4 /*20*/);
+        public static final Distance HUB_WIDTH_X = Inches.of(44.4 /*33.5*/);
 
         public static final Distance TRENCH_X = Inches.of(182.11 - (3.5 / 2.0)); // account for trench bar width
         public static final Distance TRENCH_TO_EDGE_Y = Inches.of(50.35);

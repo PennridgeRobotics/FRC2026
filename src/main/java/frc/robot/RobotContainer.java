@@ -7,6 +7,8 @@ import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
@@ -19,7 +21,9 @@ import frc.robot.util.dashboard.LoggedNetworkInput;
 import frc.robot.util.dashboard.MultiMotorInfoSendable;
 import frc.robot.util.enums.Constants.*;
 import frc.robot.util.enums.PositionCalibrationLocation;
+import frc.robot.util.enums.SpeedMultiplier;
 import java.io.IOException;
+import java.util.Map;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
@@ -117,40 +121,71 @@ public class RobotContainer {
                     () -> -driverController.getRightX()));
         }
 
+        driverController.leftTrigger().onTrue(swerveSubsystem.setSpeedMultiplierCommand(SpeedMultiplier.SLOW));
+        driverController
+                .leftTrigger()
+                .negate()
+                .and(driverController.rightTrigger().negate())
+                .onTrue(swerveSubsystem.setSpeedMultiplierCommand(SpeedMultiplier.NORMAL));
+        driverController.rightTrigger().onTrue(swerveSubsystem.setSpeedMultiplierCommand(SpeedMultiplier.FAST));
         driverController.start().onTrue(new InstantCommand(swerveSubsystem::zeroGyroWithAlliance));
         driverController.y().whileTrue(swerveSubsystem.faceTowardsHubCommand());
-        driverController
-                .a()
-                .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
-                        PositionCalibrationLocation.FRONT_LEFT_OF_HUB));
+        if (fuelSubsystem != null) {
+            driverController.b().whileTrue(fuelSubsystem.windUpAndLaunchCommand());
+            driverController.a().whileTrue(fuelSubsystem.intakeCommand());
+        }
+        /*driverController
+        .a()
+        .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
+                PositionCalibrationLocation.FRONT_LEFT_OF_HUB));*/
 
         if (operatorController == null) {
             return;
         }
         // operatorController.start().whileTrue(swerveSubsystem.straightenWheelsCommand());
         operatorController
-                .leftTrigger()
+                .start()
+                .and(operatorController.leftTrigger())
                 .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
-                        PositionCalibrationLocation.LEFT_TRENCH_OUTER));
+                        PositionCalibrationLocation.FRONT_LEFT_OF_HUB));
         operatorController
-                .leftBumper()
+                .start()
+                .and(operatorController.leftBumper())
                 .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
                         PositionCalibrationLocation.LEFT_DEPOT_CORNER));
         operatorController
-                .rightTrigger()
+                .start()
+                .and(operatorController.rightTrigger())
                 .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
-                        PositionCalibrationLocation.RIGHT_TRENCH_OUTER));
+                        PositionCalibrationLocation.FRONT_RIGHT_OF_HUB));
         operatorController
-                .rightBumper()
+                .start()
+                .and(operatorController.rightBumper())
                 .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
                         PositionCalibrationLocation.RIGHT_OUTPOST_CORNER));
         operatorController.x().whileTrue(swerveSubsystem.enableManualBumpLock());
 
         if (fuelSubsystem != null) {
+            operatorController
+                    .rightBumper()
+                    .and(operatorController.start().negate())
+                    .whileTrue(fuelSubsystem.windUpCommand());
+            operatorController
+                    .rightTrigger()
+                    .and(operatorController.start().negate())
+                    .whileTrue(Commands.select(
+                                    Map.of(
+                                            false, fuelSubsystem.windUpAndLaunchCommand(),
+                                            true, fuelSubsystem.launchCommand()),
+                                    operatorController.leftTrigger()::getAsBoolean // force launch
+                                    )
+                            .finallyDo(() -> CommandScheduler.getInstance()
+                                    .schedule(fuelSubsystem
+                                            .unjamCommand()
+                                            .withTimeout(FuelConstants.UNJAM_AFTER_LAUNCH_TIME))));
+            operatorController.leftBumper().whileTrue(fuelSubsystem.ejectCommand());
             operatorController.a().whileTrue(fuelSubsystem.intakeCommand());
-            operatorController.y().whileTrue(fuelSubsystem.ejectCommand());
-            operatorController.b().whileTrue(fuelSubsystem.windUpAndLaunchCommand());
-            operatorController.start().whileTrue(fuelSubsystem.unjamCommand());
+            operatorController.b().whileTrue(fuelSubsystem.unjamCommand());
         }
     }
 

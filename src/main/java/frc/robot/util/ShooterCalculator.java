@@ -7,12 +7,7 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
-import edu.wpi.first.networktables.BooleanEntry;
-import edu.wpi.first.networktables.BooleanPublisher;
-import edu.wpi.first.networktables.DoublePublisher;
-import edu.wpi.first.networktables.NetworkTableInstance;
-import edu.wpi.first.networktables.StringEntry;
-import edu.wpi.first.networktables.StringSubscriber;
+import edu.wpi.first.networktables.*;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -51,9 +46,12 @@ public class ShooterCalculator {
     private final DoublePublisher shotVelocityPublisher;
     private final DoublePublisher shotHeadingPublisher;
     private final BooleanPublisher cachedPublisher;
+    private final DoublePublisher savedDataCountPublisher;
     private final StringEntry savedShooterDistanceVelocityMapEntry;
     private final BooleanEntry saveCurrentDataButtonEntry;
+    private final BooleanEntry exportToConsoleButton;
     private final StringSubscriber equationSubscriber;
+    private final DoubleEntry velocityOffsetEntry;
 
     private static final String NO_DATA_TEXT = "(No Data)";
 
@@ -73,6 +71,9 @@ public class ShooterCalculator {
         cachedPublisher = NetworkTableInstance.getDefault()
                 .getBooleanTopic(topicPrefix + "Used Cached Shot Data")
                 .publish();
+        savedDataCountPublisher = NetworkTableInstance.getDefault()
+                .getDoubleTopic(topicPrefix + "Saved Data Count")
+                .publish();
         savedShooterDistanceVelocityMapEntry = NetworkTableInstance.getDefault()
                 .getStringTopic(topicPrefix + "Saved Shooter Distance Velocity Map")
                 .getEntry(NO_DATA_TEXT);
@@ -81,16 +82,23 @@ public class ShooterCalculator {
                 .getBooleanTopic(topicPrefix + "Save Current Distance and Velocity")
                 .getEntry(false);
         saveCurrentDataButtonEntry.set(false);
-        try (var equationPublisher = NetworkTableInstance.getDefault()
+        exportToConsoleButton = NetworkTableInstance.getDefault()
+                .getBooleanTopic(topicPrefix + "Export to Console")
+                .getEntry(false);
+        exportToConsoleButton.set(false);
+        var equationEntry = NetworkTableInstance.getDefault()
                 .getStringTopic(topicPrefix + "Equation")
-                .publish()) {
-            equationPublisher.set(originalExpression);
-            equationSubscriber = equationPublisher.getTopic().subscribe(originalExpression);
-            compileEquation();
-        }
+                .getEntry(originalExpression);
+        equationEntry.set(originalExpression);
+        equationSubscriber = equationEntry.getTopic().subscribe(originalExpression);
+        compileEquation();
+        velocityOffsetEntry = NetworkTableInstance.getDefault()
+                .getDoubleTopic(topicPrefix + "Velocity Offset")
+                .getEntry(0.0);
+        velocityOffsetEntry.set(0.0);
 
         SmartDashboard.putData(
-                topicPrefix + "Calculation Mode",
+                topicPrefix + "/SmartDashboard/Calculation Mode",
                 SplitButtonChooser.withEnum(
                         () -> calculationMode,
                         Set.of(newMode -> calculationMode = newMode),
@@ -117,7 +125,7 @@ public class ShooterCalculator {
         final Translation2d target = getTarget();
         final double distanceToTarget = target.getDistance(robotTranslation);
 
-        final double targetVelocity = calculateAngularVelocity(distanceToTarget);
+        final double targetVelocity = calculateAngularVelocity(distanceToTarget) + velocityOffsetEntry.get();
         // rotate 180° because the shooter faces the back of the robot
         final Rotation2d targetHeading =
                 target.minus(robotTranslation).getAngle().rotateBy(Rotation2d.k180deg);
@@ -146,6 +154,7 @@ public class ShooterCalculator {
         shooterDistanceVelocityMap.put(distance, velocity);
         savedShooterDistanceVelocityMap.put(distance, velocity);
         savedShooterDistanceVelocityMapEntry.set(exportData());
+        savedDataCountPublisher.set(savedShooterDistanceVelocityMap.size());
     }
 
     private Translation2d getTarget() {
@@ -165,7 +174,9 @@ public class ShooterCalculator {
     private String exportData() {
         final var entries = savedShooterDistanceVelocityMap.entrySet();
         if (entries.isEmpty()) return NO_DATA_TEXT;
-        return entries.stream().map(e -> e.getKey() + "," + e.getValue()).reduce("", (a, b) -> a + ";" + b);
+        return entries.stream()
+                .map(e -> e.getKey() + "," + e.getValue())
+                .reduce("", (a, b) -> (a.isEmpty() ? "" : ";") + b);
     }
 
     private void importData() {
@@ -194,6 +205,12 @@ public class ShooterCalculator {
             saveCurrentDataButtonEntry.set(false);
             if (lastShotData == null) return;
             addDistanceVelocityData(lastShotData.distance(), lastShotData.velocity());
+        }
+
+        if (exportToConsoleButton.get()) {
+            // button pressed
+            exportToConsoleButton.set(false);
+            System.out.println("EXPORT: " + exportData());
         }
 
         final var currentDashboardData = savedShooterDistanceVelocityMapEntry.get();
