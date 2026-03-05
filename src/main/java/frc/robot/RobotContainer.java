@@ -12,6 +12,7 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
+import frc.robot.classes.AutoManager;
 import frc.robot.subsystems.ClimberSubsystem;
 import frc.robot.subsystems.FuelSubsystem;
 import frc.robot.subsystems.LightsSubsystem;
@@ -39,6 +40,7 @@ public class RobotContainer {
     private final ShooterCalculator shooterCalculator;
     private final PowerDistribution powerDistribution;
     private final MultiMotorInfoSendable motorInfo = new MultiMotorInfoSendable();
+    private final @Nullable AutoManager autoManager;
 
     // Initializes controllers
     private final CommandXboxController driverController =
@@ -75,6 +77,9 @@ public class RobotContainer {
         // autoChooser = AutoBuilder.buildAutoChooser("Epic Auto");
         autoChooser = new SendableChooser<>();
         setupPathPlanner();
+        autoManager = fuelSubsystem != null
+                ? new AutoManager(swerveSubsystem, swerveSubsystem.getPathBuilder(), fuelSubsystem)
+                : null;
 
         configureBindings();
 

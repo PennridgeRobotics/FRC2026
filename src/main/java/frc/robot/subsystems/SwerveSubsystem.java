@@ -536,6 +536,17 @@ public class SwerveSubsystem extends SubsystemBase {
         final var states = new SwerveModuleState[swerveDrive.getModules().length];
         Arrays.fill(states, new SwerveModuleState(0, rotation));
         swerveDrive.setModuleStates(states, false);
+        for (int i = 0; i < swerveDrive.getModules().length; i++) {
+            final var swerveModule = swerveDrive.getModules()[i];
+            final var state = states[i];
+            final var originalAngle = state.angle;
+            swerveModule.applyAntiJitter(state, false);
+            if (state.angle.equals(originalAngle)) {
+                continue; // anti-jitter wasn't applied! (or rotation isn't necessary)
+            }
+            state.angle = originalAngle;
+            swerveModule.setDesiredState(state, false, true); // force setting state to bypass anti-jitter
+        }
     }
 
     private FollowPath.Builder setupBLine() {
@@ -600,9 +611,11 @@ public class SwerveSubsystem extends SubsystemBase {
         return (CorePigeon2) swerveDrive.getGyro().getIMU();
     }
 
-    /*public void goToRightTrench() {
-        final var path = new Path(
-            new Path.Waypoint(new Translation2d())
-        )
-    }*/
+    public void orientModuleOrientationsForPath(Path path) {
+        setModuleOrientations(path.getInitialModuleDirection());
+    }
+
+    public FollowPath.Builder getPathBuilder() {
+        return pathBuilder;
+    }
 }

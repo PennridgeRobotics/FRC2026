@@ -170,8 +170,8 @@ public final class Constants {
         public static final Translation2d HUB_RED =
                 new Translation2d(FIELD_LENGTH_X.minus(Inches.of(182.11)), FIELD_WIDTH_Y.div(2));
 
-        public static final Distance HUB_LENGTH_Y = Inches.of(44.4 /*20*/);
-        public static final Distance HUB_WIDTH_X = Inches.of(44.4 /*33.5*/);
+        public static final Distance HUB_LENGTH_Y = Inches.of(47 /*20*/);
+        public static final Distance HUB_WIDTH_X = Inches.of(47 /*33.5*/);
 
         public static final Distance TRENCH_X = Inches.of(182.11 - (3.5 / 2.0)); // account for trench bar width
         public static final Distance TRENCH_TO_EDGE_Y = Inches.of(50.35);
