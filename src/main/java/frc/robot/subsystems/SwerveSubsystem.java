@@ -618,4 +618,9 @@ public class SwerveSubsystem extends SubsystemBase {
     public FollowPath.Builder getPathBuilder() {
         return pathBuilder;
     }
+
+    public boolean isRobotXFacingFieldX() {
+        final var currentRot = getRobotPose().getRotation().getDegrees();
+        return !MathUtil.isNear(90.0, Math.abs(currentRot) % 180, 45.0);
+    }
 }

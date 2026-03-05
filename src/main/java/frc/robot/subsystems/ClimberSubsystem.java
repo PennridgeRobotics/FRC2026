@@ -23,6 +23,7 @@ import frc.robot.util.dashboard.LoggedNetworkUnit;
 import frc.robot.util.dashboard.MultiMotorInfoSendable;
 import frc.robot.util.dashboard.PIDSendable;
 import frc.robot.util.enums.Constants.ClimberConstants;
+import java.util.Map;
 import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
 import yams.mechanisms.config.ArmConfig;
@@ -41,7 +42,10 @@ public class ClimberSubsystem extends SubsystemBase {
     private boolean isClimbing = false;
     private final Trigger climbingTrigger = new Trigger(() -> isClimbing);
     private boolean closedLoopEnabled = true;
-    private final Supplier<Voltage> customVoltage = new LoggedNetworkUnit<>("Climber/Climber Voltage", Volts.of(3));
+    private final Supplier<Voltage> climbVoltage =
+            new LoggedNetworkUnit<>("Climber/Climb Voltage", ClimberConstants.CLIMB_VOLTAGE);
+    private final Supplier<Voltage> lowerVoltage =
+            new LoggedNetworkUnit<>("Climber/Lower Voltage", ClimberConstants.LOWER_VOLTAGE);
 
     public ClimberSubsystem(MultiMotorInfoSendable motorInfo) {
         final var motorConfig = new SmartMotorControllerConfig()
@@ -67,7 +71,7 @@ public class ClimberSubsystem extends SubsystemBase {
 
         setDefaultCommand(run(() -> {
             if (closedLoopEnabled) return;
-            climber.setVoltage(customVoltage);
+            climber.getMotor().setVoltage(Volts.of(0.0));
         }));
     }
 
@@ -86,15 +90,25 @@ public class ClimberSubsystem extends SubsystemBase {
     }
 
     public Command climb() {
-        return Commands.sequence(runOnce(() -> isClimbing = true), climber.run(ClimberConstants.CLIMBED_ANGLE));
+        return Commands.sequence(
+                runOnce(() -> isClimbing = true),
+                Commands.select(
+                        Map.of(
+                                true, climber.run(ClimberConstants.CLIMBED_ANGLE),
+                                false, climber.setVoltage(climbVoltage)),
+                        () -> closedLoopEnabled));
     }
 
     public Command lower() {
-        return Commands.sequence(climber.run(ClimberConstants.HORIZONTAL_ANGLE), runOnce(() -> isClimbing = false));
+        return Commands.select(
+                Map.of(
+                        true, climber.run(ClimberConstants.HORIZONTAL_ANGLE),
+                        false, climber.setVoltage(lowerVoltage)),
+                () -> closedLoopEnabled);
     }
 
     public Command findLimit() {
-        final var currentDebouncer = new Debouncer(0.3);
+        final var currentDebouncer = new Debouncer(0.1);
         final var runVolts = Volts.of(-2);
         final var currentThreshold = Amps.of(0); // change this
         final var velocityThreshold = DegreesPerSecond.of(2);
@@ -111,7 +125,9 @@ public class ClimberSubsystem extends SubsystemBase {
                 .finallyDo(() -> {
                     motorController.setVoltage(Volts.zero());
                     motorController.setEncoderPosition(ClimberConstants.MINIMUM_ANGLE);
-                    motorController.startClosedLoopController();
+                    if (closedLoopEnabled) {
+                        motorController.startClosedLoopController();
+                    }
                 });
     }
 

@@ -11,19 +11,30 @@ X   B
 ### Driver
 | Button              | Action                    |
 |---------------------|---------------------------|
+| Start               | Reset gyro/yaw            |
 | Left Stick          | Drive (field-oriented)    |
 | Right Stick         | Rotate (robot-oriented)   |
 | Right Stick (press) | Lock yaw towards velocity |
+| L Bumper            | Slow mode                 |
+| L Trigger           | Intake                    |
+| R Trigger           | Fast mode                 |
+| X                   | Lock mode                 |
 | Y                   | Face towards hub          |
+| B                   | Wind up & launch          |
 ### Operator
-| Button    | Action                           |
-|-----------|----------------------------------|
-| Start     | Straighten Wheels                |
-| L Bumper  | Calibrate left corner (depot)    |
-| R Bumper  | Calibrate right corner (outpost) |
-| L Trigger | Calibrate left trench (outer)    |
-| R Trigger | Calibrate right trench (outer)   |
-| X         | Manual bump lock                 |
+| Button            | Action                           |
+|-------------------|----------------------------------|
+| Start + L Bumper  | Calibrate left corner (depot)    |
+| Start + R Bumper  | Calibrate right corner (outpost) |
+| Start + L Trigger | Calibrate left side of hub       |
+| Start + R Trigger | Calibrate right side of hub      |
+| L Bumper          | Eject                            |
+| R Bumper          | Wind up                          |
+| R Trigger         | Wind up & shoot                  |
+| Both Triggers     | Shoot (no wind up)               |
+| A                 | Intake                           |
+| B                 | Unjam                            |
+| X                 | Manual bump lock                 |
 
 ## LED Signals
 Note: Ordered by priority

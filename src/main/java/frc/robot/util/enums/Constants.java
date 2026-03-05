@@ -142,6 +142,10 @@ public final class Constants {
         public static final Current STALL_CURRENT = Amps.of(10);
         public static final Time RAMP_RATE = Seconds.of(0.25);
 
+        // open loop
+        public static final Voltage CLIMB_VOLTAGE = Volts.of(3);
+        public static final Voltage LOWER_VOLTAGE = Volts.of(-1);
+
         public static final Angle MINIMUM_ANGLE = Degrees.of(-53.5);
         public static final Angle HORIZONTAL_ANGLE = Degrees.of(0);
         public static final Angle CLIMBED_ANGLE = Degrees.of(70);

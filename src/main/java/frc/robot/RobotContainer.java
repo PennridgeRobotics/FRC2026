@@ -12,11 +12,11 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
-import frc.robot.classes.AutoManager;
 import frc.robot.subsystems.ClimberSubsystem;
 import frc.robot.subsystems.FuelSubsystem;
 import frc.robot.subsystems.LightsSubsystem;
 import frc.robot.subsystems.SwerveSubsystem;
+import frc.robot.util.AutoManager;
 import frc.robot.util.ShooterCalculator;
 import frc.robot.util.dashboard.LoggedNetworkInput;
 import frc.robot.util.dashboard.MultiMotorInfoSendable;
@@ -126,18 +126,19 @@ public class RobotContainer {
                     () -> -driverController.getRightX()));
         }
 
-        driverController.leftTrigger().onTrue(swerveSubsystem.setSpeedMultiplierCommand(SpeedMultiplier.SLOW));
+        driverController.leftBumper().onTrue(swerveSubsystem.setSpeedMultiplierCommand(SpeedMultiplier.SLOW));
         driverController
-                .leftTrigger()
+                .leftBumper()
                 .negate()
                 .and(driverController.rightTrigger().negate())
                 .onTrue(swerveSubsystem.setSpeedMultiplierCommand(SpeedMultiplier.NORMAL));
         driverController.rightTrigger().onTrue(swerveSubsystem.setSpeedMultiplierCommand(SpeedMultiplier.FAST));
         driverController.start().onTrue(new InstantCommand(swerveSubsystem::zeroGyroWithAlliance));
         driverController.y().whileTrue(swerveSubsystem.faceTowardsHubCommand());
+        driverController.x().whileTrue(swerveSubsystem.lockPoseCommand());
         if (fuelSubsystem != null) {
             driverController.b().whileTrue(fuelSubsystem.windUpAndLaunchCommand());
-            driverController.a().whileTrue(fuelSubsystem.intakeCommand());
+            driverController.leftTrigger().whileTrue(fuelSubsystem.intakeCommand());
         }
         /*driverController
         .a()
