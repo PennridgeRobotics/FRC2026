@@ -19,7 +19,6 @@ public class Robot extends TimedRobot {
         // and put our autonomous chooser on the dashboard.
 
         robotContainer = new RobotContainer();
-        robotContainer.initSmartDashboard();
     }
 
     /**
@@ -35,7 +34,9 @@ public class Robot extends TimedRobot {
         // newly-scheduled commands, running already-scheduled commands, removing finished or
         // interrupted commands, and running subsystem periodic() methods. This must be called from the
         // robot's periodic block in order for anything in the Command-based framework to work.
+        if (robotContainer != null) robotContainer.preSchedulerUpdate();
         CommandScheduler.getInstance().run();
+        if (robotContainer != null) robotContainer.postSchedulerUpdate();
 
         getRobotContainer().periodic();
     }

@@ -2,7 +2,9 @@ package frc.robot.util.dashboard;
 
 import edu.wpi.first.util.sendable.Sendable;
 import edu.wpi.first.util.sendable.SendableBuilder;
+import frc.robot.util.StringUtils;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Objects;
@@ -12,7 +14,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
@@ -43,23 +44,39 @@ public class SplitButtonChooser<T> implements Sendable {
         this.typeToString = typeToString;
     }
 
+    public static <T extends Enum<T>> SplitButtonChooser<T> withEnum(
+            final @Nullable Supplier<@Nullable T> active,
+            final @Nullable Set<Consumer<T>> listeners,
+            final @Nullable T defaultOption,
+            final Class<T> enumClass) {
+        //noinspection NullableProblems
+        return new SplitButtonChooser<>(
+                active,
+                Arrays.stream(enumClass.getEnumConstants()).toList(),
+                listeners,
+                defaultOption,
+                str -> Enum.valueOf(enumClass, str.toUpperCase().replace(' ', '_')),
+                obj -> StringUtils.capitalizeFully(obj.name()));
+    }
+
     public static SplitButtonChooser<String> withStrings(
             final @Nullable Supplier<@Nullable String> active,
             final @Nullable Collection<String> options,
             final @Nullable Set<Consumer<String>> listeners,
             final @Nullable String defaultOption) {
+        //noinspection NullableProblems
         return new SplitButtonChooser<>(
                 active, options, listeners, defaultOption, Function.identity(), Function.identity());
     }
 
-    public void addOption(final @NonNull T option) {
+    public void addOption(final T option) {
         final String string = typeToString.apply(option);
         if (!options.contains(string)) {
             options.add(string);
         }
     }
 
-    public void setDefaultOption(final @NonNull T defaultOption) {
+    public void setDefaultOption(final T defaultOption) {
         this.defaultOption = typeToString.apply(defaultOption);
         addOption(defaultOption);
     }
