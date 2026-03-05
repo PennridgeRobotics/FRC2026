@@ -122,10 +122,10 @@ public final class Constants {
         public static final AngularVelocity INTAKE_VELOCITY_INTAKE_LAUNCHER = RotationsPerSecond.of(20);
         public static final AngularVelocity INTAKE_VELOCITY_INDEXER = RotationsPerSecond.of(-16);
         public static final AngularVelocity UNJAM_VELOCITY_INTAKE_LAUNCHER = RotationsPerSecond.of(-10);
-        public static final AngularVelocity UNJAM_VELOCITY_INDEXER = RotationsPerSecond.of(10);
-        public static final AngularVelocity EJECT_VELOCITY_INTAKE_LAUNCHER = RotationsPerSecond.of(-5);
-        public static final AngularVelocity EJECT_VELOCITY_INDEXER = RotationsPerSecond.of(-5);
-        public static final AngularVelocity LAUNCH_VELOCITY_INDEXER = RotationsPerSecond.of(20);
+        public static final AngularVelocity UNJAM_VELOCITY_INDEXER = RotationsPerSecond.of(-10);
+        public static final AngularVelocity EJECT_VELOCITY_INTAKE_LAUNCHER = RotationsPerSecond.of(-10);
+        public static final AngularVelocity EJECT_VELOCITY_INDEXER = RotationsPerSecond.of(10);
+        public static final AngularVelocity LAUNCH_VELOCITY_INDEXER = RotationsPerSecond.of(10);
         public static final AngularVelocity WINDUP_VELOCITY_INDEXER = RotationsPerSecond.of(-0.5);
         // calculated velocity + LAUNCH_VELOCITY_TOLERANCE = velocity needed to finish winding up
         public static final AngularVelocity LAUNCH_VELOCITY_TOLERANCE = RotationsPerSecond.of(-0.5);
