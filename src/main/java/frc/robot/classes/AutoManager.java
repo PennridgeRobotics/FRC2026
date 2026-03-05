@@ -8,11 +8,16 @@ import frc.robot.lib.BLine.FollowPath;
 import frc.robot.lib.BLine.Path;
 import frc.robot.subsystems.FuelSubsystem;
 import frc.robot.subsystems.SwerveSubsystem;
+import org.jspecify.annotations.NullMarked;
 
+@NullMarked
 public class AutoManager {
     private final SwerveSubsystem swerveDrive;
     private final FollowPath.Builder pathBuilder;
     private final FuelSubsystem fuelSubsystem;
+
+    // Built-in paths
+    private final Path shootFromStartPath = new Path("shoot_from_start");
 
     public AutoManager(SwerveSubsystem swerveDrive, FollowPath.Builder pathBuilder, FuelSubsystem fuelSubsystem) {
         this.swerveDrive = swerveDrive;
@@ -20,20 +25,25 @@ public class AutoManager {
         this.pathBuilder = pathBuilder;
     }
 
-    public FollowPath followPath(String pathName) {
-        Path path = new Path(pathName);
-        return followPath(path);
-    }
-
-    public FollowPath followPath(Path path) {
+    public FollowPath getPathCommand(Path path) {
         return pathBuilder.build(path);
     }
 
-    public Command fieldAutos() {
-        return Commands.sequence(shootFromStart()).withTimeout(Seconds.of(20));
+    private Path getAutoPath() {
+        return shootFromStartPath; // selectable via dashboard?
     }
 
-    public Command shootFromStart() {
-        return Commands.sequence(followPath("shoot_from_start"), fuelSubsystem.windUp());
+    public Command getAutoCommand() {
+        return shootFromStartAutoCommand(); // selectable via dashboard?
+    }
+
+    public void orientAutoModuleOrientations() {
+        swerveDrive.orientModuleOrientationsForPath(getAutoPath());
+    }
+
+    private Command shootFromStartAutoCommand() {
+        return Commands.sequence(
+                getPathCommand(shootFromStartPath),
+                fuelSubsystem.windUpAndLaunchCommand().withTimeout(Seconds.of(15)));
     }
 }
