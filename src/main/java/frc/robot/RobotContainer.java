@@ -40,7 +40,7 @@ public class RobotContainer {
     private final ShooterCalculator shooterCalculator;
     private final PowerDistribution powerDistribution;
     private final MultiMotorInfoSendable motorInfo = new MultiMotorInfoSendable();
-    private final AutoManager autoManager;
+    private final @Nullable AutoManager autoManager;
 
     // Initializes controllers
     private final CommandXboxController driverController =
@@ -77,7 +77,9 @@ public class RobotContainer {
         // autoChooser = AutoBuilder.buildAutoChooser("Epic Auto");
         autoChooser = new SendableChooser<>();
         setupPathPlanner();
-        autoManager = new AutoManager(swerveSubsystem, swerveSubsystem.getPathBuilder(), fuelSubsystem);
+        autoManager = fuelSubsystem != null
+                ? new AutoManager(swerveSubsystem, swerveSubsystem.getPathBuilder(), fuelSubsystem)
+                : null;
 
         configureBindings();
 
