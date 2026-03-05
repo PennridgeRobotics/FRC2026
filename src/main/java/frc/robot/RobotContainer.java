@@ -24,7 +24,6 @@ import frc.robot.util.dashboard.MultiMotorInfoSendable;
 import frc.robot.util.enums.Constants.*;
 import frc.robot.util.enums.PositionCalibrationLocation;
 import frc.robot.util.enums.SpeedMultiplier;
-
 import java.io.IOException;
 import java.util.Map;
 import org.jspecify.annotations.NullMarked;
@@ -53,7 +52,7 @@ public class RobotContainer {
 
     private final SendableChooser<Command> autoChooser;
     private final CANBusLoadSendable canBusLoadSendable;
-    
+
     private boolean useOdometry = true;
     private final Trigger useOdometryTrigger = new Trigger(() -> useOdometry);
     /** The container for the robot. Contains subsystems, I/O devices, and commands. */
