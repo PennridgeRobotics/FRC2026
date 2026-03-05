@@ -14,6 +14,8 @@ public class LoggedNetworkBoolean extends LoggedNetworkInput implements BooleanS
     public LoggedNetworkBoolean(String rawTopicName, boolean defaultValue) {
         super(rawTopicName);
         entry = NetworkTableInstance.getDefault().getBooleanTopic(topicName).getEntry(defaultValue);
+        entry.set(defaultValue);
+        currentValue = entry.get();
     }
 
     public void set(boolean value) {

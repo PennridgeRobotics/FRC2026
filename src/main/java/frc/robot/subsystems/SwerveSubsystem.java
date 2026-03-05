@@ -30,17 +30,18 @@ import frc.robot.lib.BLine.FollowPath;
 import frc.robot.lib.BLine.Path;
 import frc.robot.util.BumpManager;
 import frc.robot.util.SlewRateLimiter2d;
-import frc.robot.util.dashboard.MultiMotorInfoSendable;
-import frc.robot.util.dashboard.PIDSendable;
+import frc.robot.util.dashboard.*;
 import frc.robot.util.dashboard.PIDSendable.PIDValues;
 import frc.robot.util.enums.Constants.*;
 import frc.robot.util.enums.PositionCalibrationLocation;
+import frc.robot.util.enums.SpeedMultiplier;
 import frc.robot.vision.PhotonCamera;
 import frc.robot.vision.VisionManager;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
@@ -60,6 +61,9 @@ public class SwerveSubsystem extends SubsystemBase {
     private boolean forceNormalDriveMode = false;
     private boolean lockYawTowardsVelocity = false;
     private boolean faceTowardsHub = false;
+    private SpeedMultiplier speedMultiplier = SpeedMultiplier.NORMAL;
+    private BooleanSupplier headingCorrectionSupplier;
+    private DoubleSupplier headingCorrectionDeadband;
 
     private final Trigger forceNormalDriveModeTrigger = new Trigger(() -> forceNormalDriveMode);
 
@@ -74,13 +78,16 @@ public class SwerveSubsystem extends SubsystemBase {
     @SuppressWarnings("StaticAssignmentInConstructor")
     public SwerveSubsystem(final MultiMotorInfoSendable motorInfo) throws IOException {
         this.motorInfo = motorInfo;
+        headingCorrectionSupplier = new LoggedNetworkBoolean("Swerve/Heading Correction Enabled", false);
+        headingCorrectionDeadband = new LoggedNetworkDouble("Swerve/Heading Correction Deadband", 0.01);
         SwerveDriveTelemetry.verbosity = SwerveDriveTelemetry.TelemetryVerbosity.HIGH;
         swerveDrive = new SwerveParser(
                         new File(Filesystem.getDeployDirectory(), DriveConstants.SWERVE_CONFIG_DIRECTORY))
                 .createSwerveDrive(
                         DriveConstants.MAX_LINEAR_SPEED.in(MetersPerSecond),
                         new Pose2d(new Translation2d(Meter.of(2), Meter.of(0)), Rotation2d.kZero));
-        swerveDrive.setHeadingCorrection(true); // enable this after testing/tuning PID
+        swerveDrive.setHeadingCorrection(
+                headingCorrectionSupplier.getAsBoolean()); // enable this after testing/tuning PID
         swerveDrive.setCosineCompensator(!SwerveDriveTelemetry.isSimulation); // disable for simulations
         swerveDrive.setAngularVelocityCompensation(true, true, 0.1); // may need to adjust; see docs
         // swerveDrive.useExternalFeedbackSensor();
@@ -122,12 +129,35 @@ public class SwerveSubsystem extends SubsystemBase {
             builder.addBooleanProperty(
                     "Driver Overrides/Face Towards Hub", () -> faceTowardsHub, v -> faceTowardsHub = v);
         });
+        SmartDashboard.putData("Robot Pose", builder -> {
+            builder.addDoubleProperty("Pose X (m)", () -> getRobotPose().getX(), newX -> {
+                final var pose = getRobotPose();
+                resetPose(new Pose2d(newX, pose.getY(), pose.getRotation()));
+            });
+            builder.addDoubleProperty("Pose Y (m)", () -> getRobotPose().getY(), newY -> {
+                final var pose = getRobotPose();
+                resetPose(new Pose2d(pose.getX(), newY, pose.getRotation()));
+            });
+            builder.addDoubleProperty(
+                    "Pose Rotation (deg)", () -> getRobotPose().getRotation().getDegrees(), newRotation -> {
+                        final var pose = getRobotPose();
+                        resetPose(new Pose2d(pose.getX(), pose.getY(), Rotation2d.fromDegrees(newRotation)));
+                    });
+        });
         SmartDashboard.putData(
                 "Swerve Controller Heading PID",
                 new PIDSendable(
                         swerveDrive.swerveController.thetaController,
                         PIDSendable.Type.PID,
                         PIDValues.from(swerveDrive.swerveController.thetaController)));
+    }
+
+    @Override
+    public void periodic() {
+        if (headingCorrectionSupplier.getAsBoolean() != swerveDrive.headingCorrection) {
+            swerveDrive.setHeadingCorrection(
+                    headingCorrectionSupplier.getAsBoolean(), headingCorrectionDeadband.getAsDouble());
+        }
     }
 
     private void updateOdometry() {
@@ -377,7 +407,7 @@ public class SwerveSubsystem extends SubsystemBase {
                 ? FieldConstants.HUB_RED
                 : FieldConstants.HUB_BLUE;
         final var currentLoc = getRobotPose().getTranslation();
-        return hubLoc.minus(currentLoc).getAngle();
+        return hubLoc.minus(currentLoc).getAngle().rotateBy(Rotation2d.k180deg);
     }
 
     public Command straightenWheelsCommand() {
@@ -390,6 +420,10 @@ public class SwerveSubsystem extends SubsystemBase {
 
     public Command enableManualBumpLock() {
         return bumpManager.enableManualBumpLock();
+    }
+
+    public Command setSpeedMultiplierCommand(SpeedMultiplier speedMultiplier) {
+        return Commands.runOnce(() -> this.speedMultiplier = speedMultiplier);
     }
 
     public Command resetPoseFromCalibrationPosition(PositionCalibrationLocation location) {
@@ -418,6 +452,33 @@ public class SwerveSubsystem extends SubsystemBase {
                     yPos = FieldConstants.FIELD_WIDTH_Y.minus(yPos);
                 }
                 case RIGHT_TRENCH_OUTER -> xPos = FieldConstants.TRENCH_X.minus(xPos);
+                case FRONT_LEFT_OF_HUB -> {
+                    xPos = FieldConstants.HUB_BLUE
+                            .getMeasureX()
+                            .minus(FieldConstants.HUB_WIDTH_X.div(2))
+                            .minus(xPos);
+                    yPos = FieldConstants.HUB_BLUE
+                            .getMeasureY()
+                            .plus(FieldConstants.HUB_LENGTH_Y.div(2))
+                            .minus(yPos);
+                }
+                case FRONT_RIGHT_OF_HUB -> {
+                    xPos = FieldConstants.HUB_BLUE
+                            .getMeasureX()
+                            .minus(FieldConstants.HUB_WIDTH_X.div(2))
+                            .minus(xPos);
+                    yPos = FieldConstants.HUB_BLUE
+                            .getMeasureY()
+                            .minus(FieldConstants.HUB_LENGTH_Y.div(2))
+                            .plus(yPos);
+                }
+                case FRONT_CENTER_OF_HUB -> {
+                    xPos = FieldConstants.HUB_BLUE
+                            .getMeasureX()
+                            .minus(FieldConstants.HUB_WIDTH_X.div(2))
+                            .minus(xPos);
+                    yPos = FieldConstants.HUB_BLUE.getMeasureY();
+                }
             }
 
             if (flip) {
@@ -461,14 +522,14 @@ public class SwerveSubsystem extends SubsystemBase {
         final var withDeadband =
                 MathUtil.applyDeadband(input, ControllerConstants.DRIVE_MIN_INPUT, ControllerConstants.DRIVE_MAX_INPUT);
         final var scaled = Math.pow(withDeadband, 3);
-        return getMaximumChassisVelocity().times(scaled);
+        return getMaximumChassisVelocity().times(scaled).times(speedMultiplier.getMultiplier());
     }
 
     private AngularVelocity joystickToAngularVelocity(final double input) {
         final var withDeadband =
                 MathUtil.applyDeadband(input, ControllerConstants.DRIVE_MIN_INPUT, ControllerConstants.DRIVE_MAX_INPUT);
         final var scaled = Math.pow(withDeadband, 3);
-        return getMaximumChassisAngularVelocity().times(scaled);
+        return getMaximumChassisAngularVelocity().times(scaled).times(speedMultiplier.getMultiplier());
     }
 
     private void setModuleOrientations(Rotation2d rotation) {
@@ -538,4 +599,10 @@ public class SwerveSubsystem extends SubsystemBase {
     private CorePigeon2 getPigeon2() {
         return (CorePigeon2) swerveDrive.getGyro().getIMU();
     }
+
+    /*public void goToRightTrench() {
+        final var path = new Path(
+            new Path.Waypoint(new Translation2d())
+        )
+    }*/
 }

@@ -67,6 +67,7 @@ val includeDesktopSupport = true
 
 repositories {
     maven("https://jitpack.io")
+    maven("https://redempt.dev")
 }
 
 dependencies {
@@ -75,6 +76,7 @@ dependencies {
 
     implementation(libs.bline.lib)
     implementation(libs.caffeine)
+    implementation(libs.crunch)
     implementation(libs.jspecify)
 
     annotationProcessor(wpi.java.deps.wpilibAnnotations())
