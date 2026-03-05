@@ -1,6 +1,6 @@
 {
-  "robot_length_meters": 0.6731,
-  "robot_width_meters": 0.8001,
+  "robot_length_meters": 0.5,
+  "robot_width_meters": 0.5,
   "default_max_velocity_meters_per_sec": 4.5,
   "default_max_acceleration_meters_per_sec2": 7.0,
   "default_intermediate_handoff_radius_meters": 0.2,

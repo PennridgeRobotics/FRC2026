@@ -78,8 +78,8 @@ public class SwerveSubsystem extends SubsystemBase {
     @SuppressWarnings("StaticAssignmentInConstructor")
     public SwerveSubsystem(final MultiMotorInfoSendable motorInfo) throws IOException {
         this.motorInfo = motorInfo;
-        headingCorrectionSupplier = new LoggedNetworkBoolean("Heading Correction Enabled", false);
-        headingCorrectionDeadband = new LoggedNetworkDouble("Heading Correction Deadband", 0.01);
+        headingCorrectionSupplier = new LoggedNetworkBoolean("Swerve/Heading Correction Enabled", false);
+        headingCorrectionDeadband = new LoggedNetworkDouble("Swerve/Heading Correction Deadband", 0.01);
         SwerveDriveTelemetry.verbosity = SwerveDriveTelemetry.TelemetryVerbosity.HIGH;
         swerveDrive = new SwerveParser(
                         new File(Filesystem.getDeployDirectory(), DriveConstants.SWERVE_CONFIG_DIRECTORY))
@@ -128,6 +128,21 @@ public class SwerveSubsystem extends SubsystemBase {
                     v -> lockYawTowardsVelocity = v);
             builder.addBooleanProperty(
                     "Driver Overrides/Face Towards Hub", () -> faceTowardsHub, v -> faceTowardsHub = v);
+        });
+        SmartDashboard.putData("Robot Pose", builder -> {
+            builder.addDoubleProperty("Pose X (m)", () -> getRobotPose().getX(), newX -> {
+                final var pose = getRobotPose();
+                resetPose(new Pose2d(newX, pose.getY(), pose.getRotation()));
+            });
+            builder.addDoubleProperty("Pose Y (m)", () -> getRobotPose().getY(), newY -> {
+                final var pose = getRobotPose();
+                resetPose(new Pose2d(pose.getX(), newY, pose.getRotation()));
+            });
+            builder.addDoubleProperty(
+                    "Pose Rotation (deg)", () -> getRobotPose().getRotation().getDegrees(), newRotation -> {
+                        final var pose = getRobotPose();
+                        resetPose(new Pose2d(pose.getX(), pose.getY(), Rotation2d.fromDegrees(newRotation)));
+                    });
         });
         SmartDashboard.putData(
                 "Swerve Controller Heading PID",
@@ -584,4 +599,10 @@ public class SwerveSubsystem extends SubsystemBase {
     private CorePigeon2 getPigeon2() {
         return (CorePigeon2) swerveDrive.getGyro().getIMU();
     }
+
+    /*public void goToRightTrench() {
+        final var path = new Path(
+            new Path.Waypoint(new Translation2d())
+        )
+    }*/
 }

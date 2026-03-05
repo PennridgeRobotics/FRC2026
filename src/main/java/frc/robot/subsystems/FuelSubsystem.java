@@ -59,24 +59,24 @@ public class FuelSubsystem extends SubsystemBase {
     private boolean useCustomVelocity = true;
     private DashboardFuelAction dashboardFuelAction = DashboardFuelAction.IDLE;
 
-    private final Supplier<AngularVelocity> ejectVelocityIntakeLauncher =
-            new LoggedNetworkUnit<>("Eject Velocity Intake-Launcher", FuelConstants.EJECT_VELOCITY_INTAKE_LAUNCHER);
+    private final Supplier<AngularVelocity> ejectVelocityIntakeLauncher = new LoggedNetworkUnit<>(
+            "Fuel/Eject Velocity Intake-Launcher", FuelConstants.EJECT_VELOCITY_INTAKE_LAUNCHER);
     private final Supplier<AngularVelocity> ejectVelocityIndexer =
-            new LoggedNetworkUnit<>("Eject Velocity Indexer", FuelConstants.EJECT_VELOCITY_INDEXER);
-    private final Supplier<AngularVelocity> unJamVelocityIntakeLauncher =
-            new LoggedNetworkUnit<>("Unjam Velocity Intake-Launcher", FuelConstants.UNJAM_VELOCITY_INTAKE_LAUNCHER);
+            new LoggedNetworkUnit<>("Fuel/Eject Velocity Indexer", FuelConstants.EJECT_VELOCITY_INDEXER);
+    private final Supplier<AngularVelocity> unJamVelocityIntakeLauncher = new LoggedNetworkUnit<>(
+            "Fuel/Unjam Velocity Intake-Launcher", FuelConstants.UNJAM_VELOCITY_INTAKE_LAUNCHER);
     private final Supplier<AngularVelocity> unJamVelocityIndexer =
-            new LoggedNetworkUnit<>("Unjam Velocity Indexer", FuelConstants.UNJAM_VELOCITY_INDEXER);
-    private final Supplier<AngularVelocity> intakeVelocityIntakeLauncher =
-            new LoggedNetworkUnit<>("Intake Velocity Intake-Launcher", FuelConstants.INTAKE_VELOCITY_INTAKE_LAUNCHER);
+            new LoggedNetworkUnit<>("Fuel/Unjam Velocity Indexer", FuelConstants.UNJAM_VELOCITY_INDEXER);
+    private final Supplier<AngularVelocity> intakeVelocityIntakeLauncher = new LoggedNetworkUnit<>(
+            "Fuel/Intake Velocity Intake-Launcher", FuelConstants.INTAKE_VELOCITY_INTAKE_LAUNCHER);
     private final Supplier<AngularVelocity> intakeVelocityIndexer =
-            new LoggedNetworkUnit<>("Intake Velocity Indexer", FuelConstants.INTAKE_VELOCITY_INDEXER);
+            new LoggedNetworkUnit<>("Fuel/Intake Velocity Indexer", FuelConstants.INTAKE_VELOCITY_INDEXER);
     private final Supplier<AngularVelocity> launchVelocityIntakeLauncher =
-            new LoggedNetworkUnit<>("Launch Velocity Intake-Launcher", RotationsPerSecond.of(40.0));
+            new LoggedNetworkUnit<>("Fuel/Launch Velocity Intake-Launcher", RotationsPerSecond.of(40.0));
     private final Supplier<AngularVelocity> launchVelocityIndexer =
-            new LoggedNetworkUnit<>("Launch Velocity Indexer", FuelConstants.LAUNCH_VELOCITY_INDEXER);
+            new LoggedNetworkUnit<>("Fuel/Launch Velocity Indexer", FuelConstants.LAUNCH_VELOCITY_INDEXER);
     private final Supplier<AngularVelocity> windUpVelocityIndexer =
-            new LoggedNetworkUnit<>("Windup Velocity Indexer", FuelConstants.WINDUP_VELOCITY_INDEXER);
+            new LoggedNetworkUnit<>("Fuel/Windup Velocity Indexer", FuelConstants.WINDUP_VELOCITY_INDEXER);
 
     public FuelSubsystem(ShooterCalculator shooterCalculator, MultiMotorInfoSendable motorInfo) {
         this.shooterCalculator = shooterCalculator;

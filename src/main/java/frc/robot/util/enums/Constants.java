@@ -81,7 +81,7 @@ public final class Constants {
         // Camera 1
         public static final String CAMERA_1_NAME = "Arducam_OV9281_1";
         public static final Translation3d CAMERA_1_TRANSLATION =
-                new Translation3d(Inches.of(0), Inches.of(0), Inches.of(0)); // Robot to cam
+                new Translation3d(Inches.of(6.26), Inches.of(-15.74), Inches.of(14.32)); // Robot to cam
         public static final Rotation3d CAMERA_1_ROTATION =
                 new Rotation3d(Degrees.of(0), Degrees.of(0), Degrees.of(0)); // Robot to cam
     }

@@ -41,7 +41,7 @@ public class ClimberSubsystem extends SubsystemBase {
     private boolean isClimbing = false;
     private final Trigger climbingTrigger = new Trigger(() -> isClimbing);
     private boolean closedLoopEnabled = true;
-    private final Supplier<Voltage> customVoltage = new LoggedNetworkUnit<>("Climber Voltage", Volts.of(3));
+    private final Supplier<Voltage> customVoltage = new LoggedNetworkUnit<>("Climber/Climber Voltage", Volts.of(3));
 
     public ClimberSubsystem(MultiMotorInfoSendable motorInfo) {
         final var motorConfig = new SmartMotorControllerConfig()
