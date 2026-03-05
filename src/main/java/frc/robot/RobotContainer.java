@@ -15,10 +15,7 @@ import frc.robot.subsystems.FuelSubsystem;
 import frc.robot.subsystems.LightsSubsystem;
 import frc.robot.subsystems.SwerveSubsystem;
 import frc.robot.util.dashboard.CANBusLoadSendable;
-import frc.robot.util.enums.Constants.ClimberConstants;
-import frc.robot.util.enums.Constants.ControllerConstants;
-import frc.robot.util.enums.Constants.FuelConstants;
-import frc.robot.util.enums.Constants.LightConstants;
+import frc.robot.util.enums.Constants.*;
 import java.io.IOException;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -38,6 +35,7 @@ public class RobotContainer {
     new CommandXboxController(ControllerConstants.OPERATOR_CONTROLLER_PORT);*/
 
     private final SendableChooser<Command> autoChooser;
+    private final CANBusLoadSendable canBusLoadSendable;
 
     /** The container for the robot. Contains subsystems, I/O devices, and commands. */
     public RobotContainer() {
@@ -58,15 +56,12 @@ public class RobotContainer {
 
         // autoChooser = AutoBuilder.buildAutoChooser("Epic Auto");
         autoChooser = new SendableChooser<>();
-        CANBusLoadSendable canBusLoadSendable = new CANBusLoadSendable();
+        canBusLoadSendable = new CANBusLoadSendable();
         setupPathPlanner();
 
         configureBindings();
 
-        // Add the auto chooser to SmartDashboard
-        SmartDashboard.putData("Auto Chooser", autoChooser);
-        // Add the CAN Bus Load Sendable to SmartDashboard
-        SmartDashboard.putData("CAN Bus Load", canBusLoadSendable);
+        initSmartDashboard();
     }
 
     private void setupPathPlanner() {}
@@ -107,5 +102,10 @@ public class RobotContainer {
                         MetersPerSecond::zero, MetersPerSecond::zero, () -> Rotation2d.k180deg));
     }
 
-    public void initSmartDashboard() {}
+    public void initSmartDashboard() {
+        // Add the auto chooser to SmartDashboard
+        SmartDashboard.putData("Auto Chooser", autoChooser);
+        // Add the CAN Bus Load Sendable to SmartDashboard
+        SmartDashboard.putData("CAN Bus Load", canBusLoadSendable);
+    }
 }
