@@ -3,7 +3,8 @@
 // the WPILib BSD license file in the root directory of this project.
 package frc.robot.subsystems;
 
-import static edu.wpi.first.units.Units.Inches;
+import static edu.wpi.first.units.Units.Meters;
+import static edu.wpi.first.units.Units.MetersPerSecond;
 import static edu.wpi.first.units.Units.RotationsPerSecond;
 
 import com.revrobotics.spark.SparkLowLevel.MotorType;
@@ -14,6 +15,7 @@ import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
@@ -26,6 +28,7 @@ import frc.robot.util.dashboard.PIDSendable;
 import frc.robot.util.dashboard.SplitButtonChooser;
 import frc.robot.util.enums.Constants.FuelConstants;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
@@ -54,26 +57,27 @@ public class FuelSubsystem extends SubsystemBase {
     private final FlyWheel intakeLauncher;
     private final FlyWheel indexer;
 
-    private boolean useCustomVelocity;
+    private boolean useCustomVelocity = true;
+    private DashboardFuelAction dashboardFuelAction = DashboardFuelAction.IDLE;
 
-    private final Supplier<AngularVelocity> ejectVelocityIntakeLauncher =
-            new LoggedNetworkUnit<>("Eject Velocity Intake-Launcher", FuelConstants.INTAKE_VELOCITY_INTAKE_LAUNCHER);
+    private final Supplier<AngularVelocity> ejectVelocityIntakeLauncher = new LoggedNetworkUnit<>(
+            "Fuel/Eject Velocity Intake-Launcher", FuelConstants.EJECT_VELOCITY_INTAKE_LAUNCHER);
     private final Supplier<AngularVelocity> ejectVelocityIndexer =
-            new LoggedNetworkUnit<>("Eject Velocity Indexer", FuelConstants.INTAKE_VELOCITY_INDEXER);
-    private final Supplier<AngularVelocity> unJamVelocityIntakeLauncher =
-            new LoggedNetworkUnit<>("Unjam Velocity Intake-Launcher", FuelConstants.UNJAM_VELOCITY_INTAKE_LAUNCHER);
+            new LoggedNetworkUnit<>("Fuel/Eject Velocity Indexer", FuelConstants.EJECT_VELOCITY_INDEXER);
+    private final Supplier<AngularVelocity> unJamVelocityIntakeLauncher = new LoggedNetworkUnit<>(
+            "Fuel/Unjam Velocity Intake-Launcher", FuelConstants.UNJAM_VELOCITY_INTAKE_LAUNCHER);
     private final Supplier<AngularVelocity> unJamVelocityIndexer =
-            new LoggedNetworkUnit<>("Indexer Unjam Velocity", FuelConstants.UNJAM_VELOCITY_INDEXER);
-    private final Supplier<AngularVelocity> intakeVelocityIntakeLauncher =
-            new LoggedNetworkUnit<>("Intake Velocity Intake-Launcher", FuelConstants.INTAKE_VELOCITY_INTAKE_LAUNCHER);
+            new LoggedNetworkUnit<>("Fuel/Unjam Velocity Indexer", FuelConstants.UNJAM_VELOCITY_INDEXER);
+    private final Supplier<AngularVelocity> intakeVelocityIntakeLauncher = new LoggedNetworkUnit<>(
+            "Fuel/Intake Velocity Intake-Launcher", FuelConstants.INTAKE_VELOCITY_INTAKE_LAUNCHER);
     private final Supplier<AngularVelocity> intakeVelocityIndexer =
-            new LoggedNetworkUnit<>("Intake Velocity Indexer", FuelConstants.INTAKE_VELOCITY_INDEXER);
+            new LoggedNetworkUnit<>("Fuel/Intake Velocity Indexer", FuelConstants.INTAKE_VELOCITY_INDEXER);
     private final Supplier<AngularVelocity> launchVelocityIntakeLauncher =
-            new LoggedNetworkUnit<>("Launch Velocity Intake-Launcher", RotationsPerSecond.of(40.0));
+            new LoggedNetworkUnit<>("Fuel/Launch Velocity Intake-Launcher", RotationsPerSecond.of(40.0));
     private final Supplier<AngularVelocity> launchVelocityIndexer =
-            new LoggedNetworkUnit<>("Launch Velocity Indexer", FuelConstants.LAUNCH_VELOCITY_INDEXER);
+            new LoggedNetworkUnit<>("Fuel/Launch Velocity Indexer", FuelConstants.LAUNCH_VELOCITY_INDEXER);
     private final Supplier<AngularVelocity> windUpVelocityIndexer =
-            new LoggedNetworkUnit<>("Windup Velocity Indexer", FuelConstants.WINDUP_VELOCITY_INDEXER);
+            new LoggedNetworkUnit<>("Fuel/Windup Velocity Indexer", FuelConstants.WINDUP_VELOCITY_INDEXER);
 
     public FuelSubsystem(ShooterCalculator shooterCalculator, MultiMotorInfoSendable motorInfo) {
         this.shooterCalculator = shooterCalculator;
@@ -85,8 +89,8 @@ public class FuelSubsystem extends SubsystemBase {
                 .withVoltageCompensation(FuelConstants.INTAKE_LAUNCHER_VOLTAGE_COMP)
                 .withIdleMode(FuelConstants.INTAKE_LAUNCHER_MOTOR_MODE)
                 .withStatorCurrentLimit(FuelConstants.INTAKE_LAUNCHER_CURRENT_LIMIT)
-                .withFeedforward(new SimpleMotorFeedforward(0.37, 0.1805))
-                .withClosedLoopController(new PIDController(0.01, 0.0, 0.3))
+                .withFeedforward(new SimpleMotorFeedforward(0.15, 0.188))
+                .withClosedLoopController(new PIDController(0.003, 0.0, 0.3))
                 .withControlMode(ControlMode.CLOSED_LOOP)
                 .withMotorInverted(true)
                 .withTelemetry("LauncherMotor", TelemetryVerbosity.HIGH);
@@ -99,8 +103,8 @@ public class FuelSubsystem extends SubsystemBase {
                 .withStatorCurrentLimit(FuelConstants.INTAKE_LAUNCHER_CURRENT_LIMIT)
                 .withControlMode(ControlMode.OPEN_LOOP);
         final var indexerSMCConfig = new SmartMotorControllerConfig(this)
-                .withFeedforward(new SimpleMotorFeedforward(0.3, 0.17))
-                .withClosedLoopController(new PIDController(0.01, 0.0, 0.0))
+                .withFeedforward(new SimpleMotorFeedforward(0.03, 0.23))
+                .withClosedLoopController(new PIDController(0.002, 0.0, 0.0))
                 .withControlMode(ControlMode.CLOSED_LOOP)
                 .withTelemetry("IndexerMotor", TelemetryVerbosity.HIGH)
                 .withGearing(FuelConstants.INDEXER_GEARING)
@@ -127,18 +131,21 @@ public class FuelSubsystem extends SubsystemBase {
         indexerController = new SparkWrapper(indexerSparkMax, DCMotor.getNEO(1), indexerSMCConfig);
 
         intakeLauncher = new FlyWheel(new FlyWheelConfig(intakeLauncherController)
-                .withDiameter(Inches.of(4))
+                .withDiameter(FuelConstants.WHEEL_RADIUS.times(2))
                 .withTelemetry("LauncherMotor", TelemetryVerbosity.HIGH));
         indexer = new FlyWheel(new FlyWheelConfig(indexerController)
-                .withDiameter(Inches.of(4))
+                .withDiameter(FuelConstants.WHEEL_RADIUS.times(2))
                 .withTelemetry("IndexerMotor", TelemetryVerbosity.HIGH));
 
-        setDefaultCommand(run(() -> {
-            currentState = FuelAction.NONE;
-            intakeLauncherController.setDutyCycle(0);
-            indexerController.setDutyCycle(0);
-        }));
-        currentState = FuelAction.NONE;
+        setDefaultCommand(Commands.select(
+                Map.of(
+                        DashboardFuelAction.IDLE, idleCommand(),
+                        DashboardFuelAction.INTAKE, intakeCommand(),
+                        DashboardFuelAction.EJECT, ejectCommand(),
+                        DashboardFuelAction.LAUNCH, windUpAndLaunchCommand(),
+                        DashboardFuelAction.UNJAM, unjamCommand()),
+                () -> dashboardFuelAction));
+        currentState = FuelAction.IDLE;
         launchingTrigger = new Trigger(() -> currentState == FuelAction.LAUNCH);
         ejectingTrigger = new Trigger(() -> currentState == FuelAction.EJECT);
         intakingTrigger = new Trigger(() -> currentState == FuelAction.INTAKE);
@@ -177,9 +184,24 @@ public class FuelSubsystem extends SubsystemBase {
                         useCustomVelocity,
                         str -> str.equals("Custom"),
                         bool -> bool ? "Custom" : "Calculator"));
+        SmartDashboard.putData(
+                "Fuel Subsystem/Manual Controls",
+                SplitButtonChooser.withEnum(
+                        () -> dashboardFuelAction,
+                        Set.of(newAction -> dashboardFuelAction = newAction),
+                        dashboardFuelAction,
+                        DashboardFuelAction.class));
     }
 
-    public Command eject() {
+    private Command idleCommand() {
+        return run(() -> {
+            currentState = FuelAction.IDLE;
+            intakeLauncherController.setDutyCycle(0);
+            indexerController.setDutyCycle(0);
+        });
+    }
+
+    public Command ejectCommand() {
         return run(() -> {
             currentState = FuelAction.EJECT;
             intakeLauncherController.setVelocity(ejectVelocityIntakeLauncher.get());
@@ -187,7 +209,7 @@ public class FuelSubsystem extends SubsystemBase {
         });
     }
 
-    public Command intake() {
+    public Command intakeCommand() {
         return run(() -> {
             currentState = FuelAction.INTAKE;
             intakeLauncherController.setVelocity(intakeVelocityIntakeLauncher.get());
@@ -195,17 +217,20 @@ public class FuelSubsystem extends SubsystemBase {
         });
     }
 
-    public Command launch() {
+    public Command launchCommand() {
         return run(() -> {
             currentState = FuelAction.LAUNCH;
             intakeLauncherController.setVelocity(getShooterVelocity());
-            indexerController.setVelocity(launchVelocityIndexer.get());
+            indexerController.setVelocity(
+                    launchVelocityIndexer.get().gt(getShooterVelocity())
+                            ? getShooterVelocity()
+                            : launchVelocityIndexer.get());
         });
     }
 
     public Command launchAll() {
         Timer timer = new Timer();
-        return launch().until(() -> {
+        return launchCommand().until(() -> {
             if (!timer.hasElapsed(4)) {
                 return false;
             } else if (intakeLauncherController
@@ -217,15 +242,18 @@ public class FuelSubsystem extends SubsystemBase {
         });
     }
 
-    public Command windUp() {
+    public Command windUpCommand() {
         return run(() -> {
             currentState = FuelAction.WIND_UP;
             intakeLauncherController.setVelocity(getShooterVelocity());
-            indexerController.setVelocity(windUpVelocityIndexer.get());
+            indexerController.setVelocity(
+                    windUpVelocityIndexer.get().gt(getShooterVelocity())
+                            ? getShooterVelocity()
+                            : windUpVelocityIndexer.get());
         });
     }
 
-    public Command unJam() {
+    public Command unjamCommand() {
         return run(() -> {
             currentState = FuelAction.UNJAM;
             intakeLauncherController.setVelocity(unJamVelocityIntakeLauncher.get());
@@ -239,13 +267,19 @@ public class FuelSubsystem extends SubsystemBase {
                 : shooterCalculator.calculateVelocity().velocity();
     }
 
-    public Command windUpAndLaunch() {
+    public Command windUpAndLaunchCommand() {
         return Commands.sequence(
-                windUp().until(() -> intakeLauncherController
+                windUpCommand()
+                        .until(() -> intakeLauncherController
                                 .getMechanismVelocity()
                                 .gte(getShooterVelocity().plus(FuelConstants.LAUNCH_VELOCITY_TOLERANCE)))
                         .withTimeout(FuelConstants.WINDUP_TIMEOUT),
-                launch());
+                launchCommand());
+    }
+
+    private LinearVelocity getBallVelocity(AngularVelocity angularVelocity) {
+        return MetersPerSecond.of(
+                angularVelocity.in(RotationsPerSecond) * Math.PI * FuelConstants.WHEEL_RADIUS.in(Meters));
     }
 
     public Trigger isLaunchingTrigger() {
@@ -281,11 +315,19 @@ public class FuelSubsystem extends SubsystemBase {
     }
 
     enum FuelAction {
+        IDLE,
+        INTAKE,
         EJECT,
         LAUNCH,
-        INTAKE,
-        WIND_UP,
         UNJAM,
-        NONE
+        WIND_UP
+    }
+
+    private enum DashboardFuelAction {
+        IDLE,
+        INTAKE,
+        EJECT,
+        LAUNCH,
+        UNJAM
     }
 }

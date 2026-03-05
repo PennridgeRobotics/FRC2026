@@ -1,14 +1,14 @@
 package frc.robot;
 
 import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
@@ -22,7 +22,9 @@ import frc.robot.util.dashboard.LoggedNetworkInput;
 import frc.robot.util.dashboard.MultiMotorInfoSendable;
 import frc.robot.util.enums.Constants.*;
 import frc.robot.util.enums.PositionCalibrationLocation;
+import frc.robot.util.enums.SpeedMultiplier;
 import java.io.IOException;
+import java.util.Map;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
@@ -65,8 +67,7 @@ public class RobotContainer {
                     "Error instantiating Swerve Subsystem: " + ex.getMessage(), finalException.getStackTrace());
             throw finalException;
         }
-        shooterCalculator =
-                new ShooterCalculator(/*swerveSubsystem::getRobotPose*/ () -> new Pose2d(0, 0, Rotation2d.kZero));
+        shooterCalculator = new ShooterCalculator(swerveSubsystem::getRobotPose);
         fuelSubsystem = FuelConstants.FUEL_SUBSYSTEM_ENABLED ? new FuelSubsystem(shooterCalculator, motorInfo) : null;
         climberSubsystem = ClimberConstants.CLIMBER_ENABLED ? new ClimberSubsystem(motorInfo) : null;
         lightsSubsystem = LightConstants.LIGHTS_ENABLED
@@ -79,6 +80,8 @@ public class RobotContainer {
         autoManager = new AutoManager(swerveSubsystem, swerveSubsystem.getPathBuilder(), fuelSubsystem);
 
         configureBindings();
+
+        initSmartDashboard();
     }
 
     private void setupPathPlanner() {}
@@ -121,34 +124,71 @@ public class RobotContainer {
                     () -> -driverController.getRightX()));
         }
 
+        driverController.leftTrigger().onTrue(swerveSubsystem.setSpeedMultiplierCommand(SpeedMultiplier.SLOW));
+        driverController
+                .leftTrigger()
+                .negate()
+                .and(driverController.rightTrigger().negate())
+                .onTrue(swerveSubsystem.setSpeedMultiplierCommand(SpeedMultiplier.NORMAL));
+        driverController.rightTrigger().onTrue(swerveSubsystem.setSpeedMultiplierCommand(SpeedMultiplier.FAST));
         driverController.start().onTrue(new InstantCommand(swerveSubsystem::zeroGyroWithAlliance));
         driverController.y().whileTrue(swerveSubsystem.faceTowardsHubCommand());
+        if (fuelSubsystem != null) {
+            driverController.b().whileTrue(fuelSubsystem.windUpAndLaunchCommand());
+            driverController.a().whileTrue(fuelSubsystem.intakeCommand());
+        }
+        /*driverController
+        .a()
+        .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
+                PositionCalibrationLocation.FRONT_LEFT_OF_HUB));*/
 
-        if (operatorController != null) {
-            operatorController.start().whileTrue(swerveSubsystem.straightenWheelsCommand());
-            operatorController
-                    .leftTrigger()
-                    .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
-                            PositionCalibrationLocation.LEFT_TRENCH_OUTER));
-            operatorController
-                    .leftBumper()
-                    .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
-                            PositionCalibrationLocation.LEFT_DEPOT_CORNER));
-            operatorController
-                    .rightTrigger()
-                    .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
-                            PositionCalibrationLocation.RIGHT_TRENCH_OUTER));
+        if (operatorController == null) {
+            return;
+        }
+        // operatorController.start().whileTrue(swerveSubsystem.straightenWheelsCommand());
+        operatorController
+                .start()
+                .and(operatorController.leftTrigger())
+                .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
+                        PositionCalibrationLocation.FRONT_LEFT_OF_HUB));
+        operatorController
+                .start()
+                .and(operatorController.leftBumper())
+                .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
+                        PositionCalibrationLocation.LEFT_DEPOT_CORNER));
+        operatorController
+                .start()
+                .and(operatorController.rightTrigger())
+                .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
+                        PositionCalibrationLocation.FRONT_RIGHT_OF_HUB));
+        operatorController
+                .start()
+                .and(operatorController.rightBumper())
+                .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
+                        PositionCalibrationLocation.RIGHT_OUTPOST_CORNER));
+        operatorController.x().whileTrue(swerveSubsystem.enableManualBumpLock());
+
+        if (fuelSubsystem != null) {
             operatorController
                     .rightBumper()
-                    .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
-                            PositionCalibrationLocation.RIGHT_OUTPOST_CORNER));
-            operatorController.x().whileTrue(swerveSubsystem.enableManualBumpLock());
-        }
-
-        if (fuelSubsystem != null && operatorController != null) {
-            operatorController.a().whileTrue(fuelSubsystem.intake());
-            operatorController.y().whileTrue(fuelSubsystem.eject());
-            operatorController.b().whileTrue(fuelSubsystem.windUpAndLaunch());
+                    .and(operatorController.start().negate())
+                    .whileTrue(fuelSubsystem.windUpCommand());
+            operatorController
+                    .rightTrigger()
+                    .and(operatorController.start().negate())
+                    .whileTrue(Commands.select(
+                                    Map.of(
+                                            false, fuelSubsystem.windUpAndLaunchCommand(),
+                                            true, fuelSubsystem.launchCommand()),
+                                    operatorController.leftTrigger()::getAsBoolean // force launch
+                                    )
+                            .finallyDo(() -> CommandScheduler.getInstance()
+                                    .schedule(fuelSubsystem
+                                            .unjamCommand()
+                                            .withTimeout(FuelConstants.UNJAM_AFTER_LAUNCH_TIME))));
+            operatorController.leftBumper().whileTrue(fuelSubsystem.ejectCommand());
+            operatorController.a().whileTrue(fuelSubsystem.intakeCommand());
+            operatorController.b().whileTrue(fuelSubsystem.unjamCommand());
         }
     }
 
@@ -162,7 +202,7 @@ public class RobotContainer {
     }
 
     public void preSchedulerUpdate() {
-        shooterCalculator.clearShotCache();
+        shooterCalculator.prePeriodic();
         LoggedNetworkInput.runAllPeriodic();
     }
 

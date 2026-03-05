@@ -25,6 +25,7 @@ public class LoggedNetworkDoubleToObject<T> extends LoggedNetworkInput implement
         entry = NetworkTableInstance.getDefault()
                 .getDoubleTopic(topicName)
                 .getEntry(objectToDouble.apply(defaultValue));
+        entry.set(objectToDouble.apply(defaultValue));
         currentValue = doubleToObject.apply(entry.get());
     }
 

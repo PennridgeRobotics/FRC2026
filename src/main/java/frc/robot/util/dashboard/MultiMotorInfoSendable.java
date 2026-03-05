@@ -21,14 +21,11 @@ public class MultiMotorInfoSendable implements Sendable {
         for (final var entry : motors.entrySet()) {
             final var motor = entry.getKey();
             final var name = entry.getValue();
+            final var topicName = (motor.getDeviceId() >= 10 ? "\u200B" : "") + motor.getDeviceId() + " - " + name;
             builder.addDoubleProperty(
-                    "Voltages/" + name + " (" + motor.getDeviceId() + ")",
-                    motor::getBusVoltage,
-                    v -> motor.setVoltage(Volts.of(v)));
-            builder.addDoubleProperty(
-                    "Stator Currents/" + name + " (" + motor.getDeviceId() + ")", motor::getOutputCurrent, null);
-            builder.addDoubleProperty(
-                    "Outputs/" + name + " (" + motor.getDeviceId() + ")", motor::getAppliedOutput, motor::set);
+                    "Voltages/" + topicName, motor::getBusVoltage, v -> motor.setVoltage(Volts.of(v)));
+            builder.addDoubleProperty("Stator Currents/" + topicName, motor::getOutputCurrent, null);
+            builder.addDoubleProperty("Outputs/" + topicName, motor::getAppliedOutput, motor::set);
         }
     }
 
