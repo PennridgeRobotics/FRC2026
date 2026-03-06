@@ -89,7 +89,7 @@ public class FuelSubsystem extends SubsystemBase {
                 .withVoltageCompensation(FuelConstants.INTAKE_LAUNCHER_VOLTAGE_COMP)
                 .withIdleMode(FuelConstants.INTAKE_LAUNCHER_MOTOR_MODE)
                 .withStatorCurrentLimit(FuelConstants.INTAKE_LAUNCHER_CURRENT_LIMIT)
-                .withFeedforward(new SimpleMotorFeedforward(0.15, 0.188))
+                .withFeedforward(new SimpleMotorFeedforward(0.15, 0.192))
                 .withClosedLoopController(new PIDController(0.003, 0.0, 0.3))
                 .withControlMode(ControlMode.CLOSED_LOOP)
                 .withMotorInverted(true)

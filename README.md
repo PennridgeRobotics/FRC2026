@@ -34,7 +34,9 @@ X   B
 | Both Triggers     | Shoot (no wind up)               |
 | A                 | Intake                           |
 | B                 | Unjam                            |
-| X                 | Manual bump lock                 |
+| Y                 | Climb                            |
+| X                 | Lower climber                    |
+| X + Start         | Set climber to 90 degrees        |
 
 ## LED Signals
 Note: Ordered by priority

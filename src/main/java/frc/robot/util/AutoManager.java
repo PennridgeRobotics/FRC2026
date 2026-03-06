@@ -1,13 +1,11 @@
 package frc.robot.util;
 
-import static edu.wpi.first.units.Units.Meters;
-import static edu.wpi.first.units.Units.Seconds;
+import static edu.wpi.first.units.Units.*;
 
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.units.measure.Distance;
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import frc.robot.lib.BLine.FollowPath;
@@ -15,6 +13,9 @@ import frc.robot.lib.BLine.Path;
 import frc.robot.subsystems.FuelSubsystem;
 import frc.robot.subsystems.SwerveSubsystem;
 import frc.robot.util.dashboard.LoggedNetworkUnit;
+import frc.robot.util.enums.Constants;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
@@ -75,9 +76,35 @@ public class AutoManager {
         return Commands.defer(
                 () -> {
                     final Pose2d currentPose = swerveDrive.getRobotPose();
-                    final var flip = DriverStation.getAlliance().orElse(null) == Alliance.Red;
-                    final Pose2d newPose = currentPose.plus(transform.times(flip ? -1 : 1));
+                    final Pose2d newPose = currentPose.plus(transform);
                     final Path path = new Path(new Path.Waypoint(newPose));
+                    return buildPathWithSpecifiedFlip(path, false);
+                },
+                Set.of(swerveDrive));
+    }
+
+    public Command testAuto() {
+        return Commands.defer(
+                () -> {
+                    Path.setDefaultGlobalConstraints(Constants.BLineConstants.GLOBAL_CONSTRAINTS);
+                    Pose2d currentPose = swerveDrive.getRobotPose();
+                    final var transforms = List.of(
+                            new Transform2d(1, 0, Rotation2d.kZero),
+                            new Transform2d(0, 1, Rotation2d.kZero),
+                            new Transform2d(-1, -1, Rotation2d.kZero));
+                    final var waypoints = new ArrayList<Path.PathElement>();
+                    waypoints.add(new Path.Waypoint(currentPose));
+                    var rotation = 0;
+                    for (final var transform : transforms) {
+                        rotation += 90;
+                        currentPose = new Pose2d(
+                                currentPose.getMeasureX().plus(transform.getMeasureX()),
+                                currentPose.getMeasureY().plus(transform.getMeasureY()),
+                                Rotation2d.fromDegrees(rotation));
+                        waypoints.add(new Path.Waypoint(currentPose));
+                    }
+                    final Path path = new Path(waypoints);
+                    path.setPathConstraints(new Path.PathConstraints().setEndTranslationToleranceMeters(0.02));
                     return buildPathWithSpecifiedFlip(path, false);
                 },
                 Set.of(swerveDrive));

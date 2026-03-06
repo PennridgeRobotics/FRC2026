@@ -49,6 +49,7 @@ public class ClimberSubsystem extends SubsystemBase {
 
     public ClimberSubsystem(MultiMotorInfoSendable motorInfo) {
         final var motorConfig = new SmartMotorControllerConfig()
+                .withSubsystem(this)
                 .withMotorInverted(ClimberConstants.CLIMBER_INVERTED)
                 .withIdleMode(ClimberConstants.IDLE_MODE)
                 .withControlMode(closedLoopEnabled ? ControlMode.CLOSED_LOOP : ControlMode.OPEN_LOOP)
@@ -56,13 +57,13 @@ public class ClimberSubsystem extends SubsystemBase {
                 .withStatorCurrentLimit(ClimberConstants.CURRENT_LIMIT)
                 .withOpenLoopRampRate(ClimberConstants.RAMP_RATE)
                 .withTelemetry("ClimberMotor", TelemetryVerbosity.HIGH)
-                .withSoftLimit(ClimberConstants.HORIZONTAL_ANGLE, ClimberConstants.CLIMBED_ANGLE)
+                // .withSoftLimit(ClimberConstants.MINIMUM_ANGLE, ClimberConstants.MAXIMUM_ANGLE)
                 .withClosedLoopController(new PIDController(0, 0, 0))
                 .withFeedforward(new ArmFeedforward(0, 0, 0, 0));
         final var sparkMaxMotor = new SparkMax(ClimberConstants.CLIMBER_MOTOR_ID, MotorType.kBrushless);
         motorController = new SparkWrapper(sparkMaxMotor, DCMotor.getNEO(1), motorConfig);
         climber = new Arm(new ArmConfig(motorController)
-                .withStartingPosition(ClimberConstants.MINIMUM_ANGLE)
+                .withStartingPosition(ClimberConstants.VERTICAL_ANGLE)
                 .withTelemetry("ClimberArm", TelemetryVerbosity.HIGH));
 
         motorInfo.addMotor(sparkMaxMotor, "Climber");
@@ -77,7 +78,8 @@ public class ClimberSubsystem extends SubsystemBase {
 
     private void setupSmartDashboard() {
         SmartDashboard.putData(
-                "Climber PID/FF", new PIDSendable(motorController, PIDSendable.Type.PID | PIDSendable.Type.LINEAR_FF));
+                "Climber PID & FF",
+                new PIDSendable(motorController, PIDSendable.Type.PID | PIDSendable.Type.ROTARY_FF));
         SmartDashboard.putData("Climbing Subsystem", (builder) -> {
             builder.addBooleanProperty("Climbing", () -> isClimbing, (v) -> isClimbing = v);
             builder.addBooleanProperty("Closed loop enabled", () -> closedLoopEnabled, (v) -> {
@@ -86,6 +88,10 @@ public class ClimberSubsystem extends SubsystemBase {
                 closedLoopEnabled = v;
             });
             builder.addDoubleProperty("Angle", () -> climber.getAngle().in(Degrees), null);
+            builder.addDoubleProperty(
+                    "Angular Velocity",
+                    () -> climber.getMotor().getMechanismVelocity().in(DegreesPerSecond),
+                    null);
         });
     }
 
@@ -107,9 +113,13 @@ public class ClimberSubsystem extends SubsystemBase {
                 () -> closedLoopEnabled);
     }
 
+    public Command setClimberEncoderToVertical() {
+        return runOnce(() -> climber.getMotor().setEncoderPosition(ClimberConstants.VERTICAL_ANGLE));
+    }
+
     public Command findLimit() {
         final var currentDebouncer = new Debouncer(0.1);
-        final var runVolts = Volts.of(-2);
+        final var runVolts = Volts.of(-1.0);
         final var currentThreshold = Amps.of(0); // change this
         final var velocityThreshold = DegreesPerSecond.of(2);
         return startRun(

@@ -67,8 +67,8 @@ public class SwerveSubsystem extends SubsystemBase {
 
     private final Trigger forceNormalDriveModeTrigger = new Trigger(() -> forceNormalDriveMode);
 
-    private final PIDController bLineTranslationPID = new PIDController(5.0, 0, 0);
-    private final PIDController bLineRotationPID = new PIDController(3.0, 0, 0);
+    private final PIDController bLineTranslationPID = new PIDController(5.0, 0, 0.8);
+    private final PIDController bLineRotationPID = new PIDController(5.0, 0, 0.3);
     private final PIDController bLineCrossTrackPID = new PIDController(2.0, 0, 0);
     private final FollowPath.Builder pathBuilder;
 

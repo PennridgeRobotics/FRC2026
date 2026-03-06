@@ -169,7 +169,6 @@ public class RobotContainer {
                 .and(operatorController.rightBumper())
                 .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
                         PositionCalibrationLocation.RIGHT_OUTPOST_CORNER));
-        operatorController.x().whileTrue(swerveSubsystem.enableManualBumpLock());
 
         if (fuelSubsystem != null) {
             operatorController
@@ -192,6 +191,17 @@ public class RobotContainer {
             operatorController.leftBumper().whileTrue(fuelSubsystem.ejectCommand());
             operatorController.a().whileTrue(fuelSubsystem.intakeCommand());
             operatorController.b().whileTrue(fuelSubsystem.unjamCommand());
+        }
+        if (climberSubsystem != null) {
+            operatorController.y().whileTrue(climberSubsystem.climb());
+            operatorController.x().and(operatorController.start().negate()).whileTrue(climberSubsystem.lower());
+            operatorController
+                    .x()
+                    .and(operatorController.start())
+                    .whileTrue(climberSubsystem.setClimberEncoderToVertical());
+        }
+        if (autoManager != null) {
+            operatorController.back().whileTrue(autoManager.testAuto());
         }
     }
 

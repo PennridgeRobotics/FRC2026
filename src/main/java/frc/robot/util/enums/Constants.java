@@ -45,12 +45,12 @@ public final class Constants {
     }
 
     public static final class BLineConstants {
-        public static final LinearVelocity MAX_LINEAR_VELOCITY = MetersPerSecond.of(2); // 4.5
-        public static final LinearAcceleration MAX_LINEAR_ACCELERATION = MetersPerSecondPerSecond.of(1.75); // 12.0
-        public static final AngularVelocity MAX_ANGULAR_VELOCITY = DegreesPerSecond.of(180); // 540
-        public static final AngularAcceleration MAX_ANGULAR_ACCELERATION = DegreesPerSecondPerSecond.of(360); // 860
+        public static final LinearVelocity MAX_LINEAR_VELOCITY = MetersPerSecond.of(1.0); // 4.5
+        public static final LinearAcceleration MAX_LINEAR_ACCELERATION = MetersPerSecondPerSecond.of(2.5); // 12.0
+        public static final AngularVelocity MAX_ANGULAR_VELOCITY = DegreesPerSecond.of(360); // 540
+        public static final AngularAcceleration MAX_ANGULAR_ACCELERATION = DegreesPerSecondPerSecond.of(860); // 860
         public static final Distance END_TRANSLATION_TOLERANCE = Meters.of(0.03);
-        public static final Angle END_ROTATION_TOLERANCE = Degrees.of(2);
+        public static final Angle END_ROTATION_TOLERANCE = Degrees.of(1);
         public static final Distance INTERMEDIATE_HANDOFF_RADIUS = Meters.of(0.2);
 
         public static final Path.DefaultGlobalConstraints GLOBAL_CONSTRAINTS = new Path.DefaultGlobalConstraints(
@@ -132,10 +132,10 @@ public final class Constants {
     }
 
     public static final class ClimberConstants {
-        public static boolean CLIMBER_ENABLED = false;
+        public static boolean CLIMBER_ENABLED = true;
 
         public static final int CLIMBER_MOTOR_ID = 9;
-        public static final boolean CLIMBER_INVERTED = false;
+        public static final boolean CLIMBER_INVERTED = true;
         public static final MotorMode IDLE_MODE = MotorMode.BRAKE;
         public static final MechanismGearing CLIMBER_GEARING = new MechanismGearing(80.0, 60.0 / 20, 28.0 / 10);
         public static final Current CURRENT_LIMIT = Amps.of(40);
@@ -143,12 +143,14 @@ public final class Constants {
         public static final Time RAMP_RATE = Seconds.of(0.25);
 
         // open loop
-        public static final Voltage CLIMB_VOLTAGE = Volts.of(3);
-        public static final Voltage LOWER_VOLTAGE = Volts.of(-1);
+        public static final Voltage CLIMB_VOLTAGE = Volts.of(4);
+        public static final Voltage LOWER_VOLTAGE = Volts.of(-2);
 
         public static final Angle MINIMUM_ANGLE = Degrees.of(-53.5);
+        public static final Angle MAXIMUM_ANGLE = Degrees.of(110.0);
         public static final Angle HORIZONTAL_ANGLE = Degrees.of(0);
-        public static final Angle CLIMBED_ANGLE = Degrees.of(70);
+        public static final Angle VERTICAL_ANGLE = Degrees.of(90);
+        public static final Angle CLIMBED_ANGLE = Degrees.of(20);
     }
 
     public static final class ControllerConstants {
@@ -174,8 +176,8 @@ public final class Constants {
         public static final Translation2d HUB_RED =
                 new Translation2d(FIELD_LENGTH_X.minus(Inches.of(182.11)), FIELD_WIDTH_Y.div(2));
 
-        public static final Distance HUB_LENGTH_Y = Inches.of(47 /*20*/);
-        public static final Distance HUB_WIDTH_X = Inches.of(47 /*33.5*/);
+        public static final Distance HUB_LENGTH_Y = Inches.of(/*47*/ 20);
+        public static final Distance HUB_WIDTH_X = Inches.of(/*47*/ 33.5);
 
         public static final Distance TRENCH_X = Inches.of(182.11 - (3.5 / 2.0)); // account for trench bar width
         public static final Distance TRENCH_TO_EDGE_Y = Inches.of(50.35);
