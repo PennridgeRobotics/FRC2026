@@ -22,21 +22,23 @@ X   B
 | Y                   | Face towards hub          |
 | B                   | Wind up & launch          |
 ### Operator
-| Button            | Action                           |
-|-------------------|----------------------------------|
-| Start + L Bumper  | Calibrate left corner (depot)    |
-| Start + R Bumper  | Calibrate right corner (outpost) |
-| Start + L Trigger | Calibrate left side of hub       |
-| Start + R Trigger | Calibrate right side of hub      |
-| L Bumper          | Eject                            |
-| R Bumper          | Wind up                          |
-| R Trigger         | Wind up & shoot                  |
-| Both Triggers     | Shoot (no wind up)               |
-| A                 | Intake                           |
-| B                 | Unjam                            |
-| Y                 | Climb                            |
-| X                 | Lower climber                    |
-| X + Start         | Set climber to 90 degrees        |
+| Button            | Action                                                    |
+|-------------------|-----------------------------------------------------------|
+| Start + L Bumper  | Calibrate left corner (depot), then align for shooting    |
+| Start + R Bumper  | Calibrate right corner (outpost), then align for shooting |
+| Start + L Trigger | Calibrate left side of hub, then align for shooting       |
+| Start + R Trigger | Calibrate right side of hub, then align for shooting      |
+| L Bumper          | Eject                                                     |
+| R Bumper          | Wind up                                                   |
+| R Trigger         | Wind up & shoot                                           |
+| Both Triggers     | Shoot (no wind up)                                        |
+| A                 | Intake                                                    |
+| B                 | Unjam                                                     |
+| Y                 | Climb                                                     |
+| Y + Start         | Climb (ignore limit)                                      |
+| X                 | Lower climber                                             |
+| X + Start         | Lower climber (ignore limit)                              |
+| Back              | Auto                                                      |
 
 ## LED Signals
 Note: Ordered by priority

@@ -5,79 +5,118 @@ import static edu.wpi.first.units.Units.*;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform2d;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.units.measure.Distance;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
+import frc.robot.lib.BLine.FlippingUtil;
 import frc.robot.lib.BLine.FollowPath;
 import frc.robot.lib.BLine.Path;
+import frc.robot.subsystems.ClimberSubsystem;
 import frc.robot.subsystems.FuelSubsystem;
 import frc.robot.subsystems.SwerveSubsystem;
 import frc.robot.util.dashboard.LoggedNetworkUnit;
-import frc.robot.util.enums.Constants;
+import frc.robot.util.enums.AutoType;
+import frc.robot.util.enums.Constants.FieldConstants;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 @NullMarked
 public class AutoManager {
     private final SwerveSubsystem swerveDrive;
     private final FollowPath.Builder pathBuilder;
     private final FuelSubsystem fuelSubsystem;
+    private final ClimberSubsystem climberSubsystem;
 
     // Built-in paths
     private final Path shootFromStartPath = new Path("shoot_from_start");
+    private final Path climbFromShootingPath = new Path("climb_from_shooting");
     private final Supplier<Distance> distanceSupplier =
-            new LoggedNetworkUnit<>("Auto/Move from hub & shoot distance (m)", Meters.of(-1.0));
+            new LoggedNetworkUnit<>("Auto/Move from hub & shoot distance (m)", Meters.of(1.56));
 
-    public AutoManager(SwerveSubsystem swerveDrive, FollowPath.Builder pathBuilder, FuelSubsystem fuelSubsystem) {
+    public AutoManager(
+            SwerveSubsystem swerveDrive,
+            FollowPath.Builder pathBuilder,
+            FuelSubsystem fuelSubsystem,
+            ClimberSubsystem climberSubsystem) {
         this.swerveDrive = swerveDrive;
         this.fuelSubsystem = fuelSubsystem;
         this.pathBuilder = pathBuilder;
+        this.climberSubsystem = climberSubsystem;
     }
 
     public FollowPath getPathCommand(Path path) {
         return pathBuilder.build(path);
     }
 
-    private Path getAutoPath() {
-        return shootFromStartPath; // selectable via dashboard?
-    }
-
-    public Command getAutoCommand() {
-        return shootFromStartAutoCommand(); // selectable via dashboard?
-    }
-
-    public void orientAutoModuleOrientations() {
-        swerveDrive.orientModuleOrientationsForPath(getAutoPath());
+    public Command getAutoCommand(AutoType autoType) {
+        return switch (autoType) {
+            case SHOOT -> shootFromStartAutoCommand();
+            case SHOOT_AND_CLIMB -> shootFromStartAndClimbAutoCommand();
+        };
     }
 
     private Command shootFromStartAutoCommand() {
         return Commands.sequence(
-                getPathCommand(shootFromStartPath),
-                fuelSubsystem.windUpAndLaunchCommand().withTimeout(Seconds.of(15)));
+                Commands.parallel(getPathCommand(shootFromStartPath), fuelSubsystem.windUpCommand()),
+                fuelSubsystem.windUpAndLaunchCommand().withTimeout(Seconds.of(10)));
     }
 
-    /*public Command moveFromHubAndShoot() {
-        return Commands.defer(() -> {
-            final var dashboardDistance = distanceSupplier.get();
-            final var currentRot = swerveDrive.getRobotPose().getRotation().getDegrees();
-            final var invertXY = MathUtil.isNear(90.0, Math.abs(currentRot) % 180, 45.0);
-            var xPos = (invertXY ? PhysicalConstants.ROBOT_WIDTH_Y : PhysicalConstants.ROBOT_LENGTH_X).div(2);
-            final var distanceWithOffset = dashboardDistance.plus(FieldConstants.HUB_WIDTH_X.div(2)).plus(
-                PhysicalConstants.ROBOT_LENGTH_X.div(2);
-            )
-            moveRobotDriverOriented(new Transform2d())
-        }, Set.of(swerveDrive, fuelSubsystem));
-    }*/
+    private Command shootFromStartAndClimbAutoCommand() {
+        return Commands.parallel(
+                        climberSubsystem.armCommand(() -> true),
+                        shootFromStartAutoCommand() // 10s
+                                .andThen(getPathCommand(climbFromShootingPath)) // 3s
+                                .andThen(swerveDrive
+                                        .driveFieldOrientedCommand(
+                                                () -> MetersPerSecond.of(0.2 * (shouldFlip() ? -1 : 1)),
+                                                MetersPerSecond::zero,
+                                                DegreesPerSecond::zero)
+                                        .withTimeout(Seconds.of(1.0))))
+                .andThen(climberSubsystem.climbCommand(() -> true));
+    }
 
-    public Command moveRobotDriverOriented(Transform2d transform) {
+    public Command moveFromHubAndShoot() {
+        return Commands.defer(
+                () -> {
+                    final var dashboardDistance = distanceSupplier.get();
+                    final var currentPose = swerveDrive.getRobotPose();
+                    var newPose = new Pose2d(
+                            new Translation2d(
+                                    FieldConstants.HUB_BLUE.getMeasureX().minus(dashboardDistance),
+                                    FieldConstants.HUB_BLUE.getMeasureY()),
+                            Rotation2d.k180deg);
+                    if (shouldFlip()) {
+                        newPose = FlippingUtil.flipFieldPose(newPose);
+                    }
+                    final var path = new Path(new Path.Waypoint(currentPose), new Path.Waypoint(newPose));
+                    path.setPathConstraints(new Path.PathConstraints()
+                            .setMaxVelocityMetersPerSec(1.5)
+                            .setMaxAccelerationMetersPerSec2(1.5));
+                    return buildPathWithSpecifiedFlip(path, false);
+                },
+                Set.of(swerveDrive, fuelSubsystem));
+    }
+
+    public Command moveRobotDriverOriented(
+            Translation2d translation, @Nullable Rotation2d rotation, Path.@Nullable PathConstraints constraints) {
         return Commands.defer(
                 () -> {
                     final Pose2d currentPose = swerveDrive.getRobotPose();
-                    final Pose2d newPose = currentPose.plus(transform);
-                    final Path path = new Path(new Path.Waypoint(newPose));
+                    final var flipSign = shouldFlip() ? -1 : 1;
+                    final Pose2d newPose = new Pose2d(
+                            currentPose.getTranslation().plus(translation.times(flipSign)),
+                            rotation == null ? currentPose.getRotation() : rotation.times(flipSign));
+                    final Path path = new Path(new Path.Waypoint(currentPose), new Path.Waypoint(newPose));
+                    if (constraints != null) {
+                        path.setPathConstraints(constraints);
+                    }
                     return buildPathWithSpecifiedFlip(path, false);
                 },
                 Set.of(swerveDrive));
@@ -86,7 +125,6 @@ public class AutoManager {
     public Command testAuto() {
         return Commands.defer(
                 () -> {
-                    Path.setDefaultGlobalConstraints(Constants.BLineConstants.GLOBAL_CONSTRAINTS);
                     Pose2d currentPose = swerveDrive.getRobotPose();
                     final var transforms = List.of(
                             new Transform2d(1, 0, Rotation2d.kZero),
@@ -115,5 +153,9 @@ public class AutoManager {
         final var builtPath = pathBuilder.build(path);
         pathBuilder.withDefaultShouldFlip();
         return builtPath;
+    }
+
+    private boolean shouldFlip() {
+        return DriverStation.getAlliance().orElse(null) == Alliance.Red;
     }
 }

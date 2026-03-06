@@ -23,7 +23,7 @@ import frc.robot.util.dashboard.LoggedNetworkUnit;
 import frc.robot.util.dashboard.MultiMotorInfoSendable;
 import frc.robot.util.dashboard.PIDSendable;
 import frc.robot.util.enums.Constants.ClimberConstants;
-import java.util.Map;
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
 import yams.mechanisms.config.ArmConfig;
@@ -41,6 +41,8 @@ public class ClimberSubsystem extends SubsystemBase {
 
     private boolean isClimbing = false;
     private final Trigger climbingTrigger = new Trigger(() -> isClimbing);
+    private final Trigger isClimbed;
+    private final Trigger isArmed;
     private boolean closedLoopEnabled = true;
     private final Supplier<Voltage> climbVoltage =
             new LoggedNetworkUnit<>("Climber/Climb Voltage", ClimberConstants.CLIMB_VOLTAGE);
@@ -66,14 +68,19 @@ public class ClimberSubsystem extends SubsystemBase {
                 .withStartingPosition(ClimberConstants.VERTICAL_ANGLE)
                 .withTelemetry("ClimberArm", TelemetryVerbosity.HIGH));
 
+        isClimbed = new Trigger(
+                () -> climber.getAngle().gte(ClimberConstants.CLIMBED_ANGLE.minus(ClimberConstants.TOLERANCE_ANGLE)));
+        isArmed = new Trigger(
+                () -> climber.getAngle().lte(ClimberConstants.ARMED_ANGLE.plus(ClimberConstants.TOLERANCE_ANGLE)));
+
         motorInfo.addMotor(sparkMaxMotor, "Climber");
 
         setupSmartDashboard();
 
-        setDefaultCommand(run(() -> {
+        /*setDefaultCommand(run(() -> {
             if (closedLoopEnabled) return;
             climber.getMotor().setVoltage(Volts.of(0.0));
-        }));
+        }));*/
     }
 
     private void setupSmartDashboard() {
@@ -95,26 +102,36 @@ public class ClimberSubsystem extends SubsystemBase {
         });
     }
 
-    public Command climb() {
+    public Command climbCommand(BooleanSupplier autoStop) {
         return Commands.sequence(
-                runOnce(() -> isClimbing = true),
-                Commands.select(
-                        Map.of(
-                                true, climber.run(ClimberConstants.CLIMBED_ANGLE),
-                                false, climber.setVoltage(climbVoltage)),
-                        () -> closedLoopEnabled));
+                        Commands.runOnce(() -> isClimbing = true),
+                        Commands.either(
+                                climber.run(ClimberConstants.CLIMBED_ANGLE),
+                                setVoltage(climbVoltage),
+                                () -> closedLoopEnabled))
+                .until(isClimbed.and(autoStop));
     }
 
-    public Command lower() {
-        return Commands.select(
-                Map.of(
-                        true, climber.run(ClimberConstants.HORIZONTAL_ANGLE),
-                        false, climber.setVoltage(lowerVoltage)),
-                () -> closedLoopEnabled);
+    public Command armCommand(BooleanSupplier autoStop) {
+        return Commands.either(
+                        climber.run(ClimberConstants.ARMED_ANGLE), setVoltage(lowerVoltage), () -> closedLoopEnabled)
+                .until(isArmed.and(autoStop));
+    }
+
+    private Command setVoltage(Supplier<Voltage> voltageSupplier) {
+        return startRun(
+                        motorController::stopClosedLoopController,
+                        () -> motorController.setVoltage(voltageSupplier.get()))
+                .finallyDo(() -> {
+                    if (closedLoopEnabled) motorController.startClosedLoopController();
+                });
     }
 
     public Command setClimberEncoderToVertical() {
-        return runOnce(() -> climber.getMotor().setEncoderPosition(ClimberConstants.VERTICAL_ANGLE));
+        return Commands.runOnce(() -> {
+            System.out.println("TEST");
+            climber.getMotor().setEncoderPosition(ClimberConstants.VERTICAL_ANGLE);
+        });
     }
 
     public Command findLimit() {

@@ -29,8 +29,9 @@ public class LoggedNetworkDoubleToObject<T> extends LoggedNetworkInput implement
         currentValue = doubleToObject.apply(entry.get());
     }
 
-    public void set(double value) {
-        entry.set(value);
+    public void set(T value) {
+        entry.set(objectToDouble.apply(value));
+        currentValue = value;
     }
 
     @Override
@@ -40,7 +41,7 @@ public class LoggedNetworkDoubleToObject<T> extends LoggedNetworkInput implement
 
     @Override
     public void accept(T t) {
-        entry.set(objectToDouble.apply(t));
+        set(t);
     }
 
     @Override
