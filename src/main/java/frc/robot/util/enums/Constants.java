@@ -108,7 +108,7 @@ public final class Constants {
         public static final AngularVelocity EJECT_VELOCITY_INTAKE_LAUNCHER = RotationsPerSecond.of(-10);
         public static final AngularVelocity EJECT_VELOCITY_INDEXER = RotationsPerSecond.of(10);
         public static final AngularVelocity LAUNCH_VELOCITY_INDEXER = RotationsPerSecond.of(10);
-        public static final AngularVelocity WINDUP_VELOCITY_INDEXER = RotationsPerSecond.of(-0.5);
+        public static final AngularVelocity WINDUP_VELOCITY_INDEXER = RotationsPerSecond.of(-3);
         // calculated velocity + LAUNCH_VELOCITY_TOLERANCE = velocity needed to finish winding up
         public static final AngularVelocity LAUNCH_VELOCITY_TOLERANCE = RotationsPerSecond.of(-0.5);
     }
@@ -126,7 +126,9 @@ public final class Constants {
 
         // open loop
         public static final Voltage CLIMB_VOLTAGE = Volts.of(2);
+        public static final Voltage CLIMB_FAST_VOLTAGE = Volts.of(12);
         public static final Voltage LOWER_VOLTAGE = Volts.of(-2);
+        public static final Voltage LOWER_FAST_VOLTAGE = Volts.of(-12);
 
         public static final Angle MINIMUM_ANGLE = Degrees.of(-53.5);
         public static final Angle MAXIMUM_ANGLE = Degrees.of(110.0);
