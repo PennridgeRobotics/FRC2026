@@ -220,6 +220,9 @@ public class FuelSubsystem extends SubsystemBase {
             currentState = FuelAction.IDLE;
             intakeLauncherController.setDutyCycle(0);
             indexerController.setDutyCycle(0);
+            intakeLauncherController.setVelocity(RotationsPerSecond.zero());
+            indexerController.setVelocity(RotationsPerSecond.zero());
+            // System.out.println("SET VELOCITY TO 0");
         });
     }
 
