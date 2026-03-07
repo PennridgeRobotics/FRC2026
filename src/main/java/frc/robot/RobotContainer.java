@@ -20,11 +20,9 @@ import frc.robot.subsystems.LightsSubsystem;
 import frc.robot.subsystems.SwerveSubsystem;
 import frc.robot.util.AutoManager;
 import frc.robot.util.ShooterCalculator;
-import frc.robot.util.StringUtils;
 import frc.robot.util.dashboard.LoggedNetworkButton;
 import frc.robot.util.dashboard.LoggedNetworkInput;
 import frc.robot.util.dashboard.MultiMotorInfoSendable;
-import frc.robot.util.enums.AutoType;
 import frc.robot.util.enums.Constants.*;
 import frc.robot.util.enums.PositionCalibrationLocation;
 import frc.robot.util.enums.SpeedMultiplier;
@@ -54,7 +52,9 @@ public class RobotContainer {
             ? new CommandXboxController(ControllerConstants.OPERATOR_CONTROLLER_PORT)
             : null;
 
-    private final SendableChooser<AutoType> autoChooser;
+    private final SendableChooser<AutoManager.AutoStartLocation> autoStartLocationChooser;
+    private boolean autoClimb = true;
+    private boolean autoOutpost = false;
 
     private boolean useOdometry = true;
     private final Trigger useOdometryTrigger = new Trigger(() -> useOdometry);
@@ -80,10 +80,7 @@ public class RobotContainer {
                 : null;
 
         // autoChooser = AutoBuilder.buildAutoChooser("Epic Auto");
-        autoChooser = new SendableChooser<>();
-        for (var auto : AutoType.values()) {
-            autoChooser.addOption(StringUtils.capitalizeFully(auto.name()), auto);
-        }
+        autoStartLocationChooser = new SendableChooser<>();
 
         autoManager = ((fuelSubsystem != null) && (climberSubsystem != null))
                 ? new AutoManager(swerveSubsystem, swerveSubsystem.getPathBuilder(), fuelSubsystem, climberSubsystem)
@@ -95,7 +92,11 @@ public class RobotContainer {
     }
 
     public @Nullable Command getAutonomousCommand() {
-        return autoManager != null ? autoManager.getAutoCommand(autoChooser.getSelected()) : null;
+        updateSmartDashboard();
+        return autoManager != null
+                ? autoManager.getAutoCommand(
+                        new AutoManager.AutoOptions(autoStartLocationChooser.getSelected(), autoClimb, autoOutpost))
+                : null;
     }
 
     public void periodic() {}
@@ -220,12 +221,19 @@ public class RobotContainer {
     }
 
     public void initSmartDashboard() {
-        SmartDashboard.putData("Auto Chooser", autoChooser);
+        SmartDashboard.putData("Auto/Start Location Chooser", autoStartLocationChooser);
+        SmartDashboard.putBoolean("Auto/Auto Climb", autoClimb);
+        SmartDashboard.putBoolean("Auto/Auto Outpost", autoOutpost);
         SmartDashboard.putData("Power Distribution", powerDistribution);
         SmartDashboard.putData(
                 "RobotContainer",
                 builder -> builder.addBooleanProperty("Use Odometry", () -> useOdometry, v -> useOdometry = v));
         SmartDashboard.putData("Motor Info", motorInfo);
+    }
+
+    private void updateSmartDashboard() {
+        autoClimb = SmartDashboard.getBoolean("Auto/Auto Climb", autoClimb);
+        autoOutpost = SmartDashboard.getBoolean("Auto/Auto Outpost", autoOutpost);
     }
 
     public void preSchedulerUpdate() {
@@ -235,5 +243,11 @@ public class RobotContainer {
 
     public void postSchedulerUpdate() {
         NetworkTableInstance.getDefault().flush();
+    }
+
+    public void teleopInit() {
+        if (autoManager != null) {
+            autoManager.teleopInit();
+        }
     }
 }

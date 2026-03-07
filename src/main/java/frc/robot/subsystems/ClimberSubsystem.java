@@ -120,10 +120,9 @@ public class ClimberSubsystem extends SubsystemBase {
     }
 
     private Command setVoltage(Supplier<Voltage> voltageSupplier) {
-        return startRun(motorController::stopClosedLoopController, () -> {
-                    System.out.println("Set voltage to " + voltageSupplier.get().in(Volts));
-                    motorController.setVoltage(voltageSupplier.get());
-                })
+        return startRun(
+                        motorController::stopClosedLoopController,
+                        () -> motorController.setVoltage(voltageSupplier.get()))
                 .finallyDo(() -> {
                     if (closedLoopEnabled) motorController.startClosedLoopController();
                     else motorController.setVoltage(Volts.zero());
@@ -132,7 +131,6 @@ public class ClimberSubsystem extends SubsystemBase {
 
     public Command setClimberEncoderToVertical() {
         return Commands.runOnce(() -> {
-            System.out.println("TEST");
             climber.getMotor().setEncoderPosition(ClimberConstants.VERTICAL_ANGLE);
         });
     }
