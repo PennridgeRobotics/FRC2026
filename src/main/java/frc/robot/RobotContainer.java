@@ -19,6 +19,7 @@ import frc.robot.subsystems.FuelSubsystem;
 import frc.robot.subsystems.LightsSubsystem;
 import frc.robot.subsystems.SwerveSubsystem;
 import frc.robot.util.AutoManager;
+import frc.robot.util.HubTracker;
 import frc.robot.util.ShooterCalculator;
 import frc.robot.util.StringUtils;
 import frc.robot.util.dashboard.LoggedNetworkButton;
@@ -29,6 +30,7 @@ import frc.robot.util.enums.PositionCalibrationLocation;
 import frc.robot.util.enums.SpeedMultiplier;
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
@@ -93,6 +95,8 @@ public class RobotContainer {
         configureBindings();
 
         initSmartDashboard();
+
+        HubTracker.isActive(); // initialize HubTracker
     }
 
     public @Nullable Command getAutonomousCommand() {
@@ -121,7 +125,7 @@ public class RobotContainer {
                         () -> -driverController.getLeftX(),
                         () -> -driverController.getRightX(),
                         () -> /*-operatorController.getLeftX()*/ 0,
-                        () -> -operatorController.getLeftY()));
+                        () -> /*-operatorController.getLeftY()*/ 0));
                 driverController.rightStick().whileTrue(swerveSubsystem.lockYawTowardsVelocity());
             } else {
                 swerveSubsystem.setDefaultCommand(swerveSubsystem.driveFieldOrientedHeadingCommand(
@@ -169,13 +173,16 @@ public class RobotContainer {
             operatorController
                     .start()
                     .and(calibration.getFirst())
-                    .whileTrue(swerveSubsystem
-                            .resetPoseFromCalibrationPosition(calibration.getSecond())
-                            .andThen(
-                                    (autoManager != null && fuelSubsystem != null)
-                                            ? Commands.waitTime(Seconds.of(0.4))
-                                                    .andThen(autoManager.moveFromHubAndShoot())
-                                            : Commands.none()));
+                    .whileTrue(Commands.defer(
+                            () -> Commands.waitTime(Seconds.of(0.1))
+                                    .andThen(swerveSubsystem
+                                            .resetPoseFromCalibrationPosition(calibration.getSecond())
+                                            .andThen(
+                                                    (autoManager != null && fuelSubsystem != null)
+                                                            ? Commands.waitTime(Seconds.of(0.1))
+                                                                    .andThen(autoManager.moveFromHubAndShoot())
+                                                            : Commands.none())),
+                            fuelSubsystem != null ? Set.of(swerveSubsystem, fuelSubsystem) : Set.of(swerveSubsystem)));
         }
 
         if (fuelSubsystem != null) {

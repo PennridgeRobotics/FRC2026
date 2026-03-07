@@ -72,7 +72,7 @@ public class FuelSubsystem extends SubsystemBase {
     private final Supplier<AngularVelocity> intakeVelocityIndexer =
             new LoggedNetworkUnit<>("Fuel/Intake Velocity Indexer", FuelConstants.INTAKE_VELOCITY_INDEXER);
     private final LoggedNetworkUnit<AngularVelocityUnit, AngularVelocity> launchVelocityIntakeLauncher =
-            new LoggedNetworkUnit<>("Fuel/Launch Velocity Intake-Launcher", RotationsPerSecond.of(46.1));
+            new LoggedNetworkUnit<>("Fuel/Launch Velocity Intake-Launcher", RotationsPerSecond.of(47.1));
     private final Supplier<AngularVelocity> launchVelocityIndexer =
             new LoggedNetworkUnit<>("Fuel/Launch Velocity Indexer", FuelConstants.LAUNCH_VELOCITY_INDEXER);
     private final Supplier<AngularVelocity> windUpVelocityIndexer =
@@ -89,7 +89,7 @@ public class FuelSubsystem extends SubsystemBase {
                 .withIdleMode(FuelConstants.INTAKE_LAUNCHER_MOTOR_MODE)
                 .withStatorCurrentLimit(FuelConstants.INTAKE_LAUNCHER_CURRENT_LIMIT)
                 .withFeedforward(new SimpleMotorFeedforward(0.15, 0.192))
-                .withClosedLoopController(new PIDController(0.003, 0.0, 0.3))
+                .withClosedLoopController(new PIDController(0.003, 0.0, 0.1))
                 .withControlMode(ControlMode.CLOSED_LOOP)
                 .withMotorInverted(true)
                 .withTelemetry("LauncherMotor", TelemetryVerbosity.HIGH);

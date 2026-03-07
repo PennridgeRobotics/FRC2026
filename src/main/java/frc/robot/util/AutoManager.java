@@ -38,6 +38,7 @@ public class AutoManager {
     private final Path startLeftHubShootPath = new Path("start_left_hub_shoot");
     private final Path startLeftInnerBumpShootPath = new Path("start_left_inner_bump_shoot");
     private final Path startRightInnerBumpShootPath = new Path("start_right_inner_bump_shoot");
+    private final Path toOutpostPath = new Path("to_outpost");
     private final Path alignClimbPath = new Path("align_climb");
     private final Supplier<Distance> distanceSupplier =
             new LoggedNetworkUnit<>("Auto/Move from hub & shoot distance (m)", Meters.of(1.8));
@@ -64,7 +65,9 @@ public class AutoManager {
     }
 
     public FollowPath getPathCommand(Path path) {
-        return pathBuilder.build(path);
+        final var builtPath = pathBuilder.build(path);
+        pathBuilder.withPoseReset(unused -> {});
+        return builtPath;
     }
 
     public Command getAutoCommand(AutoOptions autoOptions) {
@@ -72,10 +75,11 @@ public class AutoManager {
         System.out.println("USING AUTO: " + autoOptions);
 
         var autoCommand = autoOptions.climb ? climberSubsystem.armCommand(() -> true, () -> true) : Commands.none();
-        autoCommand = autoCommand
-                .withDeadline(shootFromStartAutoCommand(autoOptions.startLocation))
-                .andThen(Commands.runOnce(() -> System.out.println("Shoot from auto completed")));
-        if (autoOptions.climb) {
+        autoCommand = autoCommand.withDeadline(shootFromStartAutoCommand(autoOptions.startLocation));
+        if (autoOptions.outpost()) {
+            autoCommand = autoCommand.andThen(outpostAndShootAutoCommand());
+        }
+        if (autoOptions.climb()) {
             autoCommand = autoCommand.andThen(climbAutoCommand());
         }
         return autoCommand;
@@ -94,6 +98,12 @@ public class AutoManager {
                 .andThen(climberSubsystem.climbCommand(() -> true, () -> false));
     }
 
+    private Command outpostAndShootAutoCommand() {
+        return getPathCommand(toOutpostPath)
+                .andThen(Commands.waitTime(Seconds.of(3)))
+                .andThen(pathInFrontOfHubAndShoot());
+    }
+
     private Command shootFromStartAutoCommand(AutoStartLocation startLocation) {
         return Commands.sequence(
                 fuelSubsystem
@@ -105,6 +115,23 @@ public class AutoManager {
                                     case RIGHT_INNER_BUMP -> startRightInnerBumpShootPath;
                                 })),
                 fuelSubsystem.windUpAndLaunchCommand().withTimeout(Seconds.of(10)));
+    }
+
+    private Command pathInFrontOfHubAndShoot() {
+        return Commands.defer(
+                () -> {
+                    final var pose = new Pose2d(
+                            FieldConstants.HUB_BLUE.getMeasureX().minus(distanceSupplier.get()),
+                            FieldConstants.HUB_BLUE.getMeasureY(),
+                            Rotation2d.k180deg);
+                    final var path = new Path(new Path.Waypoint(pose));
+                    path.setPathConstraints(new Path.PathConstraints().setMaxVelocityMetersPerSec(1.2));
+                    return fuelSubsystem
+                            .windUpCommand()
+                            .withDeadline(pathBuilder.build(path))
+                            .andThen(fuelSubsystem.windUpAndLaunchCommand());
+                },
+                Set.of(swerveDrive, fuelSubsystem));
     }
 
     private Command shootFromStartAutoWIP(Distance yPos) {
@@ -144,7 +171,6 @@ public class AutoManager {
         return Commands.defer(
                 () -> {
                     final var dashboardDistance = distanceSupplier.get();
-                    final var currentPose = swerveDrive.getRobotPose();
                     var newPose = new Pose2d(
                             new Translation2d(
                                     FieldConstants.HUB_BLUE.getMeasureX().minus(dashboardDistance),
@@ -153,7 +179,7 @@ public class AutoManager {
                     if (shouldFlip()) {
                         newPose = FlippingUtil.flipFieldPose(newPose);
                     }
-                    final var path = new Path(/*new Path.Waypoint(currentPose), */ new Path.Waypoint(newPose));
+                    final var path = new Path(new Path.Waypoint(newPose));
                     path.setPathConstraints(new Path.PathConstraints()
                             .setMaxVelocityMetersPerSec(1.5)
                             .setMaxAccelerationMetersPerSec2(4));
