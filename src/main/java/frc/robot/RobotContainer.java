@@ -1,30 +1,35 @@
 package frc.robot;
 
+import static edu.wpi.first.units.Units.Seconds;
+
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.Pair;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
-import frc.robot.classes.AutoManager;
 import frc.robot.subsystems.ClimberSubsystem;
 import frc.robot.subsystems.FuelSubsystem;
 import frc.robot.subsystems.LightsSubsystem;
 import frc.robot.subsystems.SwerveSubsystem;
+import frc.robot.util.AutoManager;
 import frc.robot.util.ShooterCalculator;
+import frc.robot.util.StringUtils;
+import frc.robot.util.dashboard.LoggedNetworkButton;
 import frc.robot.util.dashboard.LoggedNetworkInput;
 import frc.robot.util.dashboard.MultiMotorInfoSendable;
+import frc.robot.util.enums.AutoType;
 import frc.robot.util.enums.Constants.*;
 import frc.robot.util.enums.PositionCalibrationLocation;
 import frc.robot.util.enums.SpeedMultiplier;
 import java.io.IOException;
-import java.util.Map;
+import java.util.List;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
@@ -49,7 +54,7 @@ public class RobotContainer {
             ? new CommandXboxController(ControllerConstants.OPERATOR_CONTROLLER_PORT)
             : null;
 
-    private final SendableChooser<Command> autoChooser;
+    private final SendableChooser<AutoType> autoChooser;
 
     private boolean useOdometry = true;
     private final Trigger useOdometryTrigger = new Trigger(() -> useOdometry);
@@ -76,9 +81,12 @@ public class RobotContainer {
 
         // autoChooser = AutoBuilder.buildAutoChooser("Epic Auto");
         autoChooser = new SendableChooser<>();
-        setupPathPlanner();
-        autoManager = fuelSubsystem != null
-                ? new AutoManager(swerveSubsystem, swerveSubsystem.getPathBuilder(), fuelSubsystem)
+        for (var auto : AutoType.values()) {
+            autoChooser.addOption(StringUtils.capitalizeFully(auto.name()), auto);
+        }
+
+        autoManager = ((fuelSubsystem != null) && (climberSubsystem != null))
+                ? new AutoManager(swerveSubsystem, swerveSubsystem.getPathBuilder(), fuelSubsystem, climberSubsystem)
                 : null;
 
         configureBindings();
@@ -86,10 +94,8 @@ public class RobotContainer {
         initSmartDashboard();
     }
 
-    private void setupPathPlanner() {}
-
     public @Nullable Command getAutonomousCommand() {
-        return autoChooser.getSelected();
+        return autoManager != null ? autoManager.getAutoCommand(autoChooser.getSelected()) : null;
     }
 
     public void periodic() {}
@@ -109,7 +115,7 @@ public class RobotContainer {
                         () -> -driverController.getLeftY(),
                         () -> -driverController.getLeftX(),
                         () -> -driverController.getRightX(),
-                        () -> -operatorController.getLeftX(),
+                        () -> /*-operatorController.getLeftX()*/ 0,
                         () -> -operatorController.getLeftY()));
                 driverController.rightStick().whileTrue(swerveSubsystem.lockYawTowardsVelocity());
             } else {
@@ -126,18 +132,19 @@ public class RobotContainer {
                     () -> -driverController.getRightX()));
         }
 
-        driverController.leftTrigger().onTrue(swerveSubsystem.setSpeedMultiplierCommand(SpeedMultiplier.SLOW));
+        driverController.leftBumper().onTrue(swerveSubsystem.setSpeedMultiplierCommand(SpeedMultiplier.SLOW));
         driverController
-                .leftTrigger()
+                .leftBumper()
                 .negate()
                 .and(driverController.rightTrigger().negate())
                 .onTrue(swerveSubsystem.setSpeedMultiplierCommand(SpeedMultiplier.NORMAL));
         driverController.rightTrigger().onTrue(swerveSubsystem.setSpeedMultiplierCommand(SpeedMultiplier.FAST));
         driverController.start().onTrue(new InstantCommand(swerveSubsystem::zeroGyroWithAlliance));
         driverController.y().whileTrue(swerveSubsystem.faceTowardsHubCommand());
+        driverController.x().whileTrue(swerveSubsystem.lockPoseCommand());
         if (fuelSubsystem != null) {
             driverController.b().whileTrue(fuelSubsystem.windUpAndLaunchCommand());
-            driverController.a().whileTrue(fuelSubsystem.intakeCommand());
+            driverController.leftTrigger().whileTrue(fuelSubsystem.intakeCommand());
         }
         /*driverController
         .a()
@@ -148,27 +155,23 @@ public class RobotContainer {
             return;
         }
         // operatorController.start().whileTrue(swerveSubsystem.straightenWheelsCommand());
-        operatorController
-                .start()
-                .and(operatorController.leftTrigger())
-                .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
-                        PositionCalibrationLocation.FRONT_LEFT_OF_HUB));
-        operatorController
-                .start()
-                .and(operatorController.leftBumper())
-                .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
-                        PositionCalibrationLocation.LEFT_DEPOT_CORNER));
-        operatorController
-                .start()
-                .and(operatorController.rightTrigger())
-                .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
-                        PositionCalibrationLocation.FRONT_RIGHT_OF_HUB));
-        operatorController
-                .start()
-                .and(operatorController.rightBumper())
-                .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
-                        PositionCalibrationLocation.RIGHT_OUTPOST_CORNER));
-        operatorController.x().whileTrue(swerveSubsystem.enableManualBumpLock());
+        final var calibrations = List.of(
+                new Pair<>(operatorController.leftTrigger(), PositionCalibrationLocation.FRONT_LEFT_OF_HUB),
+                new Pair<>(operatorController.leftBumper(), PositionCalibrationLocation.LEFT_DEPOT_CORNER),
+                new Pair<>(operatorController.rightTrigger(), PositionCalibrationLocation.FRONT_RIGHT_OF_HUB),
+                new Pair<>(operatorController.rightBumper(), PositionCalibrationLocation.RIGHT_OUTPOST_CORNER));
+        for (var calibration : calibrations) {
+            operatorController
+                    .start()
+                    .and(calibration.getFirst())
+                    .whileTrue(swerveSubsystem
+                            .resetPoseFromCalibrationPosition(calibration.getSecond())
+                            .andThen(
+                                    (autoManager != null && fuelSubsystem != null)
+                                            ? Commands.waitTime(Seconds.of(0.4))
+                                                    .andThen(autoManager.moveFromHubAndShoot())
+                                            : Commands.none()));
+        }
 
         if (fuelSubsystem != null) {
             operatorController
@@ -178,19 +181,41 @@ public class RobotContainer {
             operatorController
                     .rightTrigger()
                     .and(operatorController.start().negate())
-                    .whileTrue(Commands.select(
-                                    Map.of(
-                                            false, fuelSubsystem.windUpAndLaunchCommand(),
-                                            true, fuelSubsystem.launchCommand()),
-                                    operatorController.leftTrigger()::getAsBoolean // force launch
-                                    )
-                            .finallyDo(() -> CommandScheduler.getInstance()
-                                    .schedule(fuelSubsystem
-                                            .unjamCommand()
-                                            .withTimeout(FuelConstants.UNJAM_AFTER_LAUNCH_TIME))));
+                    .and(operatorController.leftTrigger().negate())
+                    .whileTrue(fuelSubsystem.windUpAndLaunchCommand());
+            operatorController
+                    .rightTrigger()
+                    .and(operatorController.start().negate())
+                    .and(operatorController.leftTrigger())
+                    .whileTrue(fuelSubsystem.launchCommand());
             operatorController.leftBumper().whileTrue(fuelSubsystem.ejectCommand());
             operatorController.a().whileTrue(fuelSubsystem.intakeCommand());
             operatorController.b().whileTrue(fuelSubsystem.unjamCommand());
+            operatorController.leftStick().toggleOnTrue(fuelSubsystem.temporarilyEnableManualLaunch());
+            new Trigger(() -> operatorController.getLeftX() < -0.5)
+                    .whileTrue(fuelSubsystem.decreaseManualLaunchVelocity());
+            new Trigger(() -> operatorController.getLeftX() > 0.5)
+                    .whileTrue(fuelSubsystem.increaseManualLaunchVelocity());
+            new Trigger(() -> operatorController.getRightX() < -0.5)
+                    .whileTrue(shooterCalculator.decreaseVelocityOffset());
+            new Trigger(() -> operatorController.getRightX() > 0.5)
+                    .whileTrue(shooterCalculator.increaseVelocityOffset());
+        }
+        if (climberSubsystem != null) {
+            operatorController
+                    .y()
+                    .whileTrue(climberSubsystem.climbCommand(
+                            operatorController.start().negate()));
+            operatorController
+                    .x()
+                    .whileTrue(climberSubsystem.armCommand(
+                            operatorController.start().negate()));
+            new LoggedNetworkButton("Climber/Set Climber Encoder to Vertical")
+                    .getTrigger()
+                    .onTrue(climberSubsystem.setClimberEncoderToVertical());
+        }
+        if (autoManager != null) {
+            operatorController.back().whileTrue(autoManager.testAuto());
         }
     }
 

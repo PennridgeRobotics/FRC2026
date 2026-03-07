@@ -13,7 +13,6 @@ import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.units.measure.*;
-import frc.robot.lib.BLine.Path;
 import org.jspecify.annotations.NullMarked;
 import yams.gearing.MechanismGearing;
 import yams.motorcontrollers.SmartMotorControllerConfig.MotorMode;
@@ -37,31 +36,14 @@ public final class Constants {
                 WHEEL_CENTERS_DISTANCE_LENGTH_X.plus(BUMPERS_WIDTH.times(2)); // 25.25in/0.6414m
         public static final Distance ROBOT_FULL_WIDTH_Y =
                 WHEEL_CENTERS_DISTANCE_WIDTH_Y.plus(BUMPERS_WIDTH.times(2)); // 30.25in/0.7684m
-        public static final Distance ROBOT_LENGTH_X = WHEEL_CENTERS_DISTANCE_LENGTH_X;
-        public static final Distance ROBOT_WIDTH_Y = WHEEL_CENTERS_DISTANCE_WIDTH_Y;
+        public static final Distance ROBOT_LENGTH_X = ROBOT_FULL_LENGTH_X;
+        public static final Distance ROBOT_WIDTH_Y = ROBOT_FULL_WIDTH_Y;
         public static final Distance ROBOT_TRENCH_BACK_OFFSET = Inches.of(4.88);
         public static final Distance ROBOT_TRENCH_FRONT_OFFSET = Inches.of(0.875);
         public static final Distance ROBOT_WIDTH_Y_TRENCH = ROBOT_WIDTH_Y.minus(Inches.of(4.6 * 2));
     }
 
-    public static final class BLineConstants {
-        public static final LinearVelocity MAX_LINEAR_VELOCITY = MetersPerSecond.of(2); // 4.5
-        public static final LinearAcceleration MAX_LINEAR_ACCELERATION = MetersPerSecondPerSecond.of(1.75); // 12.0
-        public static final AngularVelocity MAX_ANGULAR_VELOCITY = DegreesPerSecond.of(180); // 540
-        public static final AngularAcceleration MAX_ANGULAR_ACCELERATION = DegreesPerSecondPerSecond.of(360); // 860
-        public static final Distance END_TRANSLATION_TOLERANCE = Meters.of(0.03);
-        public static final Angle END_ROTATION_TOLERANCE = Degrees.of(2);
-        public static final Distance INTERMEDIATE_HANDOFF_RADIUS = Meters.of(0.2);
-
-        public static final Path.DefaultGlobalConstraints GLOBAL_CONSTRAINTS = new Path.DefaultGlobalConstraints(
-                MAX_LINEAR_VELOCITY.in(MetersPerSecond),
-                MAX_LINEAR_ACCELERATION.in(MetersPerSecondPerSecond),
-                MAX_ANGULAR_VELOCITY.in(DegreesPerSecond),
-                MAX_ANGULAR_ACCELERATION.in(DegreesPerSecondPerSecond),
-                END_TRANSLATION_TOLERANCE.in(Meters),
-                END_ROTATION_TOLERANCE.in(Degrees),
-                INTERMEDIATE_HANDOFF_RADIUS.in(Meters));
-    }
+    public static final class BLineConstants {}
 
     public static final class VisionConstants {
         public static final String LIMELIGHT_NAME = "limelight";
@@ -112,7 +94,7 @@ public final class Constants {
         public static final Current INDEXER_CURRENT_LIMIT = Amps.of(40);
         public static final Time INTAKE_LAUNCHER_RAMP_RATE = Seconds.of(0.2);
         public static final Time INDEXER_RAMP_RATE = Seconds.of(0.2);
-        public static final Time WINDUP_TIMEOUT = Seconds.of(15.0);
+        public static final Time WINDUP_TIMEOUT = Seconds.of(4.0);
         public static final Time UNJAM_AFTER_LAUNCH_TIME = Seconds.of(0);
         public static final MotorMode INTAKE_LAUNCHER_MOTOR_MODE = MotorMode.BRAKE;
         public static final MotorMode INDEXER_MOTOR_MODE = MotorMode.BRAKE;
@@ -132,19 +114,28 @@ public final class Constants {
     }
 
     public static final class ClimberConstants {
-        public static boolean CLIMBER_ENABLED = false;
+        public static boolean CLIMBER_ENABLED = true;
 
         public static final int CLIMBER_MOTOR_ID = 9;
-        public static final boolean CLIMBER_INVERTED = false;
+        public static final boolean CLIMBER_INVERTED = true;
         public static final MotorMode IDLE_MODE = MotorMode.BRAKE;
         public static final MechanismGearing CLIMBER_GEARING = new MechanismGearing(80.0, 60.0 / 20, 28.0 / 10);
         public static final Current CURRENT_LIMIT = Amps.of(40);
         public static final Current STALL_CURRENT = Amps.of(10);
         public static final Time RAMP_RATE = Seconds.of(0.25);
 
+        // open loop
+        public static final Voltage CLIMB_VOLTAGE = Volts.of(2);
+        public static final Voltage LOWER_VOLTAGE = Volts.of(-2);
+
         public static final Angle MINIMUM_ANGLE = Degrees.of(-53.5);
+        public static final Angle MAXIMUM_ANGLE = Degrees.of(110.0);
         public static final Angle HORIZONTAL_ANGLE = Degrees.of(0);
+        public static final Angle VERTICAL_ANGLE = Degrees.of(90);
+        public static final Angle ARMED_ANGLE = Degrees.of(-16);
         public static final Angle CLIMBED_ANGLE = Degrees.of(70);
+
+        public static final Angle TOLERANCE_ANGLE = Degrees.of(1);
     }
 
     public static final class ControllerConstants {
@@ -170,8 +161,8 @@ public final class Constants {
         public static final Translation2d HUB_RED =
                 new Translation2d(FIELD_LENGTH_X.minus(Inches.of(182.11)), FIELD_WIDTH_Y.div(2));
 
-        public static final Distance HUB_LENGTH_Y = Inches.of(47 /*20*/);
-        public static final Distance HUB_WIDTH_X = Inches.of(47 /*33.5*/);
+        public static final Distance HUB_LENGTH_Y = Inches.of(47);
+        public static final Distance HUB_WIDTH_X = Inches.of(47);
 
         public static final Distance TRENCH_X = Inches.of(182.11 - (3.5 / 2.0)); // account for trench bar width
         public static final Distance TRENCH_TO_EDGE_Y = Inches.of(50.35);

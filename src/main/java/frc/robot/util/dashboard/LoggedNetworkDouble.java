@@ -20,6 +20,7 @@ public class LoggedNetworkDouble extends LoggedNetworkInput implements DoubleSup
 
     public void set(double value) {
         entry.set(value);
+        currentValue = value;
     }
 
     @Override
@@ -34,6 +35,6 @@ public class LoggedNetworkDouble extends LoggedNetworkInput implements DoubleSup
 
     @Override
     public void accept(double value) {
-        entry.set(value);
+        set(value);
     }
 }
