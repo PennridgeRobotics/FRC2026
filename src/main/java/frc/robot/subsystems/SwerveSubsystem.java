@@ -565,7 +565,7 @@ public class SwerveSubsystem extends SubsystemBase {
                 .withPoseReset(this::resetPose);
     }
 
-    private void resetPose(Pose2d pose) {
+    public void resetPose(Pose2d pose) {
         swerveDrive.resetOdometry(pose);
         swerveDrive.swerveDrivePoseEstimator.resetRotation(pose.getRotation());
     }

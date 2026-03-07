@@ -20,6 +20,7 @@ import frc.robot.subsystems.LightsSubsystem;
 import frc.robot.subsystems.SwerveSubsystem;
 import frc.robot.util.AutoManager;
 import frc.robot.util.ShooterCalculator;
+import frc.robot.util.StringUtils;
 import frc.robot.util.dashboard.LoggedNetworkButton;
 import frc.robot.util.dashboard.LoggedNetworkInput;
 import frc.robot.util.dashboard.MultiMotorInfoSendable;
@@ -53,7 +54,7 @@ public class RobotContainer {
             : null;
 
     private final SendableChooser<AutoManager.AutoStartLocation> autoStartLocationChooser;
-    private boolean autoClimb = true;
+    private boolean autoClimb = false;
     private boolean autoOutpost = false;
 
     private boolean useOdometry = true;
@@ -81,6 +82,9 @@ public class RobotContainer {
 
         // autoChooser = AutoBuilder.buildAutoChooser("Epic Auto");
         autoStartLocationChooser = new SendableChooser<>();
+        for (final var location : AutoManager.AutoStartLocation.values()) {
+            autoStartLocationChooser.addOption(StringUtils.capitalizeFully(location.name()), location);
+        }
 
         autoManager = ((fuelSubsystem != null) && (climberSubsystem != null))
                 ? new AutoManager(swerveSubsystem, swerveSubsystem.getPathBuilder(), fuelSubsystem, climberSubsystem)
@@ -206,18 +210,18 @@ public class RobotContainer {
             operatorController
                     .y()
                     .whileTrue(climberSubsystem.climbCommand(
-                            operatorController.start().negate()));
+                            operatorController.start().negate(), operatorController.back()));
             operatorController
                     .x()
                     .whileTrue(climberSubsystem.armCommand(
-                            operatorController.start().negate()));
+                            operatorController.start().negate(), operatorController.back()));
             new LoggedNetworkButton("Climber/Set Climber Encoder to Vertical")
                     .getTrigger()
                     .onTrue(climberSubsystem.setClimberEncoderToVertical());
         }
-        if (autoManager != null) {
+        /*if (autoManager != null) {
             operatorController.back().whileTrue(autoManager.testAuto());
-        }
+        }*/
     }
 
     public void initSmartDashboard() {
@@ -243,6 +247,12 @@ public class RobotContainer {
 
     public void postSchedulerUpdate() {
         NetworkTableInstance.getDefault().flush();
+    }
+
+    public void autonomousInit() {
+        if (autoManager != null) {
+            autoManager.autonomousInit();
+        }
     }
 
     public void teleopInit() {

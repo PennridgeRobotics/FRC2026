@@ -41,6 +41,7 @@ X   B
 | L Stick Up/Down    | Spin with absolute rotation                               |
 | L Stick Left/Right | Increase/decrease manual launch velocity                  |
 | L Stick Pressed    | Enable manual launch                                      |
+| R Stick Left/Right | Increase/decrease calculator velocity                     |
 
 ## LED Signals
 Note: Ordered by priority

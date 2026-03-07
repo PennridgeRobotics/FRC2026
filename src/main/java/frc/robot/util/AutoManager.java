@@ -53,6 +53,11 @@ public class AutoManager {
         this.climberSubsystem = climberSubsystem;
     }
 
+    public void autonomousInit() {
+        pathBuilder.withDefaultShouldFlip();
+        pathBuilder.withPoseReset(swerveDrive::resetPose);
+    }
+
     public void teleopInit() {
         pathBuilder.withShouldFlip(() -> false);
         pathBuilder.withPoseReset(pose -> {});
@@ -66,8 +71,10 @@ public class AutoManager {
         System.out.println("USING AUTO: " + autoOptions);
         System.out.println("USING AUTO: " + autoOptions);
 
-        var autoCommand = autoOptions.climb ? climberSubsystem.armCommand(() -> true) : Commands.none();
-        autoCommand = autoCommand.withDeadline(shootFromStartAutoCommand(autoOptions.startLocation));
+        var autoCommand = autoOptions.climb ? climberSubsystem.armCommand(() -> true, () -> true) : Commands.none();
+        autoCommand = autoCommand
+                .withDeadline(shootFromStartAutoCommand(autoOptions.startLocation))
+                .andThen(Commands.runOnce(() -> System.out.println("Shoot from auto completed")));
         if (autoOptions.climb) {
             autoCommand = autoCommand.andThen(climbAutoCommand());
         }
@@ -76,7 +83,7 @@ public class AutoManager {
 
     private Command climbAutoCommand() {
         return climberSubsystem
-                .armCommand(() -> true)
+                .armCommand(() -> true, () -> true)
                 .withDeadline(getPathCommand(alignClimbPath)
                         .andThen(swerveDrive
                                 .driveFieldOrientedCommand(
@@ -84,7 +91,7 @@ public class AutoManager {
                                         MetersPerSecond::zero,
                                         DegreesPerSecond::zero)
                                 .withTimeout(Seconds.of(1.0))))
-                .andThen(climberSubsystem.climbCommand(() -> true));
+                .andThen(climberSubsystem.climbCommand(() -> true, () -> false));
     }
 
     private Command shootFromStartAutoCommand(AutoStartLocation startLocation) {
