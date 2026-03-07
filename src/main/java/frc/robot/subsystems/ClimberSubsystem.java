@@ -46,8 +46,12 @@ public class ClimberSubsystem extends SubsystemBase {
     private boolean closedLoopEnabled = false;
     private final Supplier<Voltage> climbVoltage =
             new LoggedNetworkUnit<>("Climber/Climb Voltage", ClimberConstants.CLIMB_VOLTAGE);
+    private final Supplier<Voltage> climbFastVoltage =
+            new LoggedNetworkUnit<>("Climber/Climb Fast Voltage", ClimberConstants.CLIMB_FAST_VOLTAGE);
     private final Supplier<Voltage> lowerVoltage =
             new LoggedNetworkUnit<>("Climber/Lower Voltage", ClimberConstants.LOWER_VOLTAGE);
+    private final Supplier<Voltage> lowerFastVoltage =
+            new LoggedNetworkUnit<>("Climber/Lower Fast Voltage", ClimberConstants.LOWER_FAST_VOLTAGE);
 
     public ClimberSubsystem(MultiMotorInfoSendable motorInfo) {
         final var motorConfig = new SmartMotorControllerConfig()
@@ -80,6 +84,7 @@ public class ClimberSubsystem extends SubsystemBase {
         setDefaultCommand(run(() -> {
             if (closedLoopEnabled) return;
             climber.getMotor().setVoltage(Volts.of(0.0));
+            System.out.println("CLIMBER VOLTAGE: 0.0V");
         }));
     }
 
@@ -103,26 +108,34 @@ public class ClimberSubsystem extends SubsystemBase {
         });
     }
 
-    public Command climbCommand(BooleanSupplier autoStop) {
+    public Command climbCommand(BooleanSupplier autoStop, BooleanSupplier fast) {
         return Commands.sequence(
                         Commands.runOnce(() -> isClimbing = true),
                         Commands.either(
                                 climber.run(ClimberConstants.CLIMBED_ANGLE),
-                                setVoltage(climbVoltage),
+                                setVoltage(() -> {
+                                    final var voltage =
+                                            fast.getAsBoolean() ? climbFastVoltage.get() : climbVoltage.get();
+                                    return voltage;
+                                }),
                                 () -> closedLoopEnabled))
                 .until(isClimbed.and(autoStop));
     }
 
-    public Command armCommand(BooleanSupplier autoStop) {
+    public Command armCommand(BooleanSupplier autoStop, BooleanSupplier fast) {
         return Commands.either(
-                        climber.run(ClimberConstants.ARMED_ANGLE), setVoltage(lowerVoltage), () -> closedLoopEnabled)
+                        climber.run(ClimberConstants.ARMED_ANGLE),
+                        setVoltage(() -> fast.getAsBoolean() ? lowerFastVoltage.get() : lowerVoltage.get()),
+                        () -> closedLoopEnabled)
                 .until(isArmed.and(autoStop));
     }
 
     private Command setVoltage(Supplier<Voltage> voltageSupplier) {
-        return startRun(
-                        motorController::stopClosedLoopController,
-                        () -> motorController.setVoltage(voltageSupplier.get()))
+        return startRun(motorController::stopClosedLoopController, () -> {
+                    System.out.println(
+                            "CLIMBER VOLTAGE: " + voltageSupplier.get().in(Volts) + "V");
+                    motorController.setVoltage(voltageSupplier.get());
+                })
                 .finallyDo(() -> {
                     if (closedLoopEnabled) motorController.startClosedLoopController();
                     else motorController.setVoltage(Volts.zero());
