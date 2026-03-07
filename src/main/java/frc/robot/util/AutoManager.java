@@ -38,7 +38,7 @@ public class AutoManager {
     private final Path shootFromStartPath = new Path("shoot_from_start");
     private final Path climbFromShootingPath = new Path("climb_from_shooting");
     private final Supplier<Distance> distanceSupplier =
-            new LoggedNetworkUnit<>("Auto/Move from hub & shoot distance (m)", Meters.of(1.56));
+            new LoggedNetworkUnit<>("Auto/Move from hub & shoot distance (m)", Meters.of(1.8));
 
     public AutoManager(
             SwerveSubsystem swerveDrive,
@@ -98,8 +98,11 @@ public class AutoManager {
                     final var path = new Path(new Path.Waypoint(currentPose), new Path.Waypoint(newPose));
                     path.setPathConstraints(new Path.PathConstraints()
                             .setMaxVelocityMetersPerSec(1.5)
-                            .setMaxAccelerationMetersPerSec2(1.5));
-                    return buildPathWithSpecifiedFlip(path, false);
+                            .setMaxAccelerationMetersPerSec2(4));
+                    return fuelSubsystem
+                            .windUpCommand()
+                            .withDeadline(buildPathWithSpecifiedFlip(path, false))
+                            .andThen(fuelSubsystem.windUpAndLaunchCommand());
                 },
                 Set.of(swerveDrive, fuelSubsystem));
     }
@@ -139,10 +142,14 @@ public class AutoManager {
                                 currentPose.getMeasureX().plus(transform.getMeasureX()),
                                 currentPose.getMeasureY().plus(transform.getMeasureY()),
                                 Rotation2d.fromDegrees(rotation));
-                        waypoints.add(new Path.Waypoint(currentPose));
+                        final var waypoint = new Path.Waypoint(currentPose, 0.15);
+                        waypoints.add(waypoint);
                     }
                     final Path path = new Path(waypoints);
-                    path.setPathConstraints(new Path.PathConstraints().setEndTranslationToleranceMeters(0.02));
+                    path.setPathConstraints(new Path.PathConstraints()
+                            .setMaxVelocityMetersPerSec(1.5)
+                            .setMaxAccelerationMetersPerSec2(1.5)
+                            .setEndTranslationToleranceMeters(0.02));
                     return buildPathWithSpecifiedFlip(path, false);
                 },
                 Set.of(swerveDrive));

@@ -426,8 +426,12 @@ public class SwerveSubsystem extends SubsystemBase {
         return Commands.runOnce(() -> this.speedMultiplier = speedMultiplier);
     }
 
+    public void setPose(Pose2d pose) {
+        resetPose(pose);
+    }
+
     public Command resetPoseFromCalibrationPosition(PositionCalibrationLocation location) {
-        return Commands.run(() -> {
+        return Commands.runOnce(() -> {
             final var currentRot = getRobotPose().getRotation().getDegrees();
             final var flip = DriverStation.getAlliance().orElse(null) == Alliance.Red;
             final var invertXY = MathUtil.isNear(90.0, Math.abs(currentRot) % 180, 45.0);
@@ -528,7 +532,7 @@ public class SwerveSubsystem extends SubsystemBase {
     private AngularVelocity joystickToAngularVelocity(final double input) {
         final var withDeadband =
                 MathUtil.applyDeadband(input, ControllerConstants.DRIVE_MIN_INPUT, ControllerConstants.DRIVE_MAX_INPUT);
-        final var scaled = Math.pow(withDeadband, 3);
+        final var scaled = Math.pow(withDeadband, 5);
         return getMaximumChassisAngularVelocity().times(scaled).times(speedMultiplier.getMultiplier());
     }
 

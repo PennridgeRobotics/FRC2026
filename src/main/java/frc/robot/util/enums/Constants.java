@@ -36,8 +36,8 @@ public final class Constants {
                 WHEEL_CENTERS_DISTANCE_LENGTH_X.plus(BUMPERS_WIDTH.times(2)); // 25.25in/0.6414m
         public static final Distance ROBOT_FULL_WIDTH_Y =
                 WHEEL_CENTERS_DISTANCE_WIDTH_Y.plus(BUMPERS_WIDTH.times(2)); // 30.25in/0.7684m
-        public static final Distance ROBOT_LENGTH_X = WHEEL_CENTERS_DISTANCE_LENGTH_X;
-        public static final Distance ROBOT_WIDTH_Y = WHEEL_CENTERS_DISTANCE_WIDTH_Y;
+        public static final Distance ROBOT_LENGTH_X = ROBOT_FULL_LENGTH_X;
+        public static final Distance ROBOT_WIDTH_Y = ROBOT_FULL_WIDTH_Y;
         public static final Distance ROBOT_TRENCH_BACK_OFFSET = Inches.of(4.88);
         public static final Distance ROBOT_TRENCH_FRONT_OFFSET = Inches.of(0.875);
         public static final Distance ROBOT_WIDTH_Y_TRENCH = ROBOT_WIDTH_Y.minus(Inches.of(4.6 * 2));
@@ -125,14 +125,14 @@ public final class Constants {
         public static final Time RAMP_RATE = Seconds.of(0.25);
 
         // open loop
-        public static final Voltage CLIMB_VOLTAGE = Volts.of(4);
+        public static final Voltage CLIMB_VOLTAGE = Volts.of(2);
         public static final Voltage LOWER_VOLTAGE = Volts.of(-2);
 
         public static final Angle MINIMUM_ANGLE = Degrees.of(-53.5);
         public static final Angle MAXIMUM_ANGLE = Degrees.of(110.0);
         public static final Angle HORIZONTAL_ANGLE = Degrees.of(0);
         public static final Angle VERTICAL_ANGLE = Degrees.of(90);
-        public static final Angle ARMED_ANGLE = Degrees.of(-30);
+        public static final Angle ARMED_ANGLE = Degrees.of(-16);
         public static final Angle CLIMBED_ANGLE = Degrees.of(70);
 
         public static final Angle TOLERANCE_ANGLE = Degrees.of(1);
@@ -161,8 +161,8 @@ public final class Constants {
         public static final Translation2d HUB_RED =
                 new Translation2d(FIELD_LENGTH_X.minus(Inches.of(182.11)), FIELD_WIDTH_Y.div(2));
 
-        public static final Distance HUB_LENGTH_Y = Inches.of(/*47*/ 20);
-        public static final Distance HUB_WIDTH_X = Inches.of(/*47*/ 33.5);
+        public static final Distance HUB_LENGTH_Y = Inches.of(47);
+        public static final Distance HUB_WIDTH_X = Inches.of(47);
 
         public static final Distance TRENCH_X = Inches.of(182.11 - (3.5 / 2.0)); // account for trench bar width
         public static final Distance TRENCH_TO_EDGE_Y = Inches.of(50.35);

@@ -115,7 +115,7 @@ public class RobotContainer {
                         () -> -driverController.getLeftY(),
                         () -> -driverController.getLeftX(),
                         () -> -driverController.getRightX(),
-                        () -> -operatorController.getLeftX(),
+                        () -> /*-operatorController.getLeftX()*/ 0,
                         () -> -operatorController.getLeftY()));
                 driverController.rightStick().whileTrue(swerveSubsystem.lockYawTowardsVelocity());
             } else {
@@ -155,9 +155,6 @@ public class RobotContainer {
             return;
         }
         // operatorController.start().whileTrue(swerveSubsystem.straightenWheelsCommand());
-        final var moveFromHubAndShootCommand = autoManager != null
-                ? Commands.waitTime(Seconds.of(0.4)).andThen(autoManager.moveFromHubAndShoot())
-                : Commands.none();
         final var calibrations = List.of(
                 new Pair<>(operatorController.leftTrigger(), PositionCalibrationLocation.FRONT_LEFT_OF_HUB),
                 new Pair<>(operatorController.leftBumper(), PositionCalibrationLocation.LEFT_DEPOT_CORNER),
@@ -169,7 +166,11 @@ public class RobotContainer {
                     .and(calibration.getFirst())
                     .whileTrue(swerveSubsystem
                             .resetPoseFromCalibrationPosition(calibration.getSecond())
-                            .andThen(moveFromHubAndShootCommand));
+                            .andThen(
+                                    (autoManager != null && fuelSubsystem != null)
+                                            ? Commands.waitTime(Seconds.of(0.4))
+                                                    .andThen(autoManager.moveFromHubAndShoot())
+                                            : Commands.none()));
         }
 
         if (fuelSubsystem != null) {
@@ -190,6 +191,15 @@ public class RobotContainer {
             operatorController.leftBumper().whileTrue(fuelSubsystem.ejectCommand());
             operatorController.a().whileTrue(fuelSubsystem.intakeCommand());
             operatorController.b().whileTrue(fuelSubsystem.unjamCommand());
+            operatorController.leftStick().toggleOnTrue(fuelSubsystem.temporarilyEnableManualLaunch());
+            new Trigger(() -> operatorController.getLeftX() < -0.5)
+                    .whileTrue(fuelSubsystem.decreaseManualLaunchVelocity());
+            new Trigger(() -> operatorController.getLeftX() > 0.5)
+                    .whileTrue(fuelSubsystem.increaseManualLaunchVelocity());
+            new Trigger(() -> operatorController.getRightX() < -0.5)
+                    .whileTrue(shooterCalculator.decreaseVelocityOffset());
+            new Trigger(() -> operatorController.getRightX() > 0.5)
+                    .whileTrue(shooterCalculator.increaseVelocityOffset());
         }
         if (climberSubsystem != null) {
             operatorController

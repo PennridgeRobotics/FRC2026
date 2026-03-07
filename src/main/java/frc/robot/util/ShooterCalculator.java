@@ -1,7 +1,7 @@
 package frc.robot.util;
 
-import static edu.wpi.first.units.Units.Meters;
-import static edu.wpi.first.units.Units.RotationsPerSecond;
+import static edu.wpi.first.units.Units.*;
+import static edu.wpi.first.units.Units.Milliseconds;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -12,6 +12,8 @@ import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import frc.robot.util.dashboard.SplitButtonChooser;
 import frc.robot.util.enums.Constants.FieldConstants;
 import java.util.Map;
@@ -37,14 +39,15 @@ public class ShooterCalculator {
             new TreeMap<>(); // because InterpolatingDoubleTreeMap won't let us extract its values
     private @Nullable ShotData lastShotData;
     private boolean lastShotDataValidForCache;
-    private CalculationMode calculationMode = CalculationMode.INTERPOLATION;
-    private CompiledExpression compiledExpression = Crunch.compileExpression("0");
-    private String originalExpression = "x";
+    private CalculationMode calculationMode = CalculationMode.EQUATION;
+    private String originalExpression = "5.76 + 31.9 * x - 5.29 * x^2";
+    private CompiledExpression compiledExpression = Crunch.compileExpression(originalExpression);
     private long lastUpdateTimestampMillis;
 
     private final DoublePublisher shotDistancePublisher;
     private final DoublePublisher shotVelocityPublisher;
     private final DoublePublisher shotHeadingPublisher;
+    private final DoublePublisher invertedShotHeadingPublisher;
     private final BooleanPublisher cachedPublisher;
     private final DoublePublisher savedDataCountPublisher;
     private final StringEntry savedShooterDistanceVelocityMapEntry;
@@ -67,6 +70,9 @@ public class ShooterCalculator {
                 .publish();
         shotHeadingPublisher = NetworkTableInstance.getDefault()
                 .getDoubleTopic(topicPrefix + "Shot Heading")
+                .publish();
+        invertedShotHeadingPublisher = NetworkTableInstance.getDefault()
+                .getDoubleTopic(topicPrefix + "Inverted Shot Heading")
                 .publish();
         cachedPublisher = NetworkTableInstance.getDefault()
                 .getBooleanTopic(topicPrefix + "Used Cached Shot Data")
@@ -134,6 +140,7 @@ public class ShooterCalculator {
         shotDistancePublisher.set(shot.distance().in(Meters));
         shotVelocityPublisher.set(shot.velocity().in(RotationsPerSecond));
         shotHeadingPublisher.set(shot.heading().getDegrees());
+        invertedShotHeadingPublisher.set(-(shot.heading.getDegrees() + 180));
         lastShotData = shot;
         lastShotDataValidForCache = true;
         return shot;
@@ -141,7 +148,7 @@ public class ShooterCalculator {
 
     public void addCurrentDataToMap(AngularVelocity shooterVelocity) {
         final Pose2d robotPose = robotPoseSupplier.get();
-        final double distanceToTarget = getTarget().getDistance(robotPose.getTranslation());
+        final double distanceToTarget = Math.round(getTarget().getDistance(robotPose.getTranslation()) * 100) / 100.0;
         addRawDistanceVelocityData(distanceToTarget, shooterVelocity.in(RotationsPerSecond));
     }
 
@@ -242,6 +249,22 @@ public class ShooterCalculator {
         }
         originalExpression = rawExpression;
         this.compiledExpression = compiled;
+    }
+
+    public Command increaseVelocityOffset() {
+        return adjustVelocityOffset(true);
+    }
+
+    public Command decreaseVelocityOffset() {
+        return adjustVelocityOffset(false);
+    }
+
+    private Command adjustVelocityOffset(boolean increase) {
+        return Commands.run(() -> {
+            final var velocityChange =
+                    RotationsPerSecondPerSecond.of(6).times(Milliseconds.of(20)).in(RotationsPerSecond);
+            velocityOffsetEntry.set(velocityOffsetEntry.get() + (increase ? velocityChange : -velocityChange));
+        });
     }
 
     public record ShotData(Distance distance, AngularVelocity velocity, Rotation2d heading) {}

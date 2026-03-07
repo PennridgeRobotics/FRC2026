@@ -3,9 +3,7 @@
 // the WPILib BSD license file in the root directory of this project.
 package frc.robot.subsystems;
 
-import static edu.wpi.first.units.Units.Meters;
-import static edu.wpi.first.units.Units.MetersPerSecond;
-import static edu.wpi.first.units.Units.RotationsPerSecond;
+import static edu.wpi.first.units.Units.*;
 
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
@@ -13,6 +11,7 @@ import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.math.system.plant.DCMotor;
+import edu.wpi.first.units.AngularVelocityUnit;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.wpilibj.Timer;
@@ -72,8 +71,8 @@ public class FuelSubsystem extends SubsystemBase {
             "Fuel/Intake Velocity Intake-Launcher", FuelConstants.INTAKE_VELOCITY_INTAKE_LAUNCHER);
     private final Supplier<AngularVelocity> intakeVelocityIndexer =
             new LoggedNetworkUnit<>("Fuel/Intake Velocity Indexer", FuelConstants.INTAKE_VELOCITY_INDEXER);
-    private final Supplier<AngularVelocity> launchVelocityIntakeLauncher =
-            new LoggedNetworkUnit<>("Fuel/Launch Velocity Intake-Launcher", RotationsPerSecond.of(40.0));
+    private final LoggedNetworkUnit<AngularVelocityUnit, AngularVelocity> launchVelocityIntakeLauncher =
+            new LoggedNetworkUnit<>("Fuel/Launch Velocity Intake-Launcher", RotationsPerSecond.of(46.1));
     private final Supplier<AngularVelocity> launchVelocityIndexer =
             new LoggedNetworkUnit<>("Fuel/Launch Velocity Indexer", FuelConstants.LAUNCH_VELOCITY_INDEXER);
     private final Supplier<AngularVelocity> windUpVelocityIndexer =
@@ -193,6 +192,29 @@ public class FuelSubsystem extends SubsystemBase {
                         DashboardFuelAction.class));
     }
 
+    public Command increaseManualLaunchVelocity() {
+        return adjustManualLaunchVelocity(true);
+    }
+
+    public Command decreaseManualLaunchVelocity() {
+        return adjustManualLaunchVelocity(false);
+    }
+
+    private Command adjustManualLaunchVelocity(boolean increase) {
+        return Commands.run(() -> {
+            final var velocityChange = RotationsPerSecondPerSecond.of(6).times(Milliseconds.of(20));
+            launchVelocityIntakeLauncher.set(
+                    launchVelocityIntakeLauncher.get().plus(increase ? velocityChange : velocityChange.unaryMinus()));
+        });
+    }
+
+    public Command temporarilyEnableManualLaunch() {
+        return Commands.deferredProxy(() -> {
+            if (useCustomVelocity) return Commands.none(); // already enabled, so this wouldn't do anything
+            return Commands.startEnd(() -> useCustomVelocity = true, () -> useCustomVelocity = false);
+        });
+    }
+
     private Command idleCommand() {
         return run(() -> {
             currentState = FuelAction.IDLE;
@@ -306,6 +328,8 @@ public class FuelSubsystem extends SubsystemBase {
     public void periodic() {
         // This method will be called once per scheduler run
         indexer.updateTelemetry();
+
+        SmartDashboard.putString("Fuel Subsystem/Launcher Mode Text", useCustomVelocity ? "Custom" : "Calculator");
     }
 
     @Override

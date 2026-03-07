@@ -43,7 +43,7 @@ public class ClimberSubsystem extends SubsystemBase {
     private final Trigger climbingTrigger = new Trigger(() -> isClimbing);
     private final Trigger isClimbed;
     private final Trigger isArmed;
-    private boolean closedLoopEnabled = true;
+    private boolean closedLoopEnabled = false;
     private final Supplier<Voltage> climbVoltage =
             new LoggedNetworkUnit<>("Climber/Climb Voltage", ClimberConstants.CLIMB_VOLTAGE);
     private final Supplier<Voltage> lowerVoltage =
@@ -59,7 +59,7 @@ public class ClimberSubsystem extends SubsystemBase {
                 .withStatorCurrentLimit(ClimberConstants.CURRENT_LIMIT)
                 .withOpenLoopRampRate(ClimberConstants.RAMP_RATE)
                 .withTelemetry("ClimberMotor", TelemetryVerbosity.HIGH)
-                // .withSoftLimit(ClimberConstants.MINIMUM_ANGLE, ClimberConstants.MAXIMUM_ANGLE)
+                .withSoftLimit(Degrees.of(-360), Degrees.of(360))
                 .withClosedLoopController(new PIDController(0, 0, 0))
                 .withFeedforward(new ArmFeedforward(0, 0, 0, 0));
         final var sparkMaxMotor = new SparkMax(ClimberConstants.CLIMBER_MOTOR_ID, MotorType.kBrushless);
@@ -77,10 +77,10 @@ public class ClimberSubsystem extends SubsystemBase {
 
         setupSmartDashboard();
 
-        /*setDefaultCommand(run(() -> {
+        setDefaultCommand(run(() -> {
             if (closedLoopEnabled) return;
             climber.getMotor().setVoltage(Volts.of(0.0));
-        }));*/
+        }));
     }
 
     private void setupSmartDashboard() {
@@ -94,7 +94,8 @@ public class ClimberSubsystem extends SubsystemBase {
                 else motorController.stopClosedLoopController();
                 closedLoopEnabled = v;
             });
-            builder.addDoubleProperty("Angle", () -> climber.getAngle().in(Degrees), null);
+            builder.addDoubleProperty("Angle", () -> climber.getAngle().in(Degrees), v -> climber.getMotor()
+                    .setEncoderPosition(Degrees.of(v)));
             builder.addDoubleProperty(
                     "Angular Velocity",
                     () -> climber.getMotor().getMechanismVelocity().in(DegreesPerSecond),
@@ -119,11 +120,13 @@ public class ClimberSubsystem extends SubsystemBase {
     }
 
     private Command setVoltage(Supplier<Voltage> voltageSupplier) {
-        return startRun(
-                        motorController::stopClosedLoopController,
-                        () -> motorController.setVoltage(voltageSupplier.get()))
+        return startRun(motorController::stopClosedLoopController, () -> {
+                    System.out.println("Set voltage to " + voltageSupplier.get().in(Volts));
+                    motorController.setVoltage(voltageSupplier.get());
+                })
                 .finallyDo(() -> {
                     if (closedLoopEnabled) motorController.startClosedLoopController();
+                    else motorController.setVoltage(Volts.zero());
                 });
     }
 
