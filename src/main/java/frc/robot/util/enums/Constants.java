@@ -72,7 +72,7 @@ public final class Constants {
         public static final String SWERVE_CONFIG_DIRECTORY = "swerve"; // + deploy
 
         public static final LinearAcceleration MAX_LINEAR_ACCELERATION = MetersPerSecondPerSecond.of(10);
-        public static final LinearVelocity MAX_LINEAR_SPEED = MetersPerSecond.of(2.8);
+        public static final LinearVelocity MAX_LINEAR_SPEED = MetersPerSecond.of(3.6);
 
         public static final Distance WHEEL_DIAMETER = Inches.of(4);
     }
@@ -91,7 +91,7 @@ public final class Constants {
         public static final Voltage INTAKE_LAUNCHER_VOLTAGE_COMP = Volts.of(12);
         public static final Voltage INDEXER_VOLTAGE_COMP = Volts.of(12);
         public static final Current INTAKE_LAUNCHER_CURRENT_LIMIT = Amps.of(60);
-        public static final Current INDEXER_CURRENT_LIMIT = Amps.of(40);
+        public static final Current INDEXER_CURRENT_LIMIT = Amps.of(60);
         public static final Time INTAKE_LAUNCHER_RAMP_RATE = Seconds.of(0.2);
         public static final Time INDEXER_RAMP_RATE = Seconds.of(0.2);
         public static final Time WINDUP_TIMEOUT = Seconds.of(4.0);
@@ -111,6 +111,7 @@ public final class Constants {
         public static final AngularVelocity WINDUP_VELOCITY_INDEXER = RotationsPerSecond.of(-3);
         // calculated velocity + LAUNCH_VELOCITY_TOLERANCE = velocity needed to finish winding up
         public static final AngularVelocity LAUNCH_VELOCITY_TOLERANCE = RotationsPerSecond.of(-0.5);
+        public static final Voltage MAX_POWER_VOLTAGE = Volts.of(12.0);
     }
 
     public static final class ClimberConstants {
@@ -122,7 +123,7 @@ public final class Constants {
         public static final MechanismGearing CLIMBER_GEARING = new MechanismGearing(168.0);
         public static final Current CURRENT_LIMIT = Amps.of(40);
         public static final Current STALL_CURRENT = Amps.of(10);
-        public static final Time RAMP_RATE = Seconds.of(0.25);
+        public static final Time RAMP_RATE = Seconds.of(0);
         public static final Voltage VOLTAGE_COMPENSATION = Volts.of(12.0);
 
         // open loop

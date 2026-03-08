@@ -40,7 +40,7 @@ public class ShooterCalculator {
     private @Nullable ShotData lastShotData;
     private boolean lastShotDataValidForCache;
     private CalculationMode calculationMode = CalculationMode.EQUATION;
-    private String originalExpression = "-23.6 + 61.3 * x - 12.1 * x^2";
+    private String originalExpression = "-45.66 * x^(-2.622) + 56.778";
     private CompiledExpression compiledExpression = Crunch.compileExpression("0");
     private long lastUpdateTimestampMillis;
 

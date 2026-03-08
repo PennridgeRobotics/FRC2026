@@ -57,6 +57,7 @@ public class RobotContainer {
 
     private final SendableChooser<AutoManager.AutoStartLocation> autoStartLocationChooser;
     private boolean autoClimb = false;
+    private boolean autoDepot = false;
     private boolean autoOutpost = false;
 
     private boolean useOdometry = true;
@@ -102,8 +103,8 @@ public class RobotContainer {
     public @Nullable Command getAutonomousCommand() {
         updateSmartDashboard();
         return autoManager != null
-                ? autoManager.getAutoCommand(
-                        new AutoManager.AutoOptions(autoStartLocationChooser.getSelected(), autoClimb, autoOutpost))
+                ? autoManager.getAutoCommand(new AutoManager.AutoOptions(
+                        autoStartLocationChooser.getSelected(), autoDepot, autoOutpost, autoClimb))
                 : null;
     }
 
@@ -212,6 +213,7 @@ public class RobotContainer {
                     .whileTrue(shooterCalculator.decreaseVelocityOffset());
             new Trigger(() -> operatorController.getRightX() > 0.5)
                     .whileTrue(shooterCalculator.increaseVelocityOffset());
+            operatorController.back().whileTrue(fuelSubsystem.temporarilyUseMaxPower());
         }
         if (climberSubsystem != null) {
             operatorController
@@ -235,6 +237,7 @@ public class RobotContainer {
         SmartDashboard.putData("Auto/Start Location Chooser", autoStartLocationChooser);
         SmartDashboard.putBoolean("Auto/Auto Climb", autoClimb);
         SmartDashboard.putBoolean("Auto/Auto Outpost", autoOutpost);
+        SmartDashboard.putBoolean("Auto/Auto Depot", autoDepot);
         SmartDashboard.putData("Power Distribution", powerDistribution);
         SmartDashboard.putData(
                 "RobotContainer",
@@ -244,6 +247,7 @@ public class RobotContainer {
 
     private void updateSmartDashboard() {
         autoClimb = SmartDashboard.getBoolean("Auto/Auto Climb", autoClimb);
+        autoDepot = SmartDashboard.getBoolean("Auto/Auto Depot", autoDepot);
         autoOutpost = SmartDashboard.getBoolean("Auto/Auto Outpost", autoOutpost);
     }
 

@@ -9,8 +9,6 @@ import static edu.wpi.first.units.Units.Volts;
 
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
-import edu.wpi.first.math.controller.ArmFeedforward;
-import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.filter.Debouncer;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -42,7 +40,6 @@ public class ClimberSubsystem extends SubsystemBase {
     private final Trigger climbingTrigger = new Trigger(() -> isClimbing);
     private final Trigger isClimbed;
     private final Trigger isArmed;
-    private boolean closedLoopEnabled = false;
     private final DoubleSupplier climbValue =
             new LoggedNetworkDouble("Climber/Climb Value", ClimberConstants.CLIMB_VALUE);
     private final DoubleSupplier climbFastValue =
@@ -57,15 +54,13 @@ public class ClimberSubsystem extends SubsystemBase {
                 .withSubsystem(this)
                 .withMotorInverted(ClimberConstants.CLIMBER_INVERTED)
                 .withIdleMode(ClimberConstants.IDLE_MODE)
-                .withControlMode(closedLoopEnabled ? ControlMode.CLOSED_LOOP : ControlMode.OPEN_LOOP)
+                .withControlMode(ControlMode.OPEN_LOOP)
                 .withGearing(ClimberConstants.CLIMBER_GEARING)
                 .withStatorCurrentLimit(ClimberConstants.CURRENT_LIMIT)
                 .withOpenLoopRampRate(ClimberConstants.RAMP_RATE)
                 .withTelemetry("ClimberMotor", TelemetryVerbosity.HIGH)
-                .withSoftLimit(Degrees.of(-360), Degrees.of(360))
-                .withClosedLoopController(new PIDController(0, 0, 0))
-                .withVoltageCompensation(ClimberConstants.VOLTAGE_COMPENSATION)
-                .withFeedforward(new ArmFeedforward(0, 0, 0, 0));
+                .withSoftLimit(Degrees.of(-360), Degrees.of(360)) // no soft limit because no absolute encoder
+                .withVoltageCompensation(ClimberConstants.VOLTAGE_COMPENSATION);
         final var sparkMaxMotor = new SparkMax(ClimberConstants.CLIMBER_MOTOR_ID, MotorType.kBrushless);
         motorController = new SparkWrapper(sparkMaxMotor, DCMotor.getNEO(1), motorConfig);
         climber = new Arm(new ArmConfig(motorController)
@@ -81,15 +76,8 @@ public class ClimberSubsystem extends SubsystemBase {
 
         setupSmartDashboard();
 
-        setDefaultCommand(startRun(
-                () -> {
-                    if (closedLoopEnabled) return;
-                    System.out.println("CLIMBER VALUE: 0.0");
-                },
-                () -> {
-                    if (closedLoopEnabled) return;
-                    climber.getMotor().setDutyCycle(0.0);
-                }));
+        setDefaultCommand(startRun(() -> System.out.println("CLIMBER VALUE: 0.0"), () -> climber.getMotor()
+                .setDutyCycle(0.0)));
     }
 
     private void setupSmartDashboard() {
@@ -98,11 +86,6 @@ public class ClimberSubsystem extends SubsystemBase {
                 new PIDSendable(motorController, PIDSendable.Type.PID | PIDSendable.Type.ROTARY_FF));
         SmartDashboard.putData("Climbing Subsystem", (builder) -> {
             builder.addBooleanProperty("Climbing", () -> isClimbing, (v) -> isClimbing = v);
-            builder.addBooleanProperty("Closed loop enabled", () -> closedLoopEnabled, (v) -> {
-                if (v) motorController.startClosedLoopController();
-                else motorController.stopClosedLoopController();
-                closedLoopEnabled = v;
-            });
             builder.addDoubleProperty("Angle", () -> climber.getAngle().in(Degrees), v -> climber.getMotor()
                     .setEncoderPosition(Degrees.of(v)));
             builder.addDoubleProperty(
@@ -119,7 +102,7 @@ public class ClimberSubsystem extends SubsystemBase {
                                 climber.run(ClimberConstants.CLIMBED_ANGLE),
                                 setDutyCycle(() ->
                                         fast.getAsBoolean() ? climbFastValue.getAsDouble() : climbValue.getAsDouble()),
-                                () -> closedLoopEnabled))
+                                () -> false))
                 .until(isClimbed.and(autoStop));
     }
 
@@ -128,27 +111,19 @@ public class ClimberSubsystem extends SubsystemBase {
                         climber.run(ClimberConstants.ARMED_ANGLE),
                         setDutyCycle(
                                 () -> fast.getAsBoolean() ? lowerFastValue.getAsDouble() : lowerValue.getAsDouble()),
-                        () -> closedLoopEnabled)
+                        () -> false)
                 .until(isArmed.and(autoStop));
     }
 
     private Command setDutyCycle(DoubleSupplier dutyCycleSupplier) {
         return startRun(
-                        () -> {
-                            motorController.stopClosedLoopController();
-                            System.out.println("CLIMBER VALUE: " + dutyCycleSupplier.getAsDouble());
-                        },
+                        () -> System.out.println("CLIMBER VALUE: " + dutyCycleSupplier.getAsDouble()),
                         () -> climber.getMotor().setDutyCycle(dutyCycleSupplier.getAsDouble()))
-                .finallyDo(() -> {
-                    if (closedLoopEnabled) motorController.startClosedLoopController();
-                    else motorController.setDutyCycle(0);
-                });
+                .finallyDo(() -> motorController.setDutyCycle(0));
     }
 
     public Command setClimberEncoderToVertical() {
-        return Commands.runOnce(() -> {
-            climber.getMotor().setEncoderPosition(ClimberConstants.VERTICAL_ANGLE);
-        });
+        return Commands.runOnce(() -> climber.getMotor().setEncoderPosition(ClimberConstants.VERTICAL_ANGLE));
     }
 
     public Command findLimit() {
@@ -156,12 +131,7 @@ public class ClimberSubsystem extends SubsystemBase {
         final var runVolts = Volts.of(-1.0);
         final var currentThreshold = Amps.of(0); // change this
         final var velocityThreshold = DegreesPerSecond.of(2);
-        return startRun(
-                        () -> {
-                            isClimbing = false;
-                            motorController.stopClosedLoopController();
-                        },
-                        () -> motorController.setVoltage(runVolts))
+        return startRun(() -> isClimbing = false, () -> motorController.setVoltage(runVolts))
                 .until(() -> currentDebouncer.calculate(
                         motorController.getStatorCurrent().gte(currentThreshold)
                                 && motorController.getMechanismVelocity().abs(DegreesPerSecond)
@@ -169,9 +139,6 @@ public class ClimberSubsystem extends SubsystemBase {
                 .finallyDo(() -> {
                     motorController.setVoltage(Volts.zero());
                     motorController.setEncoderPosition(ClimberConstants.MINIMUM_ANGLE);
-                    if (closedLoopEnabled) {
-                        motorController.startClosedLoopController();
-                    }
                 });
     }
 

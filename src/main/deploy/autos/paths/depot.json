@@ -2,21 +2,76 @@
   "path_elements": [
     {
       "type": "translation",
-      "x_meters": 1.807017446863223,
-      "y_meters": 6.21,
-      "intermediate_handoff_radius_meters": 0.2
+      "x_meters": 1.9466221345160668,
+      "y_meters": 4.893576878477385,
+      "intermediate_handoff_radius_meters": 0.18
     },
     {
       "type": "waypoint",
       "translation_target": {
-        "x_meters": 1.245977446863223,
-        "y_meters": 6.20987067815383,
-        "intermediate_handoff_radius_meters": 0.2
+        "x_meters": 0.9499453367432076,
+        "y_meters": 4.878583602298711,
+        "intermediate_handoff_radius_meters": 0.18
+      },
+      "rotation_target": {
+        "rotation_radians": 1.5707963267948966,
+        "profiled_rotation": true
+      }
+    },
+    {
+      "type": "waypoint",
+      "translation_target": {
+        "x_meters": 0.484,
+        "y_meters": 5.052085057430496,
+        "intermediate_handoff_radius_meters": 0.13
+      },
+      "rotation_target": {
+        "rotation_radians": 1.5707963267948966,
+        "profiled_rotation": true
+      }
+    },
+    {
+      "type": "waypoint",
+      "translation_target": {
+        "x_meters": 0.484,
+        "y_meters": 6.8,
+        "intermediate_handoff_radius_meters": 0.18
+      },
+      "rotation_target": {
+        "rotation_radians": 1.5707963267948966,
+        "profiled_rotation": true
+      }
+    },
+    {
+      "type": "waypoint",
+      "translation_target": {
+        "x_meters": 1.102090640102907,
+        "y_meters": 6.8,
+        "intermediate_handoff_radius_meters": 0.18
       },
       "rotation_target": {
         "rotation_radians": 3.141592653589793,
         "profiled_rotation": true
       }
     }
-  ]
+  ],
+  "constraints": {
+    "max_velocity_meters_per_sec": [
+      {
+        "value": 0.3,
+        "start_ordinal": 3,
+        "end_ordinal": 3
+      },
+      {
+        "value": 0.7,
+        "start_ordinal": 2,
+        "end_ordinal": 2
+      },
+      {
+        "value": 1.0,
+        "start_ordinal": 1,
+        "end_ordinal": 1
+      }
+    ]
+  }
 }

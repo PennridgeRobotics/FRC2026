@@ -40,6 +40,7 @@ public class AutoManager {
     private final Path startRightInnerBumpShootPath = new Path("start_right_inner_bump_shoot");
     private final Path toOutpostPath = new Path("to_outpost");
     private final Path alignClimbPath = new Path("align_climb");
+    private final Path depotPath = new Path("depot");
     private final Supplier<Distance> distanceSupplier =
             new LoggedNetworkUnit<>("Auto/Move from hub & shoot distance (m)", Meters.of(1.8));
 
@@ -74,13 +75,17 @@ public class AutoManager {
         System.out.println("USING AUTO: " + autoOptions);
         System.out.println("USING AUTO: " + autoOptions);
 
-        var autoCommand = autoOptions.climb ? climberSubsystem.armCommand(() -> true, () -> true) : Commands.none();
-        autoCommand = autoCommand.withDeadline(shootFromStartAutoCommand(autoOptions.startLocation));
+        var autoCommand = shootFromStartAutoCommand(autoOptions.startLocation);
+        if (autoOptions.depot()) {
+            autoCommand = autoCommand.andThen(depotIntakeAndShootAutoCommand());
+        }
         if (autoOptions.outpost()) {
             autoCommand = autoCommand.andThen(outpostAndShootAutoCommand());
         }
         if (autoOptions.climb()) {
-            autoCommand = autoCommand.andThen(climbAutoCommand());
+            autoCommand = climberSubsystem
+                    .armCommand(() -> true, () -> true)
+                    .withDeadline(autoCommand.andThen(climbAutoCommand()));
         }
         return autoCommand;
     }
@@ -99,8 +104,16 @@ public class AutoManager {
     }
 
     private Command outpostAndShootAutoCommand() {
-        return getPathCommand(toOutpostPath)
-                .andThen(Commands.waitTime(Seconds.of(3)))
+        return fuelSubsystem
+                .idleCommand()
+                .withDeadline(getPathCommand(toOutpostPath).andThen(Commands.waitTime(Seconds.of(3))))
+                .andThen(pathInFrontOfHubAndShoot());
+    }
+
+    private Command depotIntakeAndShootAutoCommand() {
+        return fuelSubsystem
+                .intakeCommand()
+                .withDeadline(getPathCommand(depotPath))
                 .andThen(pathInFrontOfHubAndShoot());
     }
 
@@ -114,7 +127,7 @@ public class AutoManager {
                                     case LEFT_HUB -> startLeftHubShootPath;
                                     case RIGHT_INNER_BUMP -> startRightInnerBumpShootPath;
                                 })),
-                fuelSubsystem.windUpAndLaunchCommand().withTimeout(Seconds.of(10)));
+                fuelSubsystem.windUpAndLaunchCommand().withTimeout(Seconds.of(5)));
     }
 
     private Command pathInFrontOfHubAndShoot() {
@@ -249,5 +262,5 @@ public class AutoManager {
         RIGHT_INNER_BUMP,
     }
 
-    public record AutoOptions(AutoStartLocation startLocation, boolean climb, boolean outpost) {}
+    public record AutoOptions(AutoStartLocation startLocation, boolean depot, boolean outpost, boolean climb) {}
 }
