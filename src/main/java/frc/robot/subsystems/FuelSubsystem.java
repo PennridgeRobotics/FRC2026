@@ -3,21 +3,18 @@
 // the WPILib BSD license file in the root directory of this project.
 package frc.robot.subsystems;
 
-import static edu.wpi.first.units.Units.Meters;
-import static edu.wpi.first.units.Units.MetersPerSecond;
-import static edu.wpi.first.units.Units.Milliseconds;
-import static edu.wpi.first.units.Units.RotationsPerSecond;
-import static edu.wpi.first.units.Units.RotationsPerSecondPerSecond;
-import static edu.wpi.first.units.Units.Seconds;
+import static edu.wpi.first.units.Units.*;
 
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
+import edu.wpi.first.math.filter.Debouncer;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.units.AngularVelocityUnit;
 import edu.wpi.first.units.measure.AngularVelocity;
+import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.units.measure.Voltage;
 import edu.wpi.first.wpilibj.Timer;
@@ -193,7 +190,22 @@ public class FuelSubsystem extends SubsystemBase {
         SmartDashboard.putData("Fuel Subsystem", (builder) -> {
             builder.addStringProperty("Current State", () -> currentState.toString(), null);
             builder.addStringProperty(
-                    "MAX POWER", new FlashingColorSupplier(() -> useMaxPower, Color.kRed, Seconds.of(0.3)), null);
+                    "Intake-Launcher Stall Alert",
+                    new FlashingColorSupplier(
+                            getStallAlertTrigger(
+                                    intakeLauncherController::getStatorCurrent,
+                                    FuelConstants.INTAKE_LAUNCHER_CURRENT_LIMIT),
+                            Color.kRed,
+                            Seconds.of(0.3)),
+                    null);
+            builder.addStringProperty(
+                    "Indexer Stall Alert",
+                    new FlashingColorSupplier(
+                            getStallAlertTrigger(
+                                    indexerController::getStatorCurrent, FuelConstants.INDEXER_CURRENT_LIMIT),
+                            Color.kRed,
+                            Seconds.of(0.3)),
+                    null);
         });
         SmartDashboard.putData(
                 "Fuel Subsystem/Launcher Mode",
@@ -211,6 +223,11 @@ public class FuelSubsystem extends SubsystemBase {
                         Set.of(this::setOperatorActionRequest),
                         operatorActionRequest,
                         OperatorFuelRequest.class));
+    }
+
+    private Trigger getStallAlertTrigger(Supplier<Current> statorCurrentSupplier, Current statorCurrentLimit) {
+        return new Trigger(() -> statorCurrentLimit.isNear(statorCurrentSupplier.get(), Amps.of(0.5)))
+                .debounce(0.5, Debouncer.DebounceType.kRising);
     }
 
     public Command requestAsOperator(OperatorFuelRequest request) {
