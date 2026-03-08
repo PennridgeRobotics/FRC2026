@@ -72,7 +72,7 @@ public final class Constants {
         public static final String SWERVE_CONFIG_DIRECTORY = "swerve"; // + deploy
 
         public static final LinearAcceleration MAX_LINEAR_ACCELERATION = MetersPerSecondPerSecond.of(10);
-        public static final LinearVelocity MAX_LINEAR_SPEED = MetersPerSecond.of(3.6);
+        public static final LinearVelocity MAX_LINEAR_SPEED = MetersPerSecond.of(4.2);
 
         public static final Distance WHEEL_DIAMETER = Inches.of(4);
     }
@@ -120,7 +120,7 @@ public final class Constants {
         public static final int CLIMBER_MOTOR_ID = 9;
         public static final boolean CLIMBER_INVERTED = true;
         public static final MotorMode IDLE_MODE = MotorMode.BRAKE;
-        public static final MechanismGearing CLIMBER_GEARING = new MechanismGearing(168.0);
+        public static final MechanismGearing CLIMBER_GEARING = new MechanismGearing(80.0, 60.0 / 20, 28.0 / 10);
         public static final Current CURRENT_LIMIT = Amps.of(40);
         public static final Current STALL_CURRENT = Amps.of(10);
         public static final Time RAMP_RATE = Seconds.of(0);

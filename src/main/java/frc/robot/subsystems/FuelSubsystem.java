@@ -186,7 +186,7 @@ public class FuelSubsystem extends SubsystemBase {
         SmartDashboard.putData("Fuel Subsystem", (builder) -> {
             builder.addStringProperty("Current State", () -> currentState.toString(), null);
             builder.addStringProperty(
-                    "MAX POWER", new FlashingColorSupplier(() -> useMaxPower, Color.kRed, Seconds.of(0.5)), null);
+                    "MAX POWER", new FlashingColorSupplier(() -> useMaxPower, Color.kRed, Seconds.of(0.3)), null);
         });
         SmartDashboard.putData(
                 "Fuel Subsystem/Launcher Mode",
@@ -253,14 +253,15 @@ public class FuelSubsystem extends SubsystemBase {
     }
 
     public Command idleCommand() {
-        return run(() -> {
-            currentState = FuelAction.IDLE;
-            intakeLauncherController.setDutyCycle(0);
-            indexerController.setDutyCycle(0);
-            intakeLauncherController.setVelocity(RotationsPerSecond.zero());
-            indexerController.setVelocity(RotationsPerSecond.zero());
-            // System.out.println("SET VELOCITY TO 0");
-        });
+        return run(this::reset); // System.out.println("SET VELOCITY TO 0");
+    }
+
+    private void reset() {
+        currentState = FuelAction.IDLE;
+        intakeLauncherController.setDutyCycle(0);
+        indexerController.setDutyCycle(0);
+        intakeLauncherController.setVelocity(RotationsPerSecond.zero());
+        indexerController.setVelocity(RotationsPerSecond.zero());
     }
 
     public Command ejectCommand() {

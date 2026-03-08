@@ -18,7 +18,6 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.util.dashboard.LoggedNetworkDouble;
 import frc.robot.util.dashboard.MultiMotorInfoSendable;
-import frc.robot.util.dashboard.PIDSendable;
 import frc.robot.util.enums.Constants.ClimberConstants;
 import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
@@ -66,6 +65,9 @@ public class ClimberSubsystem extends SubsystemBase {
         climber = new Arm(new ArmConfig(motorController)
                 .withStartingPosition(ClimberConstants.VERTICAL_ANGLE)
                 .withTelemetry("ClimberArm", TelemetryVerbosity.HIGH));
+        /*SparkMaxConfig config = new SparkMaxConfig();
+        config.smartCurrentLimit(80);
+        sparkMaxMotor.configure(config, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);*/
 
         isClimbed = new Trigger(
                 () -> climber.getAngle().gte(ClimberConstants.CLIMBED_ANGLE.minus(ClimberConstants.TOLERANCE_ANGLE)));
@@ -81,9 +83,9 @@ public class ClimberSubsystem extends SubsystemBase {
     }
 
     private void setupSmartDashboard() {
-        SmartDashboard.putData(
-                "Climber PID & FF",
-                new PIDSendable(motorController, PIDSendable.Type.PID | PIDSendable.Type.ROTARY_FF));
+        /*SmartDashboard.putData(
+        "Climber PID & FF",
+        new PIDSendable(motorController, PIDSendable.Type.PID | PIDSendable.Type.ROTARY_FF));*/
         SmartDashboard.putData("Climbing Subsystem", (builder) -> {
             builder.addBooleanProperty("Climbing", () -> isClimbing, (v) -> isClimbing = v);
             builder.addDoubleProperty("Angle", () -> climber.getAngle().in(Degrees), v -> climber.getMotor()
@@ -145,7 +147,7 @@ public class ClimberSubsystem extends SubsystemBase {
     @Override
     public void periodic() {
         climber.updateTelemetry();
-        System.out.println("Climber output: " + climber.getMotor().getDutyCycle());
+        // System.out.println("Climber output: " + climber.getMotor().getDutyCycle());
     }
 
     public Command sysId() {
