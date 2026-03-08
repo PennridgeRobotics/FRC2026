@@ -16,6 +16,7 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.subsystems.ClimberSubsystem;
 import frc.robot.subsystems.FuelSubsystem;
+import frc.robot.subsystems.FuelSubsystem.OperatorFuelRequest;
 import frc.robot.subsystems.LightsSubsystem;
 import frc.robot.subsystems.SwerveSubsystem;
 import frc.robot.util.AutoManager;
@@ -190,20 +191,20 @@ public class RobotContainer {
             operatorController
                     .rightBumper()
                     .and(operatorController.start().negate())
-                    .whileTrue(fuelSubsystem.windUpCommand());
+                    .whileTrue(fuelSubsystem.requestAsOperator(OperatorFuelRequest.WINDUP));
             operatorController
                     .rightTrigger()
                     .and(operatorController.start().negate())
                     .and(operatorController.leftTrigger().negate())
-                    .whileTrue(fuelSubsystem.windUpAndLaunchCommand());
+                    .whileTrue(fuelSubsystem.requestAsOperator(OperatorFuelRequest.LAUNCH_WINDUP));
             operatorController
                     .rightTrigger()
                     .and(operatorController.start().negate())
                     .and(operatorController.leftTrigger())
-                    .whileTrue(fuelSubsystem.launchCommand());
-            operatorController.leftBumper().whileTrue(fuelSubsystem.ejectCommand());
-            operatorController.a().whileTrue(fuelSubsystem.intakeCommand());
-            operatorController.b().whileTrue(fuelSubsystem.unjamCommand());
+                    .whileTrue(fuelSubsystem.requestAsOperator(OperatorFuelRequest.LAUNCH_NO_WINDUP));
+            operatorController.leftBumper().whileTrue(fuelSubsystem.requestAsOperator(OperatorFuelRequest.EJECT));
+            operatorController.a().whileTrue(fuelSubsystem.requestAsOperator(OperatorFuelRequest.INTAKE));
+            operatorController.b().whileTrue(fuelSubsystem.requestAsOperator(OperatorFuelRequest.UNJAM));
             operatorController.leftStick().toggleOnTrue(fuelSubsystem.temporarilyEnableManualLaunch());
             new Trigger(() -> operatorController.getLeftX() < -0.5)
                     .whileTrue(fuelSubsystem.decreaseManualLaunchVelocity());

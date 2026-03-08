@@ -35,7 +35,6 @@ import frc.robot.util.dashboard.PIDSendable;
 import frc.robot.util.dashboard.SplitButtonChooser;
 import frc.robot.util.enums.Constants.FuelConstants;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
@@ -65,7 +64,7 @@ public class FuelSubsystem extends SubsystemBase {
     private final FlyWheel indexer;
 
     private boolean useCustomVelocity = true;
-    private DashboardFuelAction dashboardFuelAction = DashboardFuelAction.IDLE;
+    private OperatorFuelRequest operatorActionRequest = OperatorFuelRequest.IDLE;
     private boolean useMaxPower = false;
 
     private final Supplier<AngularVelocity> ejectVelocityIntakeLauncher = new LoggedNetworkUnit<>(
@@ -148,14 +147,22 @@ public class FuelSubsystem extends SubsystemBase {
                 .withDiameter(FuelConstants.WHEEL_RADIUS.times(2))
                 .withTelemetry("IndexerMotor", TelemetryVerbosity.HIGH));
 
-        setDefaultCommand(Commands.select(
-                Map.of(
-                        DashboardFuelAction.IDLE, idleCommand(),
-                        DashboardFuelAction.INTAKE, intakeCommand(),
-                        DashboardFuelAction.EJECT, ejectCommand(),
-                        DashboardFuelAction.LAUNCH, windUpAndLaunchCommand(),
-                        DashboardFuelAction.UNJAM, unjamCommand()),
-                () -> dashboardFuelAction));
+        setDefaultCommand(Commands.defer(
+                () -> {
+                    final var originalRequest = operatorActionRequest;
+                    final var command =
+                            switch (operatorActionRequest) {
+                                case IDLE -> idleCommand();
+                                case INTAKE -> intakeCommand();
+                                case EJECT -> ejectCommand();
+                                case LAUNCH_NO_WINDUP -> launchCommand();
+                                case LAUNCH_WINDUP -> windUpAndLaunchCommand();
+                                case WINDUP -> windUpCommand();
+                                case UNJAM -> unjamCommand();
+                            };
+                    return command.until(() -> originalRequest != operatorActionRequest);
+                },
+                Set.of(this)));
         currentState = FuelAction.IDLE;
         launchingTrigger = new Trigger(() -> currentState == FuelAction.LAUNCH);
         ejectingTrigger = new Trigger(() -> currentState == FuelAction.EJECT);
@@ -198,12 +205,21 @@ public class FuelSubsystem extends SubsystemBase {
                         str -> str.equals("Custom"),
                         bool -> bool ? "Custom" : "Calculator"));
         SmartDashboard.putData(
-                "Fuel Subsystem/Manual Controls",
+                "Fuel Subsystem/Operator Request",
                 SplitButtonChooser.withEnum(
-                        () -> dashboardFuelAction,
-                        Set.of(newAction -> dashboardFuelAction = newAction),
-                        dashboardFuelAction,
-                        DashboardFuelAction.class));
+                        () -> operatorActionRequest,
+                        Set.of(this::setOperatorActionRequest),
+                        operatorActionRequest,
+                        OperatorFuelRequest.class));
+    }
+
+    public Command requestAsOperator(OperatorFuelRequest request) {
+        return Commands.run(() -> setOperatorActionRequest(request))
+                .finallyDo(() -> setOperatorActionRequest(OperatorFuelRequest.IDLE));
+    }
+
+    private void setOperatorActionRequest(OperatorFuelRequest request) {
+        this.operatorActionRequest = request;
     }
 
     public Command temporarilyUseMaxPower() {
@@ -390,11 +406,13 @@ public class FuelSubsystem extends SubsystemBase {
         WIND_UP
     }
 
-    private enum DashboardFuelAction {
+    public enum OperatorFuelRequest {
         IDLE,
         INTAKE,
         EJECT,
-        LAUNCH,
+        LAUNCH_NO_WINDUP,
+        LAUNCH_WINDUP,
+        WINDUP,
         UNJAM
     }
 }
