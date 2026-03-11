@@ -11,19 +11,40 @@ X   B
 ### Driver
 | Button              | Action                    |
 |---------------------|---------------------------|
+| Start               | Reset gyro/yaw            |
 | Left Stick          | Drive (field-oriented)    |
 | Right Stick         | Rotate (robot-oriented)   |
 | Right Stick (press) | Lock yaw towards velocity |
+| L Bumper            | Slow mode                 |
+| L Trigger           | Intake                    |
+| R Trigger           | Fast mode                 |
+| X                   | Lock mode                 |
 | Y                   | Face towards hub          |
+| B                   | Wind up & launch          |
 ### Operator
-| Button    | Action                           |
-|-----------|----------------------------------|
-| Start     | Straighten Wheels                |
-| L Bumper  | Calibrate left corner (depot)    |
-| R Bumper  | Calibrate right corner (outpost) |
-| L Trigger | Calibrate left trench (outer)    |
-| R Trigger | Calibrate right trench (outer)   |
-| X         | Manual bump lock                 |
+| Button             | Action                                                    |
+|--------------------|-----------------------------------------------------------|
+| Start + L Bumper   | Calibrate left corner (depot), then align for shooting    |
+| Start + R Bumper   | Calibrate right corner (outpost), then align for shooting |
+| Start + L Trigger  | Calibrate left side of hub, then align for shooting       |
+| Start + R Trigger  | Calibrate right side of hub, then align for shooting      |
+| L Bumper           | Eject                                                     |
+| R Bumper           | Wind up                                                   |
+| R Trigger          | Wind up & shoot                                           |
+| Both Triggers      | Shoot (no wind up)                                        |
+| A                  | Intake                                                    |
+| B                  | Unjam                                                     |
+| Back + other       | Enable MAX POWER for fuel                                 |
+| L Stick Up/Down    | Spin with absolute rotation                               |
+| L Stick Left/Right | Increase/decrease manual launch velocity                  |
+| L Stick Pressed    | Enable manual launch                                      |
+| R Stick Left/Right | Increase/decrease calculator velocity                     |
+| Y                  | Climb                                                     |
+| Y + Start          | Climb (ignore limit)                                      |
+| Y + Back           | Climb (fast)                                              |
+| X                  | Lower climber                                             |
+| X + Start          | Lower climber (ignore limit)                              |
+| X + Back           | Lower climber (fast)                                      |
 
 ## LED Signals
 Note: Ordered by priority

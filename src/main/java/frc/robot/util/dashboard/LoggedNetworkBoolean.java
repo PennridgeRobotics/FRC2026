@@ -3,13 +3,14 @@ package frc.robot.util.dashboard;
 import edu.wpi.first.networktables.BooleanEntry;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.util.function.BooleanConsumer;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
 import java.util.function.BooleanSupplier;
 import org.jspecify.annotations.NullMarked;
 
 @NullMarked
 public class LoggedNetworkBoolean extends LoggedNetworkInput implements BooleanSupplier, BooleanConsumer {
     private final BooleanEntry entry;
-    private boolean currentValue;
+    protected boolean currentValue;
 
     public LoggedNetworkBoolean(String rawTopicName, boolean defaultValue) {
         super(rawTopicName);
@@ -20,6 +21,7 @@ public class LoggedNetworkBoolean extends LoggedNetworkInput implements BooleanS
 
     public void set(boolean value) {
         entry.set(value);
+        currentValue = value;
     }
 
     @Override
@@ -34,6 +36,10 @@ public class LoggedNetworkBoolean extends LoggedNetworkInput implements BooleanS
 
     @Override
     public void accept(boolean value) {
-        entry.set(value);
+        set(value);
+    }
+
+    public Trigger getTrigger() {
+        return new Trigger(this);
     }
 }

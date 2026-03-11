@@ -62,13 +62,13 @@ public class SwerveSubsystem extends SubsystemBase {
     private boolean lockYawTowardsVelocity = false;
     private boolean faceTowardsHub = false;
     private SpeedMultiplier speedMultiplier = SpeedMultiplier.NORMAL;
-    private BooleanSupplier headingCorrectionSupplier;
-    private DoubleSupplier headingCorrectionDeadband;
+    private final BooleanSupplier headingCorrectionSupplier;
+    private final DoubleSupplier headingCorrectionDeadband;
 
     private final Trigger forceNormalDriveModeTrigger = new Trigger(() -> forceNormalDriveMode);
 
-    private final PIDController bLineTranslationPID = new PIDController(5.0, 0, 0);
-    private final PIDController bLineRotationPID = new PIDController(3.0, 0, 0);
+    private final PIDController bLineTranslationPID = new PIDController(5.0, 0, 0.8);
+    private final PIDController bLineRotationPID = new PIDController(5.0, 0, 0.3);
     private final PIDController bLineCrossTrackPID = new PIDController(2.0, 0, 0);
     private final FollowPath.Builder pathBuilder;
 
@@ -427,7 +427,7 @@ public class SwerveSubsystem extends SubsystemBase {
     }
 
     public Command resetPoseFromCalibrationPosition(PositionCalibrationLocation location) {
-        return Commands.run(() -> {
+        return Commands.runOnce(() -> {
             final var currentRot = getRobotPose().getRotation().getDegrees();
             final var flip = DriverStation.getAlliance().orElse(null) == Alliance.Red;
             final var invertXY = MathUtil.isNear(90.0, Math.abs(currentRot) % 180, 45.0);
@@ -528,7 +528,7 @@ public class SwerveSubsystem extends SubsystemBase {
     private AngularVelocity joystickToAngularVelocity(final double input) {
         final var withDeadband =
                 MathUtil.applyDeadband(input, ControllerConstants.DRIVE_MIN_INPUT, ControllerConstants.DRIVE_MAX_INPUT);
-        final var scaled = Math.pow(withDeadband, 3);
+        final var scaled = Math.pow(withDeadband, 5);
         return getMaximumChassisAngularVelocity().times(scaled).times(speedMultiplier.getMultiplier());
     }
 
@@ -550,7 +550,6 @@ public class SwerveSubsystem extends SubsystemBase {
     }
 
     private FollowPath.Builder setupBLine() {
-        Path.setDefaultGlobalConstraints(BLineConstants.GLOBAL_CONSTRAINTS);
         SmartDashboard.putData("BLine Translation PID", new PIDSendable(bLineTranslationPID, PIDSendable.Type.PID));
         SmartDashboard.putData("BLine Rotation PID", new PIDSendable(bLineRotationPID, PIDSendable.Type.PID));
         SmartDashboard.putData("BLine Cross Track PID", new PIDSendable(bLineCrossTrackPID, PIDSendable.Type.PID));
@@ -566,8 +565,9 @@ public class SwerveSubsystem extends SubsystemBase {
                 .withPoseReset(this::resetPose);
     }
 
-    private void resetPose(Pose2d pose) {
+    public void resetPose(Pose2d pose) {
         swerveDrive.resetOdometry(pose);
+        swerveDrive.swerveDrivePoseEstimator.resetRotation(pose.getRotation());
     }
 
     private SwerveDriveKinematics getKinematics() {
@@ -617,5 +617,10 @@ public class SwerveSubsystem extends SubsystemBase {
 
     public FollowPath.Builder getPathBuilder() {
         return pathBuilder;
+    }
+
+    public boolean isRobotXFacingFieldX() {
+        final var currentRot = getRobotPose().getRotation().getDegrees();
+        return !MathUtil.isNear(90.0, Math.abs(currentRot) % 180, 45.0);
     }
 }
