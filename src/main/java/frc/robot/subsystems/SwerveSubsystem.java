@@ -62,8 +62,8 @@ public class SwerveSubsystem extends SubsystemBase {
     private boolean lockYawTowardsVelocity = false;
     private boolean faceTowardsHub = false;
     private SpeedMultiplier speedMultiplier = SpeedMultiplier.NORMAL;
-    private BooleanSupplier headingCorrectionSupplier;
-    private DoubleSupplier headingCorrectionDeadband;
+    private final BooleanSupplier headingCorrectionSupplier;
+    private final DoubleSupplier headingCorrectionDeadband;
 
     private final Trigger forceNormalDriveModeTrigger = new Trigger(() -> forceNormalDriveMode);
 
@@ -426,10 +426,6 @@ public class SwerveSubsystem extends SubsystemBase {
         return Commands.runOnce(() -> this.speedMultiplier = speedMultiplier);
     }
 
-    public void setPose(Pose2d pose) {
-        resetPose(pose);
-    }
-
     public Command resetPoseFromCalibrationPosition(PositionCalibrationLocation location) {
         return Commands.runOnce(() -> {
             final var currentRot = getRobotPose().getRotation().getDegrees();
@@ -569,8 +565,9 @@ public class SwerveSubsystem extends SubsystemBase {
                 .withPoseReset(this::resetPose);
     }
 
-    private void resetPose(Pose2d pose) {
+    public void resetPose(Pose2d pose) {
         swerveDrive.resetOdometry(pose);
+        swerveDrive.swerveDrivePoseEstimator.resetRotation(pose.getRotation());
     }
 
     private SwerveDriveKinematics getKinematics() {

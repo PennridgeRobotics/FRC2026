@@ -34,13 +34,17 @@ X   B
 | Both Triggers      | Shoot (no wind up)                                        |
 | A                  | Intake                                                    |
 | B                  | Unjam                                                     |
-| Y                  | Climb                                                     |
-| Y + Start          | Climb (ignore limit)                                      |
-| X                  | Lower climber                                             |
-| X + Start          | Lower climber (ignore limit)                              |
+| Back + other       | Enable MAX POWER for fuel                                 |
 | L Stick Up/Down    | Spin with absolute rotation                               |
 | L Stick Left/Right | Increase/decrease manual launch velocity                  |
 | L Stick Pressed    | Enable manual launch                                      |
+| R Stick Left/Right | Increase/decrease calculator velocity                     |
+| Y                  | Climb                                                     |
+| Y + Start          | Climb (ignore limit)                                      |
+| Y + Back           | Climb (fast)                                              |
+| X                  | Lower climber                                             |
+| X + Start          | Lower climber (ignore limit)                              |
+| X + Back           | Lower climber (fast)                                      |
 
 ## LED Signals
 Note: Ordered by priority
