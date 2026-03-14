@@ -17,7 +17,6 @@ import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.units.measure.Voltage;
-import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.util.Color;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -31,7 +30,6 @@ import frc.robot.util.dashboard.MultiMotorInfoSendable;
 import frc.robot.util.dashboard.PIDSendable;
 import frc.robot.util.dashboard.SplitButtonChooser;
 import frc.robot.util.enums.Constants.FuelConstants;
-import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
@@ -60,7 +58,6 @@ public class FuelSubsystem extends SubsystemBase {
     private final FlyWheel intakeLauncher;
     private final FlyWheel indexer;
 
-    private boolean useCustomVelocity = true;
     private OperatorFuelRequest operatorActionRequest = OperatorFuelRequest.IDLE;
     private boolean useMaxPower = false;
 
@@ -138,10 +135,10 @@ public class FuelSubsystem extends SubsystemBase {
         indexerController = new SparkWrapper(indexerSparkMax, DCMotor.getNEO(1), indexerSMCConfig);
 
         intakeLauncher = new FlyWheel(new FlyWheelConfig(intakeLauncherController)
-                .withDiameter(FuelConstants.WHEEL_RADIUS.times(2))
+                .withDiameter(FuelConstants.FLYWHEEL_RADIUS.times(2))
                 .withTelemetry("LauncherMotor", TelemetryVerbosity.HIGH));
         indexer = new FlyWheel(new FlyWheelConfig(indexerController)
-                .withDiameter(FuelConstants.WHEEL_RADIUS.times(2))
+                .withDiameter(FuelConstants.FLYWHEEL_RADIUS.times(2))
                 .withTelemetry("IndexerMotor", TelemetryVerbosity.HIGH));
 
         setDefaultCommand(Commands.defer(
@@ -208,15 +205,6 @@ public class FuelSubsystem extends SubsystemBase {
                     null);
         });
         SmartDashboard.putData(
-                "Fuel Subsystem/Launcher Mode",
-                new SplitButtonChooser<>(
-                        () -> useCustomVelocity,
-                        List.of(false, true),
-                        Set.of(v -> useCustomVelocity = v),
-                        useCustomVelocity,
-                        str -> str.equals("Custom"),
-                        bool -> bool ? "Custom" : "Calculator"));
-        SmartDashboard.putData(
                 "Fuel Subsystem/Operator Request",
                 SplitButtonChooser.withEnum(
                         () -> operatorActionRequest,
@@ -278,13 +266,6 @@ public class FuelSubsystem extends SubsystemBase {
         });
     }
 
-    public Command temporarilyEnableManualLaunch() {
-        return Commands.deferredProxy(() -> {
-            if (useCustomVelocity) return Commands.none(); // already enabled, so this wouldn't do anything
-            return Commands.startEnd(() -> useCustomVelocity = true, () -> useCustomVelocity = false);
-        });
-    }
-
     public Command idleCommand() {
         return run(this::reset); // System.out.println("SET VELOCITY TO 0");
     }
@@ -325,20 +306,6 @@ public class FuelSubsystem extends SubsystemBase {
         });
     }
 
-    public Command launchAll() {
-        Timer timer = new Timer();
-        return launchCommand().until(() -> {
-            if (!timer.hasElapsed(4)) {
-                return false;
-            } else if (intakeLauncherController
-                    .getMechanismVelocity()
-                    .gt(getShooterVelocity().minus(RotationsPerSecond.of(20)))) {
-                return true;
-            }
-            return false;
-        });
-    }
-
     public Command windUpCommand() {
         return run(() -> {
             currentState = FuelAction.WIND_UP;
@@ -360,9 +327,9 @@ public class FuelSubsystem extends SubsystemBase {
     }
 
     private AngularVelocity getShooterVelocity() {
-        return useCustomVelocity
+        return shooterCalculator.isManualModeEnabled()
                 ? launchVelocityIntakeLauncher.get()
-                : shooterCalculator.calculateVelocity().velocity();
+                : shooterCalculator.calculateShotData().velocity();
     }
 
     public Command windUpAndLaunchCommand() {
@@ -372,12 +339,14 @@ public class FuelSubsystem extends SubsystemBase {
                                 .getMechanismVelocity()
                                 .gte(getShooterVelocity().plus(FuelConstants.LAUNCH_VELOCITY_TOLERANCE)))
                         .withTimeout(FuelConstants.WINDUP_TIMEOUT),
+                Commands.waitUntil(() -> !shooterCalculator.isUsingSOTM()
+                        || shooterCalculator.calculateShotData().isReady()),
                 launchCommand());
     }
 
     private LinearVelocity getBallVelocity(AngularVelocity angularVelocity) {
         return MetersPerSecond.of(
-                angularVelocity.in(RotationsPerSecond) * Math.PI * FuelConstants.WHEEL_RADIUS.in(Meters));
+                angularVelocity.in(RotationsPerSecond) * Math.PI * FuelConstants.FLYWHEEL_RADIUS.in(Meters));
     }
 
     public Trigger isLaunchingTrigger() {
@@ -404,8 +373,6 @@ public class FuelSubsystem extends SubsystemBase {
     public void periodic() {
         // This method will be called once per scheduler run
         indexer.updateTelemetry();
-
-        SmartDashboard.putString("Fuel Subsystem/Launcher Mode Text", useCustomVelocity ? "Custom" : "Calculator");
     }
 
     @Override

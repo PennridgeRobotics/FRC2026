@@ -52,9 +52,8 @@ public class RobotContainer {
     // Initializes controllers
     private final CommandXboxController driverController =
             new CommandXboxController(ControllerConstants.DRIVER_CONTROLLER_PORT);
-    private final @Nullable CommandXboxController operatorController = ControllerConstants.OPERATOR_ENABLED
-            ? new CommandXboxController(ControllerConstants.OPERATOR_CONTROLLER_PORT)
-            : null;
+    private final CommandXboxController operatorController =
+            new CommandXboxController(ControllerConstants.OPERATOR_CONTROLLER_PORT);
 
     private final SendableChooser<AutoManager.AutoStartLocation> autoStartLocationChooser;
     private boolean autoClimb = false;
@@ -77,7 +76,7 @@ public class RobotContainer {
                     "Error instantiating Swerve Subsystem: " + ex.getMessage(), finalException.getStackTrace());
             throw finalException;
         }
-        shooterCalculator = new ShooterCalculator(swerveSubsystem::getRobotPose);
+        shooterCalculator = swerveSubsystem.getShooterCalculator();
         fuelSubsystem = FuelConstants.FUEL_SUBSYSTEM_ENABLED ? new FuelSubsystem(shooterCalculator, motorInfo) : null;
         climberSubsystem = ClimberConstants.CLIMBER_ENABLED ? new ClimberSubsystem(motorInfo) : null;
         lightsSubsystem = LightConstants.LIGHTS_ENABLED
@@ -121,7 +120,7 @@ public class RobotContainer {
         final var fieldOriented = true;
         final var forceRobotOrientedRotation = true;
         if (fieldOriented) {
-            if (forceRobotOrientedRotation && operatorController != null) {
+            if (forceRobotOrientedRotation) {
                 swerveSubsystem.setDefaultCommand(swerveSubsystem.driveFieldAndRobotOrientedCommand(
                         () -> -driverController.getLeftY(),
                         () -> -driverController.getLeftX(),
@@ -154,7 +153,11 @@ public class RobotContainer {
         driverController.y().whileTrue(swerveSubsystem.faceTowardsHubCommand());
         driverController.x().whileTrue(swerveSubsystem.lockPoseCommand());
         if (fuelSubsystem != null) {
-            driverController.b().whileTrue(fuelSubsystem.windUpAndLaunchCommand());
+            driverController
+                    .b()
+                    .whileTrue(fuelSubsystem.windUpAndLaunchCommand())
+                    .and(shooterCalculator::isUsingSOTM)
+                    .whileTrue(swerveSubsystem.faceTowardsHubCommand());
             driverController.leftTrigger().whileTrue(fuelSubsystem.intakeCommand());
         }
         /*driverController
@@ -162,9 +165,6 @@ public class RobotContainer {
         .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
                 PositionCalibrationLocation.FRONT_LEFT_OF_HUB));*/
 
-        if (operatorController == null) {
-            return;
-        }
         // operatorController.start().whileTrue(swerveSubsystem.straightenWheelsCommand());
         final var calibrations = List.of(
                 new Pair<>(operatorController.leftTrigger(), PositionCalibrationLocation.FRONT_LEFT_OF_HUB),
@@ -205,7 +205,7 @@ public class RobotContainer {
             operatorController.leftBumper().whileTrue(fuelSubsystem.requestAsOperator(OperatorFuelRequest.EJECT));
             operatorController.a().whileTrue(fuelSubsystem.requestAsOperator(OperatorFuelRequest.INTAKE));
             operatorController.b().whileTrue(fuelSubsystem.requestAsOperator(OperatorFuelRequest.UNJAM));
-            operatorController.leftStick().toggleOnTrue(fuelSubsystem.temporarilyEnableManualLaunch());
+            operatorController.leftStick().toggleOnTrue(shooterCalculator.temporarilyEnableManualMode());
             new Trigger(() -> operatorController.getLeftX() < -0.5)
                     .whileTrue(fuelSubsystem.decreaseManualLaunchVelocity());
             new Trigger(() -> operatorController.getLeftX() > 0.5)

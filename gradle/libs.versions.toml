@@ -4,6 +4,7 @@ caffeine = "3.2.3"
 crunch = "2.0.3"
 error-prone = "2.42.0"
 error-prone-plugin = "5.1.0"
+frc-fire-control = "323107001d"
 gradle-rio = "2026.2.1"
 jspecify = "1.0.0"
 junit = "6.0.3"
@@ -21,6 +22,7 @@ bline-lib = { group = "com.github.edanliahovetsky", name = "BLine-Lib", version.
 caffeine = { group = "com.github.ben-manes.caffeine", name = "caffeine", version.ref = "caffeine" }
 crunch = { group = "com.github.Redempt", name = "Crunch", version.ref = "crunch" }
 error-prone-core = { group = "com.google.errorprone", name = "error_prone_core", version.ref = "error-prone" }
+frc-fire-control = { group = "com.github.dkim19375", name = "frc-fire-control", version.ref = "frc-fire-control" }
 jspecify = { group = "org.jspecify", name = "jspecify", version.ref = "jspecify" }
 junit-bom = { group = "org.junit", name = "junit-bom", version.ref = "junit" }
 junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter" }

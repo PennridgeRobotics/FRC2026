@@ -77,6 +77,43 @@ public final class Constants {
         public static final Distance WHEEL_DIAMETER = Inches.of(4);
     }
 
+    public static final class ShootOnTheMoveConstants {
+        // Measure/tune:
+        public static final Distance FLYWHEEL_DIAMETER = Inches.of(4);
+        public static final Distance EXIT_HEIGHT = Inches.of(20.5); // floor to where ball leaves shooter
+        public static final Angle LAUNCH_ANGLE_FROM_HORIZONTAL = Degrees.of(55); // estimated
+        public static final double SLIP_FACTOR = 0.6; // 0 = no group, 1 = perfect
+        public static final Translation2d LAUNCHER_OFFSET = new Translation2d(Inches.of(-7.4), Inches.zero());
+        public static final LinearVelocity MAX_VELOCITY_WHILE_SHOOTING = MetersPerSecond.of(1.0);
+
+        public static final Mass BALL_MASS = Kilograms.of(0.215);
+        public static final Distance BALL_DIAMETER = Inches.of(5.906);
+        public static final double DRAG_COEFFICIENT = 0.47; // smooth sphere
+        public static final double MAGNUS_COEFFICIENT = 0.2;
+        public static final double AIR_DENSITY = 1.225; // kg/m³
+        public static final Distance HUB_HEIGHT = Inches.of(72); // from game manual
+        public static final Time SIM_TIMESTEP = Seconds.of(0.002);
+        public static final AngularVelocity RPM_SEARCH_MIN = RPM.of(2500);
+        public static final AngularVelocity RPM_SEARCH_MAX = RPM.of(4000); // real limit: 3937
+        public static final int ITERATIONS = 25;
+        public static final Time MAX_SIM_TIME = Seconds.of(5);
+
+        public static final Time PHASE_DELAY = Milliseconds.of(30); // vision pipeline latency
+        public static final Time MECHANISM_LATENCY = Milliseconds.of(20); // how long the mechanism takes to respond
+        public static final Angle MAXIMUM_TILT =
+                Degrees.of(5); // suppress firing when the chassis tilts past this (bumps/ramps)
+        // Heading tolerance tightens as robot speed increases.
+        // scaledMaxError = base / (1 + speedScalar * speed). Set to 0 to disable.
+        public static final double HEADING_SPEED_SCALAR = 1.0;
+        // Heading tolerance scales with distance from hub.
+        // Closer = tighter because small angle errors matter more up close.
+        // scaledMaxError *= referenceDistance / distance, clamped [0.5, 2.0].
+        public static final double HEADING_REFERENCE_DISTANCE = 2.5;
+
+        public static final Translation2d BLUE_HUB_FORWARD_VECTOR = new Translation2d(1, 0);
+        public static final Translation2d RED_HUB_FORWARD_VECTOR = new Translation2d(-1, 0);
+    }
+
     public static final class FuelConstants {
         public static final boolean FUEL_SUBSYSTEM_ENABLED = true;
 
@@ -84,7 +121,7 @@ public final class Constants {
         public static final int INTAKE_LAUNCHER_RIGHT_MOTOR_ID = 11;
         public static final int INDEXER_MOTOR_ID = 12;
 
-        public static final Distance WHEEL_RADIUS = Inches.of(2);
+        public static final Distance FLYWHEEL_RADIUS = ShootOnTheMoveConstants.FLYWHEEL_DIAMETER.div(2);
 
         public static final boolean INTAKE_LAUNCHER_INVERTED = false;
         public static final boolean INDEXER_INVERTED = false;
@@ -145,8 +182,6 @@ public final class Constants {
     public static final class ControllerConstants {
         public static final int DRIVER_CONTROLLER_PORT = 0;
         public static final int OPERATOR_CONTROLLER_PORT = 1;
-
-        public static final boolean OPERATOR_ENABLED = true;
 
         public static final double DRIVE_MIN_INPUT = 0.01; // deadband
         public static final double DRIVE_MAX_INPUT = 0.98;

@@ -1,26 +1,48 @@
 package frc.robot.util;
 
-import static edu.wpi.first.units.Units.*;
+import static edu.wpi.first.units.Units.Degrees;
+import static edu.wpi.first.units.Units.Kilograms;
+import static edu.wpi.first.units.Units.Meters;
 import static edu.wpi.first.units.Units.Milliseconds;
+import static edu.wpi.first.units.Units.RPM;
+import static edu.wpi.first.units.Units.RadiansPerSecond;
+import static edu.wpi.first.units.Units.RotationsPerSecond;
+import static edu.wpi.first.units.Units.RotationsPerSecondPerSecond;
+import static edu.wpi.first.units.Units.Seconds;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
-import edu.wpi.first.networktables.*;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.networktables.BooleanEntry;
+import edu.wpi.first.networktables.BooleanPublisher;
+import edu.wpi.first.networktables.DoubleEntry;
+import edu.wpi.first.networktables.DoublePublisher;
+import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.StringEntry;
+import edu.wpi.first.networktables.StringPublisher;
+import edu.wpi.first.networktables.StringSubscriber;
+import edu.wpi.first.units.AngleUnit;
+import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
+import frc.firecontrol.ProjectileSimulator;
+import frc.firecontrol.ShotCalculator;
+import frc.robot.util.dashboard.LoggedNetworkButton;
+import frc.robot.util.dashboard.LoggedNetworkDouble;
+import frc.robot.util.dashboard.LoggedNetworkUnit;
 import frc.robot.util.dashboard.SplitButtonChooser;
 import frc.robot.util.enums.Constants.FieldConstants;
+import frc.robot.util.enums.Constants.ShootOnTheMoveConstants;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import redempt.crunch.CompiledExpression;
@@ -28,22 +50,27 @@ import redempt.crunch.Crunch;
 import redempt.crunch.exceptions.ExpressionCompilationException;
 import redempt.crunch.exceptions.ExpressionEvaluationException;
 import redempt.crunch.functional.EvaluationEnvironment;
+import swervelib.SwerveDrive;
 
 // Credits to
 // https://github.com/FRCTeam360/RainMaker26/blob/main/src/main/java/frc/robot/subsystems/Shooter/ShotCalculator.java
 @NullMarked
 public class ShooterCalculator {
-    private final Supplier<Pose2d> robotPoseSupplier;
+    private final SwerveDrive swerveDrive;
     private final InterpolatingDoubleTreeMap shooterDistanceVelocityMap = new InterpolatingDoubleTreeMap();
     private final Map<Double, Double> savedShooterDistanceVelocityMap =
             new TreeMap<>(); // because InterpolatingDoubleTreeMap won't let us extract its values
     private @Nullable ShotData lastShotData;
-    private boolean lastShotDataValidForCache;
-    private CalculationMode calculationMode = CalculationMode.EQUATION;
+    private CalculationMode calculationMode = CalculationMode.SOTM;
+    private boolean manualMode = true;
     private String originalExpression = "-45.66 * x^(-2.622) + 56.778";
     private CompiledExpression compiledExpression = Crunch.compileExpression("0");
     private long lastUpdateTimestampMillis;
+    private ShotCalculator shotCalculator;
+    private ShotCalculator.@Nullable LaunchParameters lastSOTMLaunchParameters;
 
+    private final BooleanEntry manualModeEntry;
+    private final StringPublisher manualModeTextPublisher;
     private final DoublePublisher shotDistancePublisher;
     private final DoublePublisher shotVelocityPublisher;
     private final DoublePublisher shotHeadingPublisher;
@@ -55,13 +82,24 @@ public class ShooterCalculator {
     private final BooleanEntry exportToConsoleButton;
     private final StringSubscriber equationSubscriber;
     private final DoubleEntry velocityOffsetEntry;
+    private final DoublePublisher shotConfidencePublisher;
+    private final LoggedNetworkUnit<AngleUnit, Angle> loggedLaunchAngle;
+    private final LoggedNetworkDouble loggedSlipFactor;
+    private final LoggedNetworkButton loggedReloadCalculatorButton;
 
     private static final String NO_DATA_TEXT = "(No Data)";
 
-    public ShooterCalculator(Supplier<Pose2d> robotPoseSupplier) {
-        this.robotPoseSupplier = robotPoseSupplier;
+    public ShooterCalculator(SwerveDrive swerveDrive) {
+        this.swerveDrive = swerveDrive;
 
         final var topicPrefix = "Shooter Calculator/";
+        manualModeEntry = NetworkTableInstance.getDefault()
+                .getBooleanTopic(topicPrefix + "Manual Mode")
+                .getEntry(manualMode);
+        manualModeEntry.set(manualMode);
+        manualModeTextPublisher = NetworkTableInstance.getDefault()
+                .getStringTopic("Manual Mode Text")
+                .publish();
         shotDistancePublisher = NetworkTableInstance.getDefault()
                 .getDoubleTopic(topicPrefix + "Shot Distance")
                 .publish();
@@ -102,6 +140,18 @@ public class ShooterCalculator {
                 .getDoubleTopic(topicPrefix + "Velocity Offset")
                 .getEntry(0.0);
         velocityOffsetEntry.set(0.0);
+        shotConfidencePublisher = NetworkTableInstance.getDefault()
+                .getDoubleTopic(topicPrefix + "Shot Confidence")
+                .publish();
+        loggedLaunchAngle = new LoggedNetworkUnit<>(
+                topicPrefix + "Launch Angle", ShootOnTheMoveConstants.LAUNCH_ANGLE_FROM_HORIZONTAL);
+        loggedSlipFactor = new LoggedNetworkDouble(topicPrefix + "Slip Factor", ShootOnTheMoveConstants.SLIP_FACTOR);
+        loggedReloadCalculatorButton = new LoggedNetworkButton(topicPrefix + "Reload Calculator");
+        loggedReloadCalculatorButton
+                .getTrigger()
+                .onTrue(Commands.runOnce(() -> shotCalculator = createShotCalculator()));
+
+        shotCalculator = createShotCalculator();
 
         SmartDashboard.putData(
                 topicPrefix + "/SmartDashboard/Calculation Mode",
@@ -119,37 +169,110 @@ public class ShooterCalculator {
 
     }
 
-    public ShotData calculateVelocity() {
-        if (lastShotDataValidForCache && lastShotData != null) {
+    public boolean isUsingSOTM() {
+        return !isManualModeEnabled() && calculationMode == CalculationMode.SOTM;
+    }
+
+    private ShotCalculator.LaunchParameters calculateSOTM() {
+        if (lastSOTMLaunchParameters != null) {
+            cachedPublisher.set(true);
+            return lastSOTMLaunchParameters;
+        }
+        cachedPublisher.set(false);
+        lastUpdateTimestampMillis = System.currentTimeMillis();
+        final var robotVelocity = swerveDrive.getRobotVelocity();
+        final var shotInputs = new ShotCalculator.ShotInputs(
+                swerveDrive.getPose().rotateBy(Rotation2d.k180deg),
+                swerveDrive.getFieldVelocity(),
+                new ChassisSpeeds(
+                        -robotVelocity.vxMetersPerSecond,
+                        -robotVelocity.vyMetersPerSecond,
+                        robotVelocity.omegaRadiansPerSecond),
+                getTarget(),
+                getTargetForwardVector(),
+                0.9, // vision confidence, from 0 to 1
+                swerveDrive.getPitch().getDegrees(),
+                swerveDrive.getRoll().getDegrees());
+        final var shot = shotCalculator.calculate(shotInputs);
+        shotConfidencePublisher.set(shot.confidence());
+        lastSOTMLaunchParameters = shot;
+        return shot;
+    }
+
+    public ShotData calculateShotData() {
+        if (lastShotData != null) {
             cachedPublisher.set(true);
             return lastShotData;
         }
         cachedPublisher.set(false);
         lastUpdateTimestampMillis = System.currentTimeMillis();
-        final Pose2d robotPose = robotPoseSupplier.get();
+        final Pose2d robotPose = swerveDrive.getPose();
         final Translation2d robotTranslation = robotPose.getTranslation();
         final Translation2d target = getTarget();
         final double distanceToTarget = target.getDistance(robotTranslation);
 
         final double targetVelocity = calculateAngularVelocity(distanceToTarget) + velocityOffsetEntry.get();
+        final var sotmData = calculationMode == CalculationMode.SOTM ? calculateSOTM() : null;
         // rotate 180° because the shooter faces the back of the robot
-        final Rotation2d targetHeading =
-                target.minus(robotTranslation).getAngle().rotateBy(Rotation2d.k180deg);
-        final var shot =
-                new ShotData(Meters.of(distanceToTarget), RotationsPerSecond.of(targetVelocity), targetHeading);
+        final Rotation2d targetHeading = (sotmData != null
+                        ? sotmData.driveAngle()
+                        : target.minus(robotTranslation).getAngle())
+                .rotateBy(Rotation2d.k180deg);
+        final var distance = Meters.of(sotmData != null ? sotmData.solvedDistanceM() : distanceToTarget);
+        final var shooterVelocity = sotmData != null ? RPM.of(sotmData.rpm()) : RotationsPerSecond.of(targetVelocity);
+        final var driveAngleFF = RadiansPerSecond.of(sotmData != null ? sotmData.driveAngularVelocityRadPerSec() : 0);
+        final var isReady = sotmData != null
+                ? (sotmData.isValid() && sotmData.confidence() > 50)
+                : (Math.abs(robotPose.getRotation().minus(targetHeading).getDegrees()) < 10);
+        final var shot = new ShotData(distance, shooterVelocity, targetHeading, driveAngleFF, isReady);
         shotDistancePublisher.set(shot.distance().in(Meters));
         shotVelocityPublisher.set(shot.velocity().in(RotationsPerSecond));
         shotHeadingPublisher.set(shot.heading().getDegrees());
         invertedShotHeadingPublisher.set(-(shot.heading.getDegrees() + 180));
         lastShotData = shot;
-        lastShotDataValidForCache = true;
         return shot;
     }
 
     public void addCurrentDataToMap(AngularVelocity shooterVelocity) {
-        final Pose2d robotPose = robotPoseSupplier.get();
+        final Pose2d robotPose = swerveDrive.getPose();
         final double distanceToTarget = Math.round(getTarget().getDistance(robotPose.getTranslation()) * 100) / 100.0;
         addRawDistanceVelocityData(distanceToTarget, shooterVelocity.in(RotationsPerSecond));
+    }
+
+    private ShotCalculator createShotCalculator() {
+        final var sotmParams = new ProjectileSimulator.SimParameters(
+                ShootOnTheMoveConstants.BALL_MASS.in(Kilograms),
+                ShootOnTheMoveConstants.BALL_DIAMETER.in(Meters),
+                ShootOnTheMoveConstants.DRAG_COEFFICIENT,
+                ShootOnTheMoveConstants.MAGNUS_COEFFICIENT,
+                ShootOnTheMoveConstants.AIR_DENSITY, // kg/m³
+                ShootOnTheMoveConstants.EXIT_HEIGHT.in(Meters),
+                ShootOnTheMoveConstants.FLYWHEEL_DIAMETER.in(Meters),
+                ShootOnTheMoveConstants.HUB_HEIGHT.in(Meters),
+                loggedSlipFactor.getAsDouble(),
+                loggedLaunchAngle.get().in(Degrees),
+                ShootOnTheMoveConstants.SIM_TIMESTEP.in(Seconds),
+                ShootOnTheMoveConstants.RPM_SEARCH_MIN.in(RPM),
+                ShootOnTheMoveConstants.RPM_SEARCH_MAX.in(RPM),
+                ShootOnTheMoveConstants.ITERATIONS,
+                ShootOnTheMoveConstants.MAX_SIM_TIME.in(Seconds));
+        final var sotmSim = new ProjectileSimulator(sotmParams);
+        final var lut = sotmSim.generateLUT();
+        final var shotCalcConfig = new ShotCalculator.Config();
+        shotCalcConfig.launcherOffsetX = ShootOnTheMoveConstants.LAUNCHER_OFFSET.getX();
+        shotCalcConfig.launcherOffsetY = ShootOnTheMoveConstants.LAUNCHER_OFFSET.getY();
+        shotCalcConfig.phaseDelayMs = ShootOnTheMoveConstants.PHASE_DELAY.in(Milliseconds);
+        shotCalcConfig.mechLatencyMs = ShootOnTheMoveConstants.MECHANISM_LATENCY.in(Milliseconds);
+        shotCalcConfig.maxTiltDeg = ShootOnTheMoveConstants.MAXIMUM_TILT.in(Degrees);
+        shotCalcConfig.headingSpeedScalar = ShootOnTheMoveConstants.HEADING_SPEED_SCALAR;
+        shotCalcConfig.headingReferenceDistance = ShootOnTheMoveConstants.HEADING_REFERENCE_DISTANCE;
+        final var shotCalc = new ShotCalculator(shotCalcConfig);
+        for (var entry : lut.entries()) {
+            if (entry.reachable()) {
+                shotCalc.loadLUTEntry(entry.distanceM(), entry.rpm(), entry.tof());
+            }
+        }
+        return shotCalc;
     }
 
     private void addDistanceVelocityData(Distance distance, AngularVelocity velocity) {
@@ -171,10 +294,18 @@ public class ShooterCalculator {
         return FieldConstants.HUB_BLUE;
     }
 
+    private Translation2d getTargetForwardVector() {
+        if (DriverStation.getAlliance().orElse(null) == DriverStation.Alliance.Red) {
+            return ShootOnTheMoveConstants.RED_HUB_FORWARD_VECTOR;
+        }
+        return ShootOnTheMoveConstants.BLUE_HUB_FORWARD_VECTOR;
+    }
+
     private double calculateAngularVelocity(double distanceToTarget) {
         return switch (calculationMode) {
             case INTERPOLATION -> Objects.requireNonNullElse(shooterDistanceVelocityMap.get(distanceToTarget), 0.0);
             case EQUATION -> compiledExpression.evaluate(distanceToTarget);
+            case SOTM -> RotationsPerSecond.convertFrom(calculateSOTM().rpm(), RPM);
         };
     }
 
@@ -204,35 +335,35 @@ public class ShooterCalculator {
     }
 
     public void prePeriodic() {
-        // lastShotData = null;
-        lastShotDataValidForCache = false;
+        lastShotData = null;
+        lastSOTMLaunchParameters = null;
 
+        // NetworkTables
         if (saveCurrentDataButtonEntry.get()) {
             // button pressed
             saveCurrentDataButtonEntry.set(false);
             if (lastShotData == null) return;
             addDistanceVelocityData(lastShotData.distance(), lastShotData.velocity());
         }
-
         if (exportToConsoleButton.get()) {
             // button pressed
             exportToConsoleButton.set(false);
             System.out.println("EXPORT: " + exportData());
         }
-
         final var currentDashboardData = savedShooterDistanceVelocityMapEntry.get();
         final var exportedData = exportData();
         if (!currentDashboardData.equals(exportedData)) {
             importData();
         }
-
         if (!equationSubscriber.get().equals(originalExpression)) {
             originalExpression = equationSubscriber.get();
             compileEquation();
         }
+        manualMode = manualModeEntry.get();
+        manualModeTextPublisher.set(manualMode ? "Custom" : "Calculator");
 
         if (System.currentTimeMillis() - lastUpdateTimestampMillis >= 100L) {
-            calculateVelocity();
+            calculateShotData();
         }
     }
 
@@ -267,10 +398,32 @@ public class ShooterCalculator {
         });
     }
 
-    public record ShotData(Distance distance, AngularVelocity velocity, Rotation2d heading) {}
+    private void setManualMode(boolean newMode) {
+        manualMode = newMode;
+        manualModeEntry.set(newMode);
+    }
+
+    public Command temporarilyEnableManualMode() {
+        return Commands.deferredProxy(() -> {
+            if (manualMode) return Commands.none(); // already enabled, so this wouldn't do anything
+            return Commands.startEnd(() -> setManualMode(true), () -> setManualMode(false));
+        });
+    }
+
+    public boolean isManualModeEnabled() {
+        return manualMode;
+    }
+
+    public record ShotData(
+            Distance distance,
+            AngularVelocity velocity,
+            Rotation2d heading,
+            AngularVelocity driveAngleFF,
+            boolean isReady) {}
 
     private enum CalculationMode {
         INTERPOLATION,
-        EQUATION
+        EQUATION,
+        SOTM
     }
 }

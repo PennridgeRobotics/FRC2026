@@ -19,7 +19,7 @@ public class LoggedNetworkButton extends LoggedNetworkBoolean {
     @Override
     protected void periodic() {
         if (currentValue) {
-            currentValue = false;
+            set(false);
         }
         super.periodic();
         if (getAsBoolean()) {

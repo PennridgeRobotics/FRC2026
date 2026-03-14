@@ -12,6 +12,7 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
+import edu.wpi.first.units.LinearVelocityUnit;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -29,6 +30,7 @@ import frc.robot.Robot;
 import frc.robot.lib.BLine.FollowPath;
 import frc.robot.lib.BLine.Path;
 import frc.robot.util.BumpManager;
+import frc.robot.util.ShooterCalculator;
 import frc.robot.util.SlewRateLimiter2d;
 import frc.robot.util.dashboard.*;
 import frc.robot.util.dashboard.PIDSendable.PIDValues;
@@ -56,6 +58,7 @@ public class SwerveSubsystem extends SubsystemBase {
     private final SwerveDrive swerveDrive;
     private VisionManager visionManager;
     private final BumpManager bumpManager;
+    private final ShooterCalculator shooterCalculator;
     private final MultiMotorInfoSendable motorInfo;
 
     private boolean forceNormalDriveMode = false;
@@ -74,6 +77,8 @@ public class SwerveSubsystem extends SubsystemBase {
 
     private final SlewRateLimiter2d linearDriveLimiter =
             new SlewRateLimiter2d(DriveConstants.MAX_LINEAR_ACCELERATION.in(MetersPerSecondPerSecond));
+
+    private final LoggedNetworkUnit<LinearVelocityUnit, LinearVelocity> loggedMaxVelocityWhileShooting;
 
     @SuppressWarnings("StaticAssignmentInConstructor")
     public SwerveSubsystem(final MultiMotorInfoSendable motorInfo) throws IOException {
@@ -96,6 +101,10 @@ public class SwerveSubsystem extends SubsystemBase {
 
         bumpManager = new BumpManager(
                 getPigeon2(), swerveDrive::getGyroRotation3d, this::getRobotPose, forceNormalDriveModeTrigger);
+        shooterCalculator = new ShooterCalculator(swerveDrive);
+
+        loggedMaxVelocityWhileShooting = new LoggedNetworkUnit<>(
+                "Shooter Calculator/Max Velocity While Shooting", ShootOnTheMoveConstants.MAX_VELOCITY_WHILE_SHOOTING);
 
         setupVisionManager();
         pathBuilder = setupBLine();
@@ -309,16 +318,26 @@ public class SwerveSubsystem extends SubsystemBase {
         if (alliance.isEmpty()) {
             return;
         }
-        final var shouldFlip = DriverStation.getAlliance().orElse(null) == DriverStation.Alliance.Red;
-        final var adjustedXVelocity = shouldFlip ? xVelocity.unaryMinus() : xVelocity;
-        final var adjustedYVelocity = shouldFlip ? yVelocity.unaryMinus() : yVelocity;
-        final Translation2d limitedLinearVelocity = linearDriveLimiter.calculate(
-                adjustedXVelocity.in(MetersPerSecond), adjustedYVelocity.in(MetersPerSecond));
+        var linearVelocity = new Translation2d(xVelocity.in(MetersPerSecond), yVelocity.in(MetersPerSecond));
+        if (!forceNormalDriveMode
+                && faceTowardsHub
+                && getShooterCalculator().isUsingSOTM()
+                && linearVelocity.getNorm()
+                        > loggedMaxVelocityWhileShooting.get().in(MetersPerSecond)) {
+            linearVelocity = linearVelocity
+                    .div(linearVelocity.getNorm())
+                    .times(loggedMaxVelocityWhileShooting.get().in(MetersPerSecond));
+        }
+        if (DriverStation.getAlliance().orElse(null) == DriverStation.Alliance.Red) { // flip if red
+            linearVelocity = linearVelocity.unaryMinus();
+        }
+        final Translation2d limitedLinearVelocity = linearDriveLimiter.calculate(linearVelocity);
         final AngularVelocity finalAngularVelocity;
         if (forceNormalDriveMode) {
             finalAngularVelocity = angularVelocity;
         } else if (faceTowardsHub) {
-            finalAngularVelocity = getTargetAngularVelocity(getAngleToHub());
+            finalAngularVelocity = getTargetAngularVelocity(getAngleToHub())
+                    .plus(getShooterCalculator().calculateShotData().driveAngleFF());
         } else if (lockYawTowardsVelocity) {
             finalAngularVelocity = getTargetAngularVelocity(getVelocityAngle(
                     MetersPerSecond.of(limitedLinearVelocity.getX()),
@@ -403,6 +422,9 @@ public class SwerveSubsystem extends SubsystemBase {
     }
 
     public Rotation2d getAngleToHub() {
+        if (getShooterCalculator().isUsingSOTM()) {
+            return getShooterCalculator().calculateShotData().heading();
+        }
         final var hubLoc = DriverStation.getAlliance().orElse(null) == Alliance.Red
                 ? FieldConstants.HUB_RED
                 : FieldConstants.HUB_BLUE;
@@ -622,5 +644,9 @@ public class SwerveSubsystem extends SubsystemBase {
     public boolean isRobotXFacingFieldX() {
         final var currentRot = getRobotPose().getRotation().getDegrees();
         return !MathUtil.isNear(90.0, Math.abs(currentRot) % 180, 45.0);
+    }
+
+    public ShooterCalculator getShooterCalculator() {
+        return shooterCalculator;
     }
 }
