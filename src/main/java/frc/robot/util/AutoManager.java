@@ -127,7 +127,7 @@ public class AutoManager {
                                     case LEFT_HUB -> startLeftHubShootPath;
                                     case RIGHT_INNER_BUMP -> startRightInnerBumpShootPath;
                                 })),
-                fuelSubsystem.windUpAndLaunchCommand().withTimeout(Seconds.of(5)));
+                fuelSubsystem.launchCommand(true).withTimeout(Seconds.of(5)));
     }
 
     private Command pathInFrontOfHubAndShoot() {
@@ -142,7 +142,7 @@ public class AutoManager {
                     return fuelSubsystem
                             .windUpCommand()
                             .withDeadline(pathBuilder.build(path))
-                            .andThen(fuelSubsystem.windUpAndLaunchCommand());
+                            .andThen(fuelSubsystem.launchCommand(true));
                 },
                 Set.of(swerveDrive, fuelSubsystem));
     }
@@ -175,7 +175,7 @@ public class AutoManager {
                     return fuelSubsystem
                             .windUpCommand()
                             .withDeadline(pathBuilder.build(path))
-                            .andThen(fuelSubsystem.windUpAndLaunchCommand());
+                            .andThen(fuelSubsystem.launchCommand(true));
                 },
                 Set.of(swerveDrive, fuelSubsystem));
     }
@@ -199,7 +199,7 @@ public class AutoManager {
                     return fuelSubsystem
                             .windUpCommand()
                             .withDeadline(pathBuilder.build(path))
-                            .andThen(fuelSubsystem.windUpAndLaunchCommand());
+                            .andThen(fuelSubsystem.launchCommand(true));
                 },
                 Set.of(swerveDrive, fuelSubsystem));
     }

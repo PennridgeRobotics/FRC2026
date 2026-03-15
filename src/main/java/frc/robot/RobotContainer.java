@@ -155,7 +155,7 @@ public class RobotContainer {
         if (fuelSubsystem != null) {
             driverController
                     .b()
-                    .whileTrue(fuelSubsystem.windUpAndLaunchCommand())
+                    .whileTrue(fuelSubsystem.launchCommand(true))
                     .and(shooterCalculator::isUsingSOTM)
                     .whileTrue(swerveSubsystem.faceTowardsHubCommand());
             driverController.leftTrigger().whileTrue(fuelSubsystem.intakeCommand());

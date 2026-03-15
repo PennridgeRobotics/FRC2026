@@ -137,6 +137,9 @@ public final class Constants {
         public static final MotorMode INDEXER_MOTOR_MODE = MotorMode.BRAKE;
         public static final MechanismGearing INTAKE_LAUNCHER_GEARING = new MechanismGearing(60.0 / 40);
         public static final MechanismGearing INDEXER_GEARING = new MechanismGearing(32.0 / 18);
+        public static final int INTAKE_LAUNCHER_ENCODER_MEASUREMENT_PERIOD =
+                16; // must be between [1, 64]; default = 32ms
+        public static final int INTAKE_LAUNCHER_ENCODER_AVERAGE_DEPTH = 2; // must be 1, 2, 4, or 8; default = 8
 
         public static final AngularVelocity INTAKE_VELOCITY_INTAKE_LAUNCHER = RotationsPerSecond.of(20);
         public static final AngularVelocity INTAKE_VELOCITY_INDEXER = RotationsPerSecond.of(-16);

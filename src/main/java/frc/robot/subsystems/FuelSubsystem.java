@@ -3,20 +3,30 @@
 // the WPILib BSD license file in the root directory of this project.
 package frc.robot.subsystems;
 
-import static edu.wpi.first.units.Units.*;
+import static edu.wpi.first.units.Units.Amps;
+import static edu.wpi.first.units.Units.Meters;
+import static edu.wpi.first.units.Units.MetersPerSecond;
+import static edu.wpi.first.units.Units.Milliseconds;
+import static edu.wpi.first.units.Units.RotationsPerSecond;
+import static edu.wpi.first.units.Units.RotationsPerSecondPerSecond;
+import static edu.wpi.first.units.Units.Seconds;
 
+import com.revrobotics.PersistMode;
+import com.revrobotics.ResetMode;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
+import com.revrobotics.spark.config.SparkMaxConfig;
 import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
-import edu.wpi.first.math.filter.Debouncer;
+import edu.wpi.first.math.filter.Debouncer.DebounceType;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.units.AngularVelocityUnit;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.units.measure.Voltage;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.util.Color;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -25,12 +35,13 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.util.ShooterCalculator;
 import frc.robot.util.dashboard.FlashingColorSupplier;
+import frc.robot.util.dashboard.LoggedNetworkInteger;
 import frc.robot.util.dashboard.LoggedNetworkUnit;
 import frc.robot.util.dashboard.MultiMotorInfoSendable;
-import frc.robot.util.dashboard.PIDSendable;
 import frc.robot.util.dashboard.SplitButtonChooser;
 import frc.robot.util.enums.Constants.FuelConstants;
 import java.util.Set;
+import java.util.function.LongConsumer;
 import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
 import yams.mechanisms.config.FlyWheelConfig;
@@ -51,6 +62,7 @@ public class FuelSubsystem extends SubsystemBase {
     private final Trigger ejectingTrigger;
     private final Trigger intakingTrigger;
     private final Trigger windingUpTrigger;
+    private final Trigger readyToLaunchTrigger;
 
     private final SmartMotorController intakeLauncherController;
     private final SmartMotorController indexerController;
@@ -61,6 +73,10 @@ public class FuelSubsystem extends SubsystemBase {
     private OperatorFuelRequest operatorActionRequest = OperatorFuelRequest.IDLE;
     private boolean useMaxPower = false;
 
+    private final LoggedNetworkInteger intakeLauncherUVWMeasurementPeriod = new LoggedNetworkInteger(
+            "Fuel/UVW Measurement Period Intake-Launcher", FuelConstants.INTAKE_LAUNCHER_ENCODER_MEASUREMENT_PERIOD);
+    private final LoggedNetworkInteger intakeLauncherUVWAverageDepth = new LoggedNetworkInteger(
+            "Fuel/UVW Average Depth Intake-Launcher", FuelConstants.INTAKE_LAUNCHER_ENCODER_AVERAGE_DEPTH);
     private final Supplier<AngularVelocity> ejectVelocityIntakeLauncher = new LoggedNetworkUnit<>(
             "Fuel/Eject Velocity Intake-Launcher", FuelConstants.EJECT_VELOCITY_INTAKE_LAUNCHER);
     private final Supplier<AngularVelocity> ejectVelocityIndexer =
@@ -86,7 +102,13 @@ public class FuelSubsystem extends SubsystemBase {
     public FuelSubsystem(ShooterCalculator shooterCalculator, MultiMotorInfoSendable motorInfo) {
         this.shooterCalculator = shooterCalculator;
 
+        final var intakeLauncherBaseSparkMaxConfig = new SparkMaxConfig();
+        intakeLauncherBaseSparkMaxConfig
+                .encoder
+                .uvwMeasurementPeriod(intakeLauncherUVWMeasurementPeriod.getAsInt())
+                .uvwAverageDepth(intakeLauncherUVWAverageDepth.getAsInt());
         final var intakeLauncherLeftSMCConfig = new SmartMotorControllerConfig(this)
+                .withVendorConfig(new SparkMaxConfig().apply(intakeLauncherBaseSparkMaxConfig))
                 .withGearing(FuelConstants.INTAKE_LAUNCHER_GEARING)
                 .withOpenLoopRampRate(FuelConstants.INTAKE_LAUNCHER_RAMP_RATE)
                 .withMotorInverted(FuelConstants.INTAKE_LAUNCHER_INVERTED)
@@ -99,6 +121,7 @@ public class FuelSubsystem extends SubsystemBase {
                 .withMotorInverted(true)
                 .withTelemetry("LauncherMotor", TelemetryVerbosity.HIGH);
         final var followerIntakeLauncherSMCConfig = new SmartMotorControllerConfig(this)
+                .withVendorConfig(new SparkMaxConfig().apply(intakeLauncherBaseSparkMaxConfig))
                 .withGearing(FuelConstants.INTAKE_LAUNCHER_GEARING)
                 .withOpenLoopRampRate(FuelConstants.INTAKE_LAUNCHER_RAMP_RATE)
                 .withMotorInverted(FuelConstants.INTAKE_LAUNCHER_INVERTED)
@@ -149,8 +172,8 @@ public class FuelSubsystem extends SubsystemBase {
                                 case IDLE -> idleCommand();
                                 case INTAKE -> intakeCommand();
                                 case EJECT -> ejectCommand();
-                                case LAUNCH_NO_WINDUP -> launchCommand();
-                                case LAUNCH_WINDUP -> windUpAndLaunchCommand();
+                                case LAUNCH_NO_WINDUP -> launchCommand(false);
+                                case LAUNCH_WINDUP -> launchCommand(true);
                                 case WINDUP -> windUpCommand();
                                 case UNJAM -> unjamCommand();
                             };
@@ -162,10 +185,35 @@ public class FuelSubsystem extends SubsystemBase {
         ejectingTrigger = new Trigger(() -> currentState == FuelAction.EJECT);
         intakingTrigger = new Trigger(() -> currentState == FuelAction.INTAKE);
         windingUpTrigger = new Trigger(() -> currentState == FuelAction.WIND_UP);
+        readyToLaunchTrigger = new Trigger(() -> intakeLauncherController
+                        .getMechanismVelocity()
+                        .gte(getShooterVelocity().plus(FuelConstants.LAUNCH_VELOCITY_TOLERANCE)))
+                .debounce(0.2, DebounceType.kFalling)
+                .and(() -> !shooterCalculator.isUsingSOTM()
+                        || shooterCalculator.calculateShotData().isReady())
+                .debounce(0.1, DebounceType.kRising);
 
         motorInfo.addMotor(intakeLauncherLeftSparkMax, "Intake-Launcher Left");
         motorInfo.addMotor(intakeLauncherRightSparkMax, "Intake-Launcher Right");
         motorInfo.addMotor(indexerSparkMax, "Indexer");
+
+        final LongConsumer updateEncoder = unused -> {
+            if (DriverStation.isEnabled()) {
+                DriverStation.reportError("Can't update encoder settings while the robot is enabled!", false);
+                return;
+            }
+            final var sparkMaxConfig = new SparkMaxConfig();
+            sparkMaxConfig
+                    .encoder
+                    .uvwMeasurementPeriod(intakeLauncherUVWMeasurementPeriod.getAsInt())
+                    .uvwAverageDepth(intakeLauncherUVWAverageDepth.getAsInt());
+            intakeLauncherLeftSparkMax.configureAsync(
+                    sparkMaxConfig, ResetMode.kNoResetSafeParameters, PersistMode.kPersistParameters);
+            intakeLauncherRightSparkMax.configureAsync(
+                    sparkMaxConfig, ResetMode.kNoResetSafeParameters, PersistMode.kPersistParameters);
+        };
+        intakeLauncherUVWMeasurementPeriod.addListener(updateEncoder);
+        intakeLauncherUVWAverageDepth.addListener(updateEncoder);
 
         setupSmartDashboard();
     }
@@ -179,11 +227,12 @@ public class FuelSubsystem extends SubsystemBase {
                 "Indexer",
                 (builder) -> builder.addDoubleProperty(
                         "Velocity", () -> indexer.getSpeed().in(RotationsPerSecond), null));
-        SmartDashboard.putData(
+        // see SmartMotorControllerTelemetryConfig
+        /*SmartDashboard.putData(
                 "Intake-Launcher PID",
                 new PIDSendable(intakeLauncherController, PIDSendable.Type.PID | PIDSendable.Type.BASE_FF));
         SmartDashboard.putData(
-                "Indexer PID", new PIDSendable(indexerController, PIDSendable.Type.PID | PIDSendable.Type.BASE_FF));
+                "Indexer PID", new PIDSendable(indexerController, PIDSendable.Type.PID | PIDSendable.Type.BASE_FF));*/
         SmartDashboard.putData("Fuel Subsystem", (builder) -> {
             builder.addStringProperty("Current State", () -> currentState.toString(), null);
             builder.addStringProperty(
@@ -215,7 +264,7 @@ public class FuelSubsystem extends SubsystemBase {
 
     private Trigger getStallAlertTrigger(Supplier<Current> statorCurrentSupplier, Current statorCurrentLimit) {
         return new Trigger(() -> statorCurrentLimit.isNear(statorCurrentSupplier.get(), Amps.of(0.5)))
-                .debounce(0.5, Debouncer.DebounceType.kRising);
+                .debounce(0.5, DebounceType.kRising);
     }
 
     public Command requestAsOperator(OperatorFuelRequest request) {
@@ -245,7 +294,10 @@ public class FuelSubsystem extends SubsystemBase {
         if (useMaxPower) {
             motorController.setVoltage(
                     maxPowerVoltage.get().times(Math.signum(angularVelocity.in(RotationsPerSecond))));
-        } else {
+        } else if (motorController
+                .getMechanismSetpointVelocity()
+                .map(v -> !v.isEquivalent(angularVelocity))
+                .orElse(true)) {
             motorController.setVelocity(angularVelocity);
         }
     }
@@ -294,8 +346,12 @@ public class FuelSubsystem extends SubsystemBase {
         });
     }
 
-    public Command launchCommand() {
+    public Command launchCommand(boolean onlyWhileReady) {
         return run(() -> {
+            if (onlyWhileReady && !readyToLaunchTrigger.getAsBoolean()) {
+                windUp();
+                return;
+            }
             currentState = FuelAction.LAUNCH;
             setVelocityOrMaxPower(intakeLauncherController, getShooterVelocity());
             setVelocityOrMaxPower(
@@ -307,15 +363,13 @@ public class FuelSubsystem extends SubsystemBase {
     }
 
     public Command windUpCommand() {
-        return run(() -> {
-            currentState = FuelAction.WIND_UP;
-            setVelocityOrMaxPower(intakeLauncherController, getShooterVelocity());
-            setVelocityOrMaxPower(
-                    indexerController,
-                    windUpVelocityIndexer.get().gt(getShooterVelocity())
-                            ? getShooterVelocity()
-                            : windUpVelocityIndexer.get());
-        });
+        return run(this::windUp);
+    }
+
+    private void windUp() {
+        currentState = FuelAction.WIND_UP;
+        setVelocityOrMaxPower(intakeLauncherController, getShooterVelocity());
+        setVelocityOrMaxPower(indexerController, windUpVelocityIndexer.get());
     }
 
     public Command unjamCommand() {
@@ -330,18 +384,6 @@ public class FuelSubsystem extends SubsystemBase {
         return shooterCalculator.isManualModeEnabled()
                 ? launchVelocityIntakeLauncher.get()
                 : shooterCalculator.calculateShotData().velocity();
-    }
-
-    public Command windUpAndLaunchCommand() {
-        return Commands.sequence(
-                windUpCommand()
-                        .until(() -> intakeLauncherController
-                                .getMechanismVelocity()
-                                .gte(getShooterVelocity().plus(FuelConstants.LAUNCH_VELOCITY_TOLERANCE)))
-                        .withTimeout(FuelConstants.WINDUP_TIMEOUT),
-                Commands.waitUntil(() -> !shooterCalculator.isUsingSOTM()
-                        || shooterCalculator.calculateShotData().isReady()),
-                launchCommand());
     }
 
     private LinearVelocity getBallVelocity(AngularVelocity angularVelocity) {
