@@ -2,6 +2,8 @@ package frc.robot.util.dashboard;
 
 import edu.wpi.first.networktables.DoubleEntry;
 import edu.wpi.first.networktables.NetworkTableInstance;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -9,6 +11,7 @@ import org.jspecify.annotations.NullMarked;
 
 @NullMarked
 public class LoggedNetworkDoubleToObject<T> extends LoggedNetworkInput implements Supplier<T>, Consumer<T> {
+    private final List<Consumer<T>> listeners = new ArrayList<>();
     private final DoubleEntry entry;
     private final Function<T, Double> objectToDouble;
     private final Function<Double, T> doubleToObject;
@@ -30,13 +33,21 @@ public class LoggedNetworkDoubleToObject<T> extends LoggedNetworkInput implement
     }
 
     public void set(T value) {
+        set(value, true);
+    }
+
+    public void set(T value, boolean triggerListeners) {
+        if (currentValue == value) return;
         entry.set(objectToDouble.apply(value));
         currentValue = value;
+        if (triggerListeners) listeners.forEach(listener -> listener.accept(value));
     }
 
     @Override
     protected void periodic() {
+        if (currentValue == doubleToObject.apply(entry.get())) return;
         currentValue = doubleToObject.apply(entry.get());
+        listeners.forEach(listener -> listener.accept(currentValue));
     }
 
     @Override
@@ -47,5 +58,9 @@ public class LoggedNetworkDoubleToObject<T> extends LoggedNetworkInput implement
     @Override
     public T get() {
         return currentValue;
+    }
+
+    public void addListener(Consumer<T> callback) {
+        listeners.add(callback);
     }
 }
