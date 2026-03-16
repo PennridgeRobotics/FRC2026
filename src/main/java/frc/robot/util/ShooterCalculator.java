@@ -33,7 +33,6 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import frc.firecontrol.ProjectileSimulator;
 import frc.firecontrol.ShotCalculator;
-import frc.robot.util.dashboard.LoggedNetworkButton;
 import frc.robot.util.dashboard.LoggedNetworkDouble;
 import frc.robot.util.dashboard.LoggedNetworkUnit;
 import frc.robot.util.dashboard.SplitButtonChooser;
@@ -85,7 +84,6 @@ public class ShooterCalculator {
     private final DoublePublisher shotConfidencePublisher;
     private final LoggedNetworkUnit<AngleUnit, Angle> loggedLaunchAngle;
     private final LoggedNetworkDouble loggedSlipFactor;
-    private final LoggedNetworkButton loggedReloadCalculatorButton;
 
     private static final String NO_DATA_TEXT = "(No Data)";
 
@@ -145,11 +143,9 @@ public class ShooterCalculator {
                 .publish();
         loggedLaunchAngle = new LoggedNetworkUnit<>(
                 topicPrefix + "Launch Angle", ShootOnTheMoveConstants.LAUNCH_ANGLE_FROM_HORIZONTAL);
+        loggedLaunchAngle.addListener(unused -> shotCalculator = createShotCalculator());
         loggedSlipFactor = new LoggedNetworkDouble(topicPrefix + "Slip Factor", ShootOnTheMoveConstants.SLIP_FACTOR);
-        loggedReloadCalculatorButton = new LoggedNetworkButton(topicPrefix + "Reload Calculator");
-        loggedReloadCalculatorButton
-                .getTrigger()
-                .onTrue(Commands.runOnce(() -> shotCalculator = createShotCalculator()));
+        loggedSlipFactor.addListener(unused -> shotCalculator = createShotCalculator());
 
         shotCalculator = createShotCalculator();
 

@@ -62,6 +62,7 @@ public class FuelSubsystem extends SubsystemBase {
     private final Trigger ejectingTrigger;
     private final Trigger intakingTrigger;
     private final Trigger windingUpTrigger;
+    private final Trigger rawReadyToLaunchTrigger;
     private final Trigger readyToLaunchTrigger;
 
     private final SmartMotorController intakeLauncherController;
@@ -185,6 +186,11 @@ public class FuelSubsystem extends SubsystemBase {
         ejectingTrigger = new Trigger(() -> currentState == FuelAction.EJECT);
         intakingTrigger = new Trigger(() -> currentState == FuelAction.INTAKE);
         windingUpTrigger = new Trigger(() -> currentState == FuelAction.WIND_UP);
+        rawReadyToLaunchTrigger = new Trigger(() -> intakeLauncherController
+                        .getMechanismVelocity()
+                        .gte(getShooterVelocity().plus(FuelConstants.LAUNCH_VELOCITY_TOLERANCE)))
+                .and(() -> !shooterCalculator.isUsingSOTM()
+                        || shooterCalculator.calculateShotData().isReady());
         readyToLaunchTrigger = new Trigger(() -> intakeLauncherController
                         .getMechanismVelocity()
                         .gte(getShooterVelocity().plus(FuelConstants.LAUNCH_VELOCITY_TOLERANCE)))
@@ -251,6 +257,13 @@ public class FuelSubsystem extends SubsystemBase {
                                     indexerController::getStatorCurrent, FuelConstants.INDEXER_CURRENT_LIMIT),
                             Color.kRed,
                             Seconds.of(0.3)),
+                    null);
+            builder.addStringProperty(
+                    "Ready to Launch?",
+                    () -> (readyToLaunchTrigger.getAsBoolean()
+                                    ? Color.kLime
+                                    : (rawReadyToLaunchTrigger.getAsBoolean() ? Color.kYellow : Color.kRed))
+                            .toHexString(),
                     null);
         });
         SmartDashboard.putData(
