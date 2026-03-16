@@ -1,0 +1,21 @@
+## Double:
+- `FollowPath/calculateRemainingPathDistance`
+- `FollowPath/crossTrackError`
+- `FollowPath/crossTrackControllerOutput`
+- `FollowPath/currentRotationTargetInitRad`
+- `FollowPath/rotationControllerOutput`
+- `FollowPath/rotationElementIndex`
+- `FollowPath/segmentProgress`
+- `FollowPath/targetRotationDeg`
+- `FollowPath/targetTRatio`
+- `FollowPath/translationControllerOutput`
+- `FollowPath/translationElementIndex`
+## Boolean:
+- `FollowPath/finished`
+- `FollowPath/isRotationTRatioGreater`
+## Pose2d:
+- `FollowPath/calculateRotationTargetTranslation`
+- `FollowPath/closestPoint`
+## Translation2d[]
+- `FollowPath/pathTranslations`
+- `FollowPath/robotTranslations` - last 300 points

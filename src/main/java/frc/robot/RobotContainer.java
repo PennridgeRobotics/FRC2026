@@ -4,9 +4,11 @@ import static edu.wpi.first.units.Units.Seconds;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.Pair;
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.PowerDistribution;
+import edu.wpi.first.wpilibj.smartdashboard.FieldObject2d;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -23,10 +25,15 @@ import frc.robot.util.AutoManager;
 import frc.robot.util.HubTracker;
 import frc.robot.util.ShooterCalculator;
 import frc.robot.util.StringUtils;
+import frc.robot.util.dashboard.Field2dElastic;
 import frc.robot.util.dashboard.LoggedNetworkButton;
 import frc.robot.util.dashboard.LoggedNetworkInput;
 import frc.robot.util.dashboard.MultiMotorInfoSendable;
-import frc.robot.util.enums.Constants.*;
+import frc.robot.util.enums.Constants.ClimberConstants;
+import frc.robot.util.enums.Constants.ControllerConstants;
+import frc.robot.util.enums.Constants.FuelConstants;
+import frc.robot.util.enums.Constants.LightConstants;
+import frc.robot.util.enums.Constants.MiscConstants;
 import frc.robot.util.enums.PositionCalibrationLocation;
 import frc.robot.util.enums.SpeedMultiplier;
 import java.io.IOException;
@@ -48,6 +55,7 @@ public class RobotContainer {
     private final PowerDistribution powerDistribution;
     private final MultiMotorInfoSendable motorInfo = new MultiMotorInfoSendable();
     private final @Nullable AutoManager autoManager;
+    private final Field2dElastic field = new Field2dElastic();
 
     // Initializes controllers
     private final CommandXboxController driverController =
@@ -108,7 +116,9 @@ public class RobotContainer {
                 : null;
     }
 
-    public void periodic() {}
+    public void periodic() {
+        updateField();
+    }
 
     private void configureBindings() {
         /*swerveSubsystem.setDefaultCommand(swerveSubsystem.driveFieldOrientedCommand(
@@ -244,12 +254,25 @@ public class RobotContainer {
                 "RobotContainer",
                 builder -> builder.addBooleanProperty("Use Odometry", () -> useOdometry, v -> useOdometry = v));
         SmartDashboard.putData("Motor Info", motorInfo);
+        SmartDashboard.putData("Live Field", field);
     }
 
     private void updateSmartDashboard() {
         autoClimb = SmartDashboard.getBoolean("Auto/Auto Climb", autoClimb);
         autoDepot = SmartDashboard.getBoolean("Auto/Auto Depot", autoDepot);
         autoOutpost = SmartDashboard.getBoolean("Auto/Auto Outpost", autoOutpost);
+    }
+
+    private void updateField() {
+        field.setRobotPose(swerveSubsystem.getRobotPose());
+        if (autoManager == null) return;
+        final FieldObject2d trajectoryObject = field.getObject("BLine trajectory");
+        final List<Pose2d> currentTrajectory = autoManager.getCurrentPoses();
+        if (currentTrajectory == null) {
+            trajectoryObject.setPoses();
+            return;
+        }
+        trajectoryObject.setPoses(currentTrajectory);
     }
 
     public void preSchedulerUpdate() {
