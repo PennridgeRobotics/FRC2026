@@ -37,7 +37,7 @@ from wpimath.geometry import Pose3d, Transform3d, Translation3d, Rotation3d, Qua
 # and open a new Terminal window in VSCode (do not commit the script changes in git).
 # After the Python virtual environment activates, copy, paste, and execute the
 # script with the following command:
-# python .\lib\scripts\calculateRobotToCameraTransform.py
+# python3 calculateRobotToCameraTransform.py
 
 # 7) Copy the Transform3d value that is printed to the terminal console and
 # paste it into the appropriate place in the robot constants for the associated
@@ -53,7 +53,7 @@ from wpimath.geometry import Pose3d, Transform3d, Translation3d, Rotation3d, Qua
 TARGET_TO_ROBOT_TRANSLATION_X: units.meters = units.inchesToMeters(31.75 - (5.0 / 16.0) + (27.0 / 2.0) + 0.25) # distance from center of robot to face of AprilTag
 TARGET_TO_ROBOT_TRANSLATION_Y: units.meters = 0.0 # distance from center of robot to center of AprilTag (should be zero using alignment method above)
 TARGET_TO_ROBOT_TRANSLATION_Z: units.meters = units.inchesToMeters(-44.25) # distance from center of AprilTag to the floor (will be negative value as the robot is below the AprilTag)
-TARGET_TO_ROBOT_ROTATION_YAW: units.degrees = -90.0 # rotation of robot to AprilTag (e.g. front of robot turned to face toward AprilTag is 180 degrees, rear of robot facing tag will be 0 degrees, sides will be -90/90 accordingly)
+TARGET_TO_ROBOT_ROTATION_YAW: units.degrees = 180.0 # rotation of robot to AprilTag (e.g. front of robot turned to face toward AprilTag is 180 degrees, rear of robot facing tag will be 0 degrees, sides will be -90/90 accordingly)
 
 TARGET_TO_CAMERA_TRANSLATION_X = 0.922 # calculated/average median value under targetPose reported by PhotonVision via AdvantageScope statistics
 TARGET_TO_CAMERA_TRANSLATION_Y = 0.423 # calculated/average median value under targetPose reported by PhotonVision via AdvantageScope statistics
