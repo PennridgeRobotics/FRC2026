@@ -37,7 +37,7 @@ public class LoggedNetworkDoubleToObject<T> extends LoggedNetworkInput implement
     }
 
     public void set(T value, boolean triggerListeners) {
-        if (currentValue == value) return;
+        if (currentValue.equals(value)) return;
         entry.set(objectToDouble.apply(value));
         currentValue = value;
         if (triggerListeners) listeners.forEach(listener -> listener.accept(value));
@@ -45,7 +45,7 @@ public class LoggedNetworkDoubleToObject<T> extends LoggedNetworkInput implement
 
     @Override
     protected void periodic() {
-        if (currentValue == doubleToObject.apply(entry.get())) return;
+        if (currentValue.equals(doubleToObject.apply(entry.get()))) return;
         currentValue = doubleToObject.apply(entry.get());
         listeners.forEach(listener -> listener.accept(currentValue));
     }
