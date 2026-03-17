@@ -16,6 +16,7 @@ public class LoggedNetworkDoubleToObject<T> extends LoggedNetworkInput implement
     private final Function<T, Double> objectToDouble;
     private final Function<Double, T> doubleToObject;
     private T currentValue;
+    private double currentDoubleValue;
 
     public LoggedNetworkDoubleToObject(
             String rawTopicName,
@@ -29,7 +30,8 @@ public class LoggedNetworkDoubleToObject<T> extends LoggedNetworkInput implement
                 .getDoubleTopic(topicName)
                 .getEntry(objectToDouble.apply(defaultValue));
         entry.set(objectToDouble.apply(defaultValue));
-        currentValue = doubleToObject.apply(entry.get());
+        currentDoubleValue = entry.get();
+        currentValue = doubleToObject.apply(currentDoubleValue);
     }
 
     public void set(T value) {
@@ -38,15 +40,17 @@ public class LoggedNetworkDoubleToObject<T> extends LoggedNetworkInput implement
 
     public void set(T value, boolean triggerListeners) {
         if (currentValue.equals(value)) return;
-        entry.set(objectToDouble.apply(value));
+        currentDoubleValue = objectToDouble.apply(value);
+        entry.set(currentDoubleValue);
         currentValue = value;
         if (triggerListeners) listeners.forEach(listener -> listener.accept(value));
     }
 
     @Override
     protected void periodic() {
-        if (currentValue.equals(doubleToObject.apply(entry.get()))) return;
-        currentValue = doubleToObject.apply(entry.get());
+        if (currentDoubleValue == entry.get()) return;
+        currentDoubleValue = entry.get();
+        currentValue = doubleToObject.apply(currentDoubleValue);
         listeners.forEach(listener -> listener.accept(currentValue));
     }
 
