@@ -8,7 +8,7 @@ gradle-rio = "2026.2.1"
 jspecify = "1.0.0"
 junit = "6.0.3"
 null-away = "0.13.1"
-spotless = "8.3.0"
+spotless = "8.4.0"
 
 [plugins]
 error-prone = { id = "net.ltgt.errorprone", version.ref = "error-prone-plugin" }
