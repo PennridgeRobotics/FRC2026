@@ -34,11 +34,7 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.util.ShooterCalculator;
-import frc.robot.util.dashboard.FlashingColorSupplier;
-import frc.robot.util.dashboard.LoggedNetworkInteger;
-import frc.robot.util.dashboard.LoggedNetworkUnit;
-import frc.robot.util.dashboard.MultiMotorInfoSendable;
-import frc.robot.util.dashboard.SplitButtonChooser;
+import frc.robot.util.dashboard.*;
 import frc.robot.util.enums.Constants.FuelConstants;
 import java.util.Set;
 import java.util.function.LongConsumer;
@@ -234,11 +230,11 @@ public class FuelSubsystem extends SubsystemBase {
                 (builder) -> builder.addDoubleProperty(
                         "Velocity", () -> indexer.getSpeed().in(RotationsPerSecond), null));
         // see SmartMotorControllerTelemetryConfig
-        /*SmartDashboard.putData(
+        SmartDashboard.putData(
                 "Intake-Launcher PID",
                 new PIDSendable(intakeLauncherController, PIDSendable.Type.PID | PIDSendable.Type.BASE_FF));
         SmartDashboard.putData(
-                "Indexer PID", new PIDSendable(indexerController, PIDSendable.Type.PID | PIDSendable.Type.BASE_FF));*/
+                "Indexer PID", new PIDSendable(indexerController, PIDSendable.Type.PID | PIDSendable.Type.BASE_FF));
         SmartDashboard.putData("Fuel Subsystem", (builder) -> {
             builder.addStringProperty("Current State", () -> currentState.toString(), null);
             builder.addStringProperty(

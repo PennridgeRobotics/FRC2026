@@ -6,10 +6,7 @@ import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.VecBuilder;
-import edu.wpi.first.math.geometry.Rectangle2d;
-import edu.wpi.first.math.geometry.Rotation3d;
-import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.math.geometry.*;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.units.measure.*;
@@ -48,7 +45,7 @@ public final class Constants {
     public static final class VisionConstants {
         public static final String LIMELIGHT_NAME = "limelight";
 
-        public static final boolean VISION_ENABLED = false;
+        public static final boolean VISION_ENABLED = true;
 
         // Tuning
         // Base standard deviations
@@ -61,11 +58,9 @@ public final class Constants {
         public static final double STD_DEV_DISTANCE_MULTIPLIER = 1.0 / 30;
 
         // Camera 1
-        public static final String CAMERA_1_NAME = "Arducam_OV9281_1";
-        public static final Translation3d CAMERA_1_TRANSLATION =
-                new Translation3d(Inches.of(6.26), Inches.of(-15.74), Inches.of(14.32)); // Robot to cam
-        public static final Rotation3d CAMERA_1_ROTATION =
-                new Rotation3d(Degrees.of(0), Degrees.of(0), Degrees.of(0)); // Robot to cam
+        public static final String CAMERA_1_NAME = "Arducam_OV9281_USB_Camera";
+        public static final Translation3d CAMERA_1_TRANSLATION = new Translation3d(0.162087, -0.250706, 0.674197);
+        public static final Rotation3d CAMERA_1_ROTATION = new Rotation3d(-0.007874, 0.014070, -3.123649);
     }
 
     public static final class DriveConstants {
@@ -81,9 +76,9 @@ public final class Constants {
         // Measure/tune:
         public static final Distance FLYWHEEL_DIAMETER = Inches.of(4);
         public static final Distance EXIT_HEIGHT = Inches.of(20.5); // floor to where ball leaves shooter
-        public static final Angle LAUNCH_ANGLE_FROM_HORIZONTAL = Degrees.of(55); // estimated
+        public static final Angle LAUNCH_ANGLE_FROM_HORIZONTAL = Degrees.of(58.55); // estimated
         public static final double SLIP_FACTOR = 0.6; // 0 = no group, 1 = perfect
-        public static final Translation2d LAUNCHER_OFFSET = new Translation2d(Inches.of(-7.4), Inches.zero());
+        public static final Translation2d LAUNCHER_OFFSET = new Translation2d(Inches.of(7.4), Inches.zero());
         public static final LinearVelocity MAX_VELOCITY_WHILE_SHOOTING = MetersPerSecond.of(1.0);
 
         public static final Mass BALL_MASS = Kilograms.of(0.215);
@@ -98,7 +93,7 @@ public final class Constants {
         public static final int ITERATIONS = 25;
         public static final Time MAX_SIM_TIME = Seconds.of(5);
 
-        public static final Time PHASE_DELAY = Milliseconds.of(30); // vision pipeline latency
+        public static final Time PHASE_DELAY = Milliseconds.of(0); // vision pipeline latency
         public static final Time MECHANISM_LATENCY = Milliseconds.of(20); // how long the mechanism takes to respond
         public static final Angle MAXIMUM_TILT =
                 Degrees.of(5); // suppress firing when the chassis tilts past this (bumps/ramps)

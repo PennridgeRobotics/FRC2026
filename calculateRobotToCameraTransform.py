@@ -50,18 +50,18 @@ from wpimath.geometry import Pose3d, Transform3d, Translation3d, Rotation3d, Qua
 
 # Note: the constant values below are for example only - see the steps above for setting real/correct values.
 
-TARGET_TO_ROBOT_TRANSLATION_X: units.meters = units.inchesToMeters(31.75 - (5.0 / 16.0) + (27.0 / 2.0) + 0.25) # distance from center of robot to face of AprilTag
+TARGET_TO_ROBOT_TRANSLATION_X: units.meters = units.inchesToMeters(31.375) # distance from center of robot to face of AprilTag
 TARGET_TO_ROBOT_TRANSLATION_Y: units.meters = 0.0 # distance from center of robot to center of AprilTag (should be zero using alignment method above)
-TARGET_TO_ROBOT_TRANSLATION_Z: units.meters = units.inchesToMeters(-44.25) # distance from center of AprilTag to the floor (will be negative value as the robot is below the AprilTag)
-TARGET_TO_ROBOT_ROTATION_YAW: units.degrees = 180.0 # rotation of robot to AprilTag (e.g. front of robot turned to face toward AprilTag is 180 degrees, rear of robot facing tag will be 0 degrees, sides will be -90/90 accordingly)
+TARGET_TO_ROBOT_TRANSLATION_Z: units.meters = units.inchesToMeters(-21.6875) # distance from center of AprilTag to the floor (will be negative value as the robot is below the AprilTag)
+TARGET_TO_ROBOT_ROTATION_YAW: units.degrees = 0.0 # rotation of robot to AprilTag (e.g. front of robot turned to face toward AprilTag is 180 degrees, rear of robot facing tag will be 0 degrees, sides will be -90/90 accordingly)
 
-TARGET_TO_CAMERA_TRANSLATION_X = 0.922 # calculated/average median value under targetPose reported by PhotonVision via AdvantageScope statistics
-TARGET_TO_CAMERA_TRANSLATION_Y = 0.423 # calculated/average median value under targetPose reported by PhotonVision via AdvantageScope statistics
-TARGET_TO_CAMERA_TRANSLATION_Z = 0.422 # calculated/average median value under targetPose reported by PhotonVision via AdvantageScope statistics
-TARGET_TO_CAMERA_QUATERNION_W = 0.375 # calculated/average median value under targetPose reported by PhotonVision via AdvantageScope statistics
-TARGET_TO_CAMERA_QUATERNION_X = -0.149 # calculated/average median value under targetPose reported by PhotonVision via AdvantageScope statistics
-TARGET_TO_CAMERA_QUATERNION_Y = 0.083 # calculated/average median value under targetPose reported by PhotonVision via AdvantageScope statistics
-TARGET_TO_CAMERA_QUATERNION_Z = -0.911 # calculated/average median value under targetPose reported by PhotonVision via AdvantageScope statistics
+TARGET_TO_CAMERA_TRANSLATION_X = 0.956 # calculated/average median value under targetPose reported by PhotonVision via AdvantageScope statistics
+TARGET_TO_CAMERA_TRANSLATION_Y = -0.267 # calculated/average median value under targetPose reported by PhotonVision via AdvantageScope statistics
+TARGET_TO_CAMERA_TRANSLATION_Z = -0.112 # calculated/average median value under targetPose reported by PhotonVision via AdvantageScope statistics
+TARGET_TO_CAMERA_QUATERNION_W = -0.009 # calculated/average median value under targetPose reported by PhotonVision via AdvantageScope statistics
+TARGET_TO_CAMERA_QUATERNION_X = 0.007 # calculated/average median value under targetPose reported by PhotonVision via AdvantageScope statistics
+TARGET_TO_CAMERA_QUATERNION_Y = 0.004 # calculated/average median value under targetPose reported by PhotonVision via AdvantageScope statistics
+TARGET_TO_CAMERA_QUATERNION_Z = -1.000 # calculated/average median value under targetPose reported by PhotonVision via AdvantageScope statistics
 
 # ===========================================================================
 

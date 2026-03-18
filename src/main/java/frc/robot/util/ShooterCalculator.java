@@ -1,28 +1,12 @@
 package frc.robot.util;
 
-import static edu.wpi.first.units.Units.Degrees;
-import static edu.wpi.first.units.Units.Kilograms;
-import static edu.wpi.first.units.Units.Meters;
-import static edu.wpi.first.units.Units.Milliseconds;
-import static edu.wpi.first.units.Units.RPM;
-import static edu.wpi.first.units.Units.RadiansPerSecond;
-import static edu.wpi.first.units.Units.RotationsPerSecond;
-import static edu.wpi.first.units.Units.RotationsPerSecondPerSecond;
-import static edu.wpi.first.units.Units.Seconds;
+import static edu.wpi.first.units.Units.*;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
-import edu.wpi.first.math.kinematics.ChassisSpeeds;
-import edu.wpi.first.networktables.BooleanEntry;
-import edu.wpi.first.networktables.BooleanPublisher;
-import edu.wpi.first.networktables.DoubleEntry;
-import edu.wpi.first.networktables.DoublePublisher;
-import edu.wpi.first.networktables.NetworkTableInstance;
-import edu.wpi.first.networktables.StringEntry;
-import edu.wpi.first.networktables.StringPublisher;
-import edu.wpi.first.networktables.StringSubscriber;
+import edu.wpi.first.networktables.*;
 import edu.wpi.first.units.AngleUnit;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
@@ -31,13 +15,13 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
-import frc.firecontrol.ProjectileSimulator;
-import frc.firecontrol.ShotCalculator;
 import frc.robot.util.dashboard.LoggedNetworkDouble;
 import frc.robot.util.dashboard.LoggedNetworkUnit;
 import frc.robot.util.dashboard.SplitButtonChooser;
 import frc.robot.util.enums.Constants.FieldConstants;
 import frc.robot.util.enums.Constants.ShootOnTheMoveConstants;
+import frc.robot.util.lib.frcfirecontrol.ProjectileSimulator;
+import frc.robot.util.lib.frcfirecontrol.ShotCalculator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -176,20 +160,18 @@ public class ShooterCalculator {
         }
         cachedPublisher.set(false);
         lastUpdateTimestampMillis = System.currentTimeMillis();
-        final var robotVelocity = swerveDrive.getRobotVelocity();
         final var shotInputs = new ShotCalculator.ShotInputs(
-                swerveDrive.getPose().rotateBy(Rotation2d.k180deg),
+                swerveDrive.getPose(),
                 swerveDrive.getFieldVelocity(),
-                new ChassisSpeeds(
-                        -robotVelocity.vxMetersPerSecond,
-                        -robotVelocity.vyMetersPerSecond,
-                        robotVelocity.omegaRadiansPerSecond),
+                swerveDrive.getRobotVelocity(),
                 getTarget(),
                 getTargetForwardVector(),
                 0.9, // vision confidence, from 0 to 1
                 swerveDrive.getPitch().getDegrees(),
                 swerveDrive.getRoll().getDegrees());
+        final var time = System.currentTimeMillis();
         final var shot = shotCalculator.calculate(shotInputs);
+        System.out.println("time took: " + (System.currentTimeMillis() - time) + "ms");
         shotConfidencePublisher.set(shot.confidence());
         lastSOTMLaunchParameters = shot;
         return shot;
@@ -208,12 +190,10 @@ public class ShooterCalculator {
         final double distanceToTarget = target.getDistance(robotTranslation);
 
         final double targetVelocity = calculateAngularVelocity(distanceToTarget) + velocityOffsetEntry.get();
-        final var sotmData = calculationMode == CalculationMode.SOTM ? calculateSOTM() : null;
-        // rotate 180° because the shooter faces the back of the robot
+        final var sotmData = (calculationMode == CalculationMode.SOTM) ? calculateSOTM() : null;
         final Rotation2d targetHeading = (sotmData != null
-                        ? sotmData.driveAngle()
-                        : target.minus(robotTranslation).getAngle())
-                .rotateBy(Rotation2d.k180deg);
+                ? sotmData.driveAngle().rotateBy(Rotation2d.k180deg)
+                : target.minus(robotTranslation).getAngle());
         final var distance = Meters.of(sotmData != null ? sotmData.solvedDistanceM() : distanceToTarget);
         final var shooterVelocity = sotmData != null ? RPM.of(sotmData.rpm()) : RotationsPerSecond.of(targetVelocity);
         final var driveAngleFF = RadiansPerSecond.of(sotmData != null ? sotmData.driveAngularVelocityRadPerSec() : 0);

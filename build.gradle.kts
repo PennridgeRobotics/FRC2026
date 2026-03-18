@@ -77,7 +77,6 @@ dependencies {
     implementation(libs.bline.lib)
     implementation(libs.caffeine)
     implementation(libs.crunch)
-    implementation(libs.frc.fire.control)
     implementation(libs.jspecify)
 
     annotationProcessor(wpi.java.deps.wpilibAnnotations())
