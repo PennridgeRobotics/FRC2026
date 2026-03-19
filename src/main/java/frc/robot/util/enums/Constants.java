@@ -27,6 +27,7 @@ public final class Constants {
 
     public static final class PhysicalConstants { // TODO update length/width depending on bumper size
         public static final Distance BUMPERS_WIDTH = Inches.of(3.375);
+        public static final Distance BUMPERS_HEIGHT = Inches.of(5.0);
         public static final Distance WHEEL_CENTERS_DISTANCE_LENGTH_X = Inches.of(18.5); // 0.4699m
         public static final Distance WHEEL_CENTERS_DISTANCE_WIDTH_Y = Inches.of(23.5); // 0.5969m
         public static final Distance ROBOT_FULL_LENGTH_X =

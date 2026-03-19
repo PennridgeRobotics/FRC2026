@@ -12,6 +12,8 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
+import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.StructPublisher;
 import edu.wpi.first.units.LinearVelocityUnit;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.LinearVelocity;
@@ -79,6 +81,7 @@ public class SwerveSubsystem extends SubsystemBase {
             new SlewRateLimiter2d(DriveConstants.MAX_LINEAR_ACCELERATION.in(MetersPerSecondPerSecond));
 
     private final LoggedNetworkUnit<LinearVelocityUnit, LinearVelocity> loggedMaxVelocityWhileShooting;
+    private final StructPublisher<Pose2d> robotPosePublisher;
 
     @SuppressWarnings("StaticAssignmentInConstructor")
     public SwerveSubsystem(final MultiMotorInfoSendable motorInfo) throws IOException {
@@ -105,6 +108,9 @@ public class SwerveSubsystem extends SubsystemBase {
 
         loggedMaxVelocityWhileShooting = new LoggedNetworkUnit<>(
                 "Shooter Calculator/Max Velocity While Shooting", ShootOnTheMoveConstants.MAX_VELOCITY_WHILE_SHOOTING);
+        robotPosePublisher = NetworkTableInstance.getDefault()
+                .getStructTopic("Robot Pose Struct", Pose2d.struct)
+                .publish();
 
         setupVisionManager();
         pathBuilder = setupBLine();
@@ -167,6 +173,7 @@ public class SwerveSubsystem extends SubsystemBase {
             swerveDrive.setHeadingCorrection(
                     headingCorrectionSupplier.getAsBoolean(), headingCorrectionDeadband.getAsDouble());
         }
+        robotPosePublisher.set(getRobotPose());
     }
 
     private void updateOdometry() {

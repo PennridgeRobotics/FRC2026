@@ -295,4 +295,12 @@ public class RobotContainer {
             autoManager.teleopInit();
         }
     }
+
+    public void simulationInit() {
+        shooterCalculator.simulationInit();
+    }
+
+    public void simulationPeriodic() {
+        shooterCalculator.simulationPeriodic();
+    }
 }

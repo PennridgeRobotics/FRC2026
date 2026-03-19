@@ -99,6 +99,8 @@ public class FuelSubsystem extends SubsystemBase {
 
     public FuelSubsystem(ShooterCalculator shooterCalculator, MultiMotorInfoSendable motorInfo) {
         this.shooterCalculator = shooterCalculator;
+        shooterCalculator.setIsIntaking(() -> currentState == FuelAction.INTAKE);
+        shooterCalculator.setIsLaunching(() -> currentState == FuelAction.LAUNCH);
 
         final var intakeLauncherBaseSparkMaxConfig = new SparkMaxConfig();
         intakeLauncherBaseSparkMaxConfig

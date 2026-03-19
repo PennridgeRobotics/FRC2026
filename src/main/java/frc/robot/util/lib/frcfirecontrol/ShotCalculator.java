@@ -195,6 +195,7 @@ public class ShotCalculator {
 
     /** Add a distance/RPM/TOF point to the lookup table. Use ProjectileSimulator to generate these, or hand-tune. */
     public void loadLUTEntry(double distanceM, double rpm, double tof) {
+        System.out.printf("Added LUT entry for distance %sm: %sRPM and %ss TOF \n", distanceM, rpm, tof);
         rpmMap.put(distanceM, rpm);
         tofMap.put(distanceM, tof);
     }
@@ -204,7 +205,7 @@ public class ShotCalculator {
         double base = rpmMap.get(distance);
         Double correction = correctionRpmMap.get(distance);
         final var rpm = base + (correction != null ? correction : 0.0) + rpmOffset;
-        System.out.println("rpmMap for " + distance + ": " + base + "; result: " + rpm);
+        // System.out.println("rpmMap for " + distance + ": " + base + "; result: " + rpm);
         return rpm;
     }
 
