@@ -23,6 +23,7 @@ import frc.robot.util.AutoManager;
 import frc.robot.util.HubTracker;
 import frc.robot.util.ShooterCalculator;
 import frc.robot.util.StringUtils;
+import frc.robot.util.dashboard.CANBusLoadSendable;
 import frc.robot.util.dashboard.LoggedNetworkButton;
 import frc.robot.util.dashboard.LoggedNetworkInput;
 import frc.robot.util.dashboard.MultiMotorInfoSendable;
@@ -60,10 +61,10 @@ public class RobotContainer {
     private boolean autoClimb = false;
     private boolean autoDepot = false;
     private boolean autoOutpost = false;
+    private final CANBusLoadSendable canBusLoadSendable;
 
     private boolean useOdometry = true;
     private final Trigger useOdometryTrigger = new Trigger(() -> useOdometry);
-
     /** The container for the robot. Contains subsystems, I/O devices, and commands. */
     public RobotContainer() {
         powerDistribution =
@@ -85,6 +86,7 @@ public class RobotContainer {
                 : null;
 
         // autoChooser = AutoBuilder.buildAutoChooser("Epic Auto");
+        canBusLoadSendable = new CANBusLoadSendable();
         autoStartLocationChooser = new SendableChooser<>();
         for (final var location : AutoManager.AutoStartLocation.values()) {
             autoStartLocationChooser.addOption(StringUtils.capitalizeFully(location.name()), location);
@@ -239,6 +241,7 @@ public class RobotContainer {
         SmartDashboard.putBoolean("Auto/Auto Climb", autoClimb);
         SmartDashboard.putBoolean("Auto/Auto Outpost", autoOutpost);
         SmartDashboard.putBoolean("Auto/Auto Depot", autoDepot);
+        SmartDashboard.putData("CAN Bus Load", canBusLoadSendable);
         SmartDashboard.putData("Power Distribution", powerDistribution);
         SmartDashboard.putData(
                 "RobotContainer",
