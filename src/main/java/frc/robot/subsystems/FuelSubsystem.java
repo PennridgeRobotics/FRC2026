@@ -117,6 +117,8 @@ public class FuelSubsystem extends SubsystemBase {
                 .withStatorCurrentLimit(FuelConstants.INTAKE_LAUNCHER_CURRENT_LIMIT)
                 .withFeedforward(new SimpleMotorFeedforward(0.15, 0.192))
                 .withClosedLoopController(new PIDController(0.003, 0.0, 0.1))
+                .withSimClosedLoopController(new PIDController(0, 0, 0))
+                .withSimFeedforward(new SimpleMotorFeedforward(0, 0.187))
                 .withControlMode(ControlMode.CLOSED_LOOP)
                 .withMotorInverted(true)
                 .withTelemetry("LauncherMotor", TelemetryVerbosity.HIGH);
@@ -428,12 +430,14 @@ public class FuelSubsystem extends SubsystemBase {
     @Override
     public void periodic() {
         // This method will be called once per scheduler run
+        intakeLauncher.updateTelemetry();
         indexer.updateTelemetry();
     }
 
     @Override
     public void simulationPeriodic() {
         // This method will be called once per scheduler run during simulation
+        intakeLauncher.simIterate();
         indexer.simIterate();
     }
 
