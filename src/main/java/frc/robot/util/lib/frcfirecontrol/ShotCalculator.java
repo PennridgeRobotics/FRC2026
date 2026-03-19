@@ -203,7 +203,9 @@ public class ShotCalculator {
     double effectiveRPM(double distance) {
         double base = rpmMap.get(distance);
         Double correction = correctionRpmMap.get(distance);
-        return base + (correction != null ? correction : 0.0) + rpmOffset;
+        final var rpm = base + (correction != null ? correction : 0.0) + rpmOffset;
+        System.out.println("rpmMap for " + distance + ": " + base + "; result: " + rpm);
+        return rpm;
     }
 
     double effectiveTOF(double distance) {
@@ -575,7 +577,7 @@ public class ShotCalculator {
         prevRobotOmega = 0;
     }
 
-    InterpolatingDoubleTreeMap getRpmMap() {
+    public InterpolatingDoubleTreeMap getRpmMap() {
         return rpmMap;
     }
 

@@ -169,9 +169,8 @@ public class ShooterCalculator {
                 0.9, // vision confidence, from 0 to 1
                 swerveDrive.getPitch().getDegrees(),
                 swerveDrive.getRoll().getDegrees());
-        final var time = System.currentTimeMillis();
         final var shot = shotCalculator.calculate(shotInputs);
-        System.out.println("time took: " + (System.currentTimeMillis() - time) + "ms");
+        // System.out.println("\n\nShot: " + shot + "\n\nrpm map: ");
         shotConfidencePublisher.set(shot.confidence());
         lastSOTMLaunchParameters = shot;
         return shot;
