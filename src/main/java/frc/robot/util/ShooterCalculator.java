@@ -210,12 +210,12 @@ public class ShooterCalculator {
         final double distanceToTarget = target.getDistance(robotTranslation);
 
         final double targetVelocity = calculateAngularVelocity(distanceToTarget) + velocityOffsetEntry.get();
-        final var sotmData = (calculationMode == CalculationMode.SOTM) ? calculateSOTM() : null;
+        final var sotmData = isUsingSOTM() ? calculateSOTM() : null;
         final Rotation2d targetHeading = (sotmData != null
                 ? sotmData.driveAngle().rotateBy(Rotation2d.k180deg)
                 : target.minus(robotTranslation).getAngle());
         final var distance = Meters.of(sotmData != null ? sotmData.solvedDistanceM() : distanceToTarget);
-        final var shooterVelocity = sotmData != null ? RPM.of(sotmData.rpm()) : RotationsPerSecond.of(targetVelocity);
+        final var shooterVelocity = RotationsPerSecond.of(targetVelocity);
         final var driveAngleFF = RadiansPerSecond.of(sotmData != null ? sotmData.driveAngularVelocityRadPerSec() : 0);
         final var isReady = sotmData != null
                 ? (sotmData.isValid() && sotmData.confidence() > 50)
