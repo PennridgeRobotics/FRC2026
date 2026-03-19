@@ -162,7 +162,7 @@ public class ShotCalculator {
         // Bumps and ramps tilt the robot, which throws off aim. Set to 90 to disable.
         public double maxTiltDeg = 5.0;
 
-        public double shooterAngleOffsetRad = Math.PI; // 0 = forward, Math.PI = rear-facing
+        public double shooterAngleOffsetRad = 0; // 0 = forward, Math.PI = rear-facing
     }
 
     private final Config config;

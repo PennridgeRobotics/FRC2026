@@ -2,11 +2,7 @@ package frc.robot.util;
 
 import static edu.wpi.first.units.Units.*;
 
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Rotation3d;
-import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.math.geometry.*;
 import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
 import edu.wpi.first.networktables.*;
 import edu.wpi.first.units.AngleUnit;
@@ -266,6 +262,7 @@ public class ShooterCalculator {
         shotCalcConfig.maxTiltDeg = ShootOnTheMoveConstants.MAXIMUM_TILT.in(Degrees);
         shotCalcConfig.headingSpeedScalar = ShootOnTheMoveConstants.HEADING_SPEED_SCALAR;
         shotCalcConfig.headingReferenceDistance = ShootOnTheMoveConstants.HEADING_REFERENCE_DISTANCE;
+        shotCalcConfig.shooterAngleOffsetRad = Math.PI;
         final var shotCalc = new ShotCalculator(shotCalcConfig);
         for (var entry : lut.entries()) {
             if (entry.reachable()) {

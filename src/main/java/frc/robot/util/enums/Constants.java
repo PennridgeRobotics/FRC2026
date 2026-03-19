@@ -89,7 +89,7 @@ public final class Constants {
         public static final double AIR_DENSITY = 1.225; // kg/m³
         public static final Distance HUB_HEIGHT = Inches.of(72); // from game manual
         public static final Time SIM_TIMESTEP = Seconds.of(0.002);
-        public static final AngularVelocity RPM_SEARCH_MIN = RPM.of(2500);
+        public static final AngularVelocity RPM_SEARCH_MIN = RPM.of(1500);
         public static final AngularVelocity RPM_SEARCH_MAX = RPM.of(4000); // real limit: 3937
         public static final int ITERATIONS = 25;
         public static final Time MAX_SIM_TIME = Seconds.of(5);
