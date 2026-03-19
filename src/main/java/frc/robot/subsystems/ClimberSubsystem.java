@@ -3,6 +3,8 @@ package frc.robot.subsystems;
 import static edu.wpi.first.units.Units.Amps;
 import static edu.wpi.first.units.Units.Degrees;
 import static edu.wpi.first.units.Units.DegreesPerSecond;
+import static edu.wpi.first.units.Units.Inches;
+import static edu.wpi.first.units.Units.KilogramSquareMeters;
 import static edu.wpi.first.units.Units.Second;
 import static edu.wpi.first.units.Units.Seconds;
 import static edu.wpi.first.units.Units.Volts;
@@ -64,6 +66,9 @@ public class ClimberSubsystem extends SubsystemBase {
         motorController = new SparkWrapper(sparkMaxMotor, DCMotor.getNEO(1), motorConfig);
         climber = new Arm(new ArmConfig(motorController)
                 .withStartingPosition(ClimberConstants.VERTICAL_ANGLE)
+                .withMOI(KilogramSquareMeters.of(11.151))
+                .withLength(Inches.of(6))
+                .withHardLimit(ClimberConstants.MINIMUM_ANGLE, ClimberConstants.MAXIMUM_ANGLE)
                 .withTelemetry("ClimberArm", TelemetryVerbosity.HIGH));
         /*SparkMaxConfig config = new SparkMaxConfig();
         config.smartCurrentLimit(80);

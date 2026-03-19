@@ -4,6 +4,7 @@
 package frc.robot.subsystems;
 
 import static edu.wpi.first.units.Units.Amps;
+import static edu.wpi.first.units.Units.KilogramSquareMeters;
 import static edu.wpi.first.units.Units.Meters;
 import static edu.wpi.first.units.Units.MetersPerSecond;
 import static edu.wpi.first.units.Units.Milliseconds;
@@ -156,9 +157,11 @@ public class FuelSubsystem extends SubsystemBase {
 
         intakeLauncher = new FlyWheel(new FlyWheelConfig(intakeLauncherController)
                 .withDiameter(FuelConstants.FLYWHEEL_RADIUS.times(2))
+                .withMOI(KilogramSquareMeters.of(0.002849))
                 .withTelemetry("LauncherMotor", TelemetryVerbosity.HIGH));
         indexer = new FlyWheel(new FlyWheelConfig(indexerController)
                 .withDiameter(FuelConstants.FLYWHEEL_RADIUS.times(2))
+                .withMOI(KilogramSquareMeters.of(0.0003368))
                 .withTelemetry("IndexerMotor", TelemetryVerbosity.HIGH));
 
         setDefaultCommand(Commands.defer(
