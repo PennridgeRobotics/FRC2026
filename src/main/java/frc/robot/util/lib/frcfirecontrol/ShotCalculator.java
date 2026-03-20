@@ -154,15 +154,13 @@ public class ShotCalculator {
         public double headingSpeedScalar = 1.0;
 
         // Heading tolerance scales with distance from hub.
-        // Closer = tighter because small angle errors matter more up close.
+        // Farther = tighter because the same angle error produces a larger miss at long range.
         // scaledMaxError *= referenceDistance / distance, clamped [0.5, 2.0].
         public double headingReferenceDistance = 2.5; // meters
 
         // Suppress firing when pitch or roll exceeds this threshold.
         // Bumps and ramps tilt the robot, which throws off aim. Set to 90 to disable.
         public double maxTiltDeg = 5.0;
-
-        public double shooterAngleOffsetRad = 0; // 0 = forward, Math.PI = rear-facing
     }
 
     private final Config config;
@@ -195,7 +193,6 @@ public class ShotCalculator {
 
     /** Add a distance/RPM/TOF point to the lookup table. Use ProjectileSimulator to generate these, or hand-tune. */
     public void loadLUTEntry(double distanceM, double rpm, double tof) {
-        System.out.printf("Added LUT entry for distance %sm: %sRPM and %ss TOF \n", distanceM, rpm, tof);
         rpmMap.put(distanceM, rpm);
         tofMap.put(distanceM, tof);
     }
@@ -204,9 +201,7 @@ public class ShotCalculator {
     double effectiveRPM(double distance) {
         double base = rpmMap.get(distance);
         Double correction = correctionRpmMap.get(distance);
-        final var rpm = base + (correction != null ? correction : 0.0) + rpmOffset;
-        // System.out.println("rpmMap for " + distance + ": " + base + "; result: " + rpm);
-        return rpm;
+        return base + (correction != null ? correction : 0.0) + rpmOffset;
     }
 
     double effectiveTOF(double distance) {
@@ -353,8 +348,12 @@ public class ShotCalculator {
             for (int i = 0; i < maxIter; i++) {
                 double prevTOF = tof;
 
+                // Compute drag exponent once per iteration for both drift and derivative
+                double c = config.sotmDragCoeff;
+                double dragExp = c < 1e-6 ? 1.0 : Math.exp(-c * tof);
+                double driftTOF = c < 1e-6 ? tof : (1.0 - dragExp) / c;
+
                 // Projected displacement at time t, with drag-compensated velocity offset
-                double driftTOF = dragCompensatedTOF(tof);
                 double prx = rx - vx * driftTOF;
                 double pry = ry - vy * driftTOF;
                 projDist = Math.hypot(prx, pry);
@@ -368,8 +367,8 @@ public class ShotCalculator {
 
                 double lookupTOF = effectiveTOF(projDist);
 
-                // Derivative for Newton step
-                double dPrime = -(prx * vx + pry * vy) / projDist;
+                // Derivative for Newton step (chain rule: d/dt of dragCompensatedTOF = e^(-ct))
+                double dPrime = -dragExp * (prx * vx + pry * vy) / projDist;
                 double gPrime = tofMapDerivative(projDist);
                 double f = lookupTOF - tof;
                 double fPrime = gPrime * dPrime - 1.0;
@@ -425,14 +424,13 @@ public class ShotCalculator {
         Rotation2d driveAngle = new Rotation2d(aimX, aimY);
 
         // Heading error for confidence calculation
-        double headingErrorRad =
-                MathUtil.angleModulus(driveAngle.getRadians() - heading - config.shooterAngleOffsetRad);
+        double headingErrorRad = MathUtil.angleModulus(driveAngle.getRadians() - heading);
 
         // Angular velocity feedforward: rate of change of aim angle
         double driveAngularVelocity = 0;
         if (!velocityFiltered && distance > 0.1) {
             // tangential velocity / distance gives angular rate
-            double tangentialVel = (-ry * vx + rx * vy) / distance;
+            double tangentialVel = (ry * vx - rx * vy) / distance;
             driveAngularVelocity = tangentialVel / distance;
         }
 
@@ -578,7 +576,7 @@ public class ShotCalculator {
         prevRobotOmega = 0;
     }
 
-    public InterpolatingDoubleTreeMap getRpmMap() {
+    InterpolatingDoubleTreeMap getRpmMap() {
         return rpmMap;
     }
 
