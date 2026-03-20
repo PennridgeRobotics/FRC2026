@@ -5,7 +5,10 @@ import static edu.wpi.first.units.Units.Seconds;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.StructPublisher;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.smartdashboard.FieldObject2d;
@@ -57,6 +60,9 @@ public class RobotContainer {
     private final @Nullable AutoManager autoManager;
     private final Field2dElastic field = new Field2dElastic();
 
+    private final StructPublisher<Pose2d> aheadRobotPose;
+    private final StructPublisher<Pose2d> behindRobotPose;
+
     // Initializes controllers
     private final CommandXboxController driverController =
             new CommandXboxController(ControllerConstants.DRIVER_CONTROLLER_PORT);
@@ -101,6 +107,13 @@ public class RobotContainer {
                 ? new AutoManager(swerveSubsystem, swerveSubsystem.getPathBuilder(), fuelSubsystem, climberSubsystem)
                 : null;
 
+        aheadRobotPose = NetworkTableInstance.getDefault()
+                .getStructTopic("Robot Pose Ahead", Pose2d.struct)
+                .publish();
+        behindRobotPose = NetworkTableInstance.getDefault()
+                .getStructTopic("Robot Pose Behind", Pose2d.struct)
+                .publish();
+
         configureBindings();
 
         initSmartDashboard();
@@ -118,6 +131,12 @@ public class RobotContainer {
 
     public void periodic() {
         updateField();
+        updateAheadRobotPose();
+    }
+
+    private void updateAheadRobotPose() {
+        aheadRobotPose.set(swerveSubsystem.getRobotPose().plus(new Transform2d(100.0, 0, Rotation2d.kZero)));
+        behindRobotPose.set(swerveSubsystem.getRobotPose().plus(new Transform2d(-100.0, 0, Rotation2d.kZero)));
     }
 
     private void configureBindings() {
