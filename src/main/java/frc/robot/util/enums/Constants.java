@@ -75,10 +75,10 @@ public final class Constants {
 
     public static final class ShootOnTheMoveConstants {
         // Measure/tune:
-        public static final Distance FLYWHEEL_DIAMETER = Inches.of(4);
+        public static final Distance FLYWHEEL_DIAMETER = Inches.of(3.94);
         public static final Distance EXIT_HEIGHT = Inches.of(20.5); // floor to where ball leaves shooter
-        public static final Angle LAUNCH_ANGLE_FROM_HORIZONTAL = Degrees.of(58.55); // estimated
-        public static final double SLIP_FACTOR = 0.6; // 0 = no group, 1 = perfect
+        public static final Angle LAUNCH_ANGLE_FROM_HORIZONTAL = Degrees.of(59); // estimated
+        public static final double SLIP_FACTOR = 0.81; // 0 = no group, 1 = perfect
         public static final Translation2d LAUNCHER_OFFSET = new Translation2d(Inches.of(7.4), Inches.zero());
         public static final LinearVelocity MAX_VELOCITY_WHILE_SHOOTING = MetersPerSecond.of(1.0);
 
