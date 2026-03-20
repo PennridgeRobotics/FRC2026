@@ -161,6 +161,8 @@ public class ShotCalculator {
         // Suppress firing when pitch or roll exceeds this threshold.
         // Bumps and ramps tilt the robot, which throws off aim. Set to 90 to disable.
         public double maxTiltDeg = 5.0;
+
+        public double shooterAngleOffsetRad = 0; // 0 = forward, Math.PI = rear-facing
     }
 
     private final Config config;
@@ -193,6 +195,7 @@ public class ShotCalculator {
 
     /** Add a distance/RPM/TOF point to the lookup table. Use ProjectileSimulator to generate these, or hand-tune. */
     public void loadLUTEntry(double distanceM, double rpm, double tof) {
+        System.out.printf("Added LUT entry for distance %sm: %sRPM and %ss TOF \n", distanceM, rpm, tof);
         rpmMap.put(distanceM, rpm);
         tofMap.put(distanceM, tof);
     }
@@ -201,7 +204,9 @@ public class ShotCalculator {
     double effectiveRPM(double distance) {
         double base = rpmMap.get(distance);
         Double correction = correctionRpmMap.get(distance);
-        return base + (correction != null ? correction : 0.0) + rpmOffset;
+        final var rpm = base + (correction != null ? correction : 0.0) + rpmOffset;
+        // System.out.println("rpmMap for " + distance + ": " + base + "; result: " + rpm);
+        return rpm;
     }
 
     double effectiveTOF(double distance) {
@@ -424,7 +429,8 @@ public class ShotCalculator {
         Rotation2d driveAngle = new Rotation2d(aimX, aimY);
 
         // Heading error for confidence calculation
-        double headingErrorRad = MathUtil.angleModulus(driveAngle.getRadians() - heading);
+        double headingErrorRad =
+                MathUtil.angleModulus(driveAngle.getRadians() - heading - config.shooterAngleOffsetRad);
 
         // Angular velocity feedforward: rate of change of aim angle
         double driveAngularVelocity = 0;
@@ -576,7 +582,7 @@ public class ShotCalculator {
         prevRobotOmega = 0;
     }
 
-    InterpolatingDoubleTreeMap getRpmMap() {
+    public InterpolatingDoubleTreeMap getRpmMap() {
         return rpmMap;
     }
 
