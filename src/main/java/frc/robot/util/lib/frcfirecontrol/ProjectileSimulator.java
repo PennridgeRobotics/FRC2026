@@ -108,7 +108,7 @@ public class ProjectileSimulator {
 
     /** RPM to ball exit speed (m/s). Accounts for slip between the wheel surface and ball. */
     public double exitVelocity(double rpm) {
-        return params.slipFactor() * rpm * Math.PI * params.wheelDiameterM() / 60.0;
+        return (params.slipFactor() * rpm * Math.PI * params.wheelDiameterM() / 60.0) / 2.0;
     }
 
     /** Simulate a ball launched at the given RPM and see where it is when it reaches the target distance. */

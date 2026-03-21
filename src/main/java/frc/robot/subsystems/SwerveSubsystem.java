@@ -343,8 +343,7 @@ public class SwerveSubsystem extends SubsystemBase {
         if (forceNormalDriveMode) {
             finalAngularVelocity = angularVelocity;
         } else if (faceTowardsHub) {
-            finalAngularVelocity = getTargetAngularVelocity(getAngleToHub())
-                    .plus(getShooterCalculator().calculateShotData().driveAngleFF());
+            finalAngularVelocity = getTargetAngularVelocity(getAngleToHub());
         } else if (lockYawTowardsVelocity) {
             finalAngularVelocity = getTargetAngularVelocity(getVelocityAngle(
                     MetersPerSecond.of(limitedLinearVelocity.getX()),
@@ -354,6 +353,8 @@ public class SwerveSubsystem extends SubsystemBase {
         } else {
             finalAngularVelocity = angularVelocity;
         }
+        shooterCalculator.setLastAngularVelocityInput(
+                !forceNormalDriveMode && faceTowardsHub ? angularVelocity : finalAngularVelocity);
         swerveDrive.driveFieldOriented(new ChassisSpeeds(
                 limitedLinearVelocity.getX(), limitedLinearVelocity.getY(), finalAngularVelocity.in(RadiansPerSecond)));
     }
