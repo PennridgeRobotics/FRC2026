@@ -426,7 +426,7 @@ public class SwerveSubsystem extends SubsystemBase {
     }
 
     public Command faceTowardsHubCommand() {
-        return Commands.startEnd(() -> faceTowardsHub = true, () -> faceTowardsHub = false);
+        return Commands.runEnd(() -> faceTowardsHub = true, () -> faceTowardsHub = false);
     }
 
     public Rotation2d getAngleToHub() {
