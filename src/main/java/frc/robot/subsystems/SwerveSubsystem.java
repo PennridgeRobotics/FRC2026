@@ -551,14 +551,14 @@ public class SwerveSubsystem extends SubsystemBase {
     private LinearVelocity joystickToLinearVelocity(final double input) {
         final var withDeadband =
                 MathUtil.applyDeadband(input, ControllerConstants.DRIVE_MIN_INPUT, ControllerConstants.DRIVE_MAX_INPUT);
-        final var scaled = Math.abs(Math.pow(withDeadband, 3)) * Math.signum(withDeadband);
+        final var scaled = Math.abs(Math.pow(withDeadband, 2)) * Math.signum(withDeadband);
         return getMaximumChassisVelocity().times(scaled).times(speedMultiplier.getMultiplier());
     }
 
     private AngularVelocity joystickToAngularVelocity(final double input) {
         final var withDeadband =
                 MathUtil.applyDeadband(input, ControllerConstants.DRIVE_MIN_INPUT, ControllerConstants.DRIVE_MAX_INPUT);
-        final var scaled = Math.abs(Math.pow(withDeadband, 5)) * Math.signum(withDeadband);
+        final var scaled = Math.abs(Math.pow(withDeadband, 3)) * Math.signum(withDeadband);
         return getMaximumChassisAngularVelocity().times(scaled).times(speedMultiplier.getMultiplier());
     }
 
