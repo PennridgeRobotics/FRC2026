@@ -376,30 +376,8 @@ public class ShooterCalculator {
                 Meters.convertFrom(8, Inches),
                 () -> isIntaking.getAsBoolean() && loggedSimBallsInHopper.getAsInt() <= loggedSimHopperLimit.getAsInt(),
                 () -> loggedSimBallsInHopper.set(loggedSimBallsInHopper.getAsInt() + 1));
-        final var hubCollectionZoneWidth = Inches.of(27.4);
-        final var halfHub = new Translation2d(hubCollectionZoneWidth, hubCollectionZoneWidth).div(2);
-        final var blueHubCorner1 = FieldConstants.HUB_BLUE.minus(halfHub);
-        final var blueHubCorner2 = FieldConstants.HUB_BLUE.plus(halfHub);
-        final var redHubCorner1 = FieldConstants.HUB_RED.minus(halfHub);
-        final var redHubCorner2 = FieldConstants.HUB_RED.plus(halfHub);
-        final var zMax = Meters.convertFrom(74, Inches);
-        final var zMin = Meters.convertFrom(70, Inches);
-        fuelPhysicsSim.addFieldRelativeBallRemovalZone(
-                blueHubCorner1.getX(),
-                blueHubCorner2.getX(),
-                blueHubCorner1.getY(),
-                blueHubCorner2.getY(),
-                zMin,
-                zMax,
-                loggedSimToggleRemoveScoredBalls);
-        fuelPhysicsSim.addFieldRelativeBallRemovalZone(
-                redHubCorner1.getX(),
-                redHubCorner2.getX(),
-                redHubCorner1.getY(),
-                redHubCorner2.getY(),
-                zMin,
-                zMax,
-                loggedSimToggleRemoveScoredBalls);
+        fuelPhysicsSim.setRemoveScoredBalls(loggedSimToggleRemoveScoredBalls.getAsBoolean());
+        loggedSimToggleRemoveScoredBalls.addListener(fuelPhysicsSim::setRemoveScoredBalls);
     }
 
     public void simulationPeriodic() {
