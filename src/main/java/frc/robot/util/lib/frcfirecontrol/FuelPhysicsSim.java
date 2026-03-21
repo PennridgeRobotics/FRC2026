@@ -1877,12 +1877,14 @@ public class FuelPhysicsSim {
             ball.omega = new Translation3d();
             blueHub.score++;
             totalScored++;
+            if (isRemovingScoredBalls()) balls.remove(ball);
         } else if (redHub.didScore(ball)) {
             ball.pos = redHub.exit;
             ball.vel = redHub.getDispersalVelocity(rng);
             ball.omega = new Translation3d();
             redHub.score++;
             totalScored++;
+            if (isRemovingScoredBalls()) balls.remove(ball);
         }
     }
 
