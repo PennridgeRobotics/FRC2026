@@ -673,6 +673,46 @@ public class FuelPhysicsSim {
         }
     }
 
+    /** Intake zone defined in robot-relative coordinates. Picks up balls that enter the box. */
+    static class FieldRelativeBallRemovalZone {
+        final double xMin, xMax, yMin, yMax, zMin, zMax;
+        final BooleanSupplier active;
+        final Runnable callback;
+
+        FieldRelativeBallRemovalZone(
+                double xMin,
+                double xMax,
+                double yMin,
+                double yMax,
+                double zMin,
+                double zMax,
+                BooleanSupplier active,
+                Runnable callback) {
+            this.xMin = xMin;
+            this.xMax = xMax;
+            this.yMin = yMin;
+            this.yMax = yMax;
+            this.zMin = zMin;
+            this.zMax = zMax;
+            this.active = active;
+            this.callback = callback;
+        }
+
+        boolean shouldRemoveBall(SimBall ball) {
+            if (!active.getAsBoolean()) return false;
+            boolean inside = ball.pos.getX() >= xMin
+                    && ball.pos.getX() <= xMax
+                    && ball.pos.getY() >= yMin
+                    && ball.pos.getY() <= yMax
+                    && ball.pos.getZ() >= zMin
+                    && ball.pos.getZ() <= zMax;
+            if (inside) {
+                callback.run();
+            }
+            return inside;
+        }
+    }
+
     // State
 
     private final List<SimBall> balls = new ArrayList<>();
@@ -700,6 +740,7 @@ public class FuelPhysicsSim {
 
     // Intakes
     private final List<IntakeZone> intakes = new ArrayList<>();
+    private final List<FieldRelativeBallRemovalZone> ballRemovalZones = new ArrayList<>();
 
     // Counters
     private int totalLaunched;
@@ -854,6 +895,36 @@ public class FuelPhysicsSim {
     /** Add an intake zone without a callback. */
     public void addIntakeZone(double xMin, double xMax, double yMin, double yMax, BooleanSupplier active) {
         addIntakeZone(xMin, xMax, yMin, yMax, active, () -> {});
+    }
+
+    /**
+     * Add a field-relative ball removal zone. Balls that enter this box (in field-relative coords) get picked up.
+     *
+     * @param xMin front edge
+     * @param xMax back edge
+     * @param yMin left edge
+     * @param yMax right edge
+     * @param zMin bottom edge
+     * @param zMax top edge
+     * @param active returns true when the ball removal zone is actually active
+     * @param callback fires when a ball gets removed
+     */
+    public void addFieldRelativeBallRemovalZone(
+            double xMin,
+            double xMax,
+            double yMin,
+            double yMax,
+            double zMin,
+            double zMax,
+            BooleanSupplier active,
+            Runnable callback) {
+        ballRemovalZones.add(new FieldRelativeBallRemovalZone(xMin, xMax, yMin, yMax, zMin, zMax, active, callback));
+    }
+
+    /** Add a field-relative ball removal zone without a callback. */
+    public void addFieldRelativeBallRemovalZone(
+            double xMin, double xMax, double yMin, double yMax, double zMin, double zMax, BooleanSupplier active) {
+        addFieldRelativeBallRemovalZone(xMin, xMax, yMin, yMax, zMin, zMax, active, () -> {});
     }
 
     /**
