@@ -168,6 +168,7 @@ public class ShooterCalculator {
         new LoggedNetworkButton("Sim/Clear Balls", fuelPhysicsSim::clearBalls);
         new LoggedNetworkButton("Sim/Spawn Balls", fuelPhysicsSim::placeFieldBalls);
         loggedSimToggleRemoveScoredBalls = new LoggedNetworkBoolean("Sim/Remove Scored Balls", false);
+        loggedSimToggleRemoveScoredBalls.addListener(fuelPhysicsSim::setRemoveScoredBalls);
 
         sotmSimulator = createProjectileSimulator();
         shotCalculator = createShotCalculator();
@@ -377,7 +378,6 @@ public class ShooterCalculator {
                 () -> isIntaking.getAsBoolean() && loggedSimBallsInHopper.getAsInt() <= loggedSimHopperLimit.getAsInt(),
                 () -> loggedSimBallsInHopper.set(loggedSimBallsInHopper.getAsInt() + 1));
         fuelPhysicsSim.setRemoveScoredBalls(loggedSimToggleRemoveScoredBalls.getAsBoolean());
-        loggedSimToggleRemoveScoredBalls.addListener(fuelPhysicsSim::setRemoveScoredBalls);
     }
 
     public void simulationPeriodic() {
