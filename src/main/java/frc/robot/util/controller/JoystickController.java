@@ -30,8 +30,7 @@ public class JoystickController extends GenericHID implements Sendable {
         TopHat(18),
         TopHatShift(19),
         TopHatAlt(20),
-        TopHatAltShift(21)
-        ;
+        TopHatAltShift(21);
 
         private final int value;
 
@@ -50,14 +49,13 @@ public class JoystickController extends GenericHID implements Sendable {
     }
 
     public enum Axis {
-        /** Right = positive **/
+        /** Right = positive */
         X(0),
-        /** Back = positive **/
+        /** Back = positive */
         Y(1),
         Throttle(2),
-        /** Counter-clockwise = positive **/
-        Twist(3)
-        ;
+        /** Clockwise = positive */
+        Twist(3);
 
         private final int value;
 
@@ -76,10 +74,12 @@ public class JoystickController extends GenericHID implements Sendable {
     }
 
     // Axis
+    /** Right is positive */
     public double getX() {
         return getRawAxis(Axis.X);
     }
 
+    /** Back is positive */
     public double getY() {
         return getRawAxis(Axis.Y);
     }
@@ -88,6 +88,7 @@ public class JoystickController extends GenericHID implements Sendable {
         return getRawAxis(Axis.Throttle);
     }
 
+    /** Clockwise is positive */
     public double getTwist() {
         return getRawAxis(Axis.Twist);
     }
@@ -446,6 +447,5 @@ public class JoystickController extends GenericHID implements Sendable {
         builder.addBooleanProperty("TopHat Alt", () -> getTopHatButton(true, false), null);
         builder.addBooleanProperty("TopHat Shift", () -> getTopHatButton(false, true), null);
         builder.addBooleanProperty("TopHat Alt Shift", () -> getTopHatButton(true, true), null);
-
     }
 }

@@ -28,6 +28,7 @@ import frc.robot.util.AutoManager;
 import frc.robot.util.HubTracker;
 import frc.robot.util.ShooterCalculator;
 import frc.robot.util.StringUtils;
+import frc.robot.util.controller.CommandJoystickController;
 import frc.robot.util.dashboard.Field2dElastic;
 import frc.robot.util.dashboard.LoggedNetworkButton;
 import frc.robot.util.dashboard.LoggedNetworkInput;
@@ -68,6 +69,7 @@ public class RobotContainer {
             new CommandXboxController(ControllerConstants.DRIVER_CONTROLLER_PORT);
     private final CommandXboxController operatorController =
             new CommandXboxController(ControllerConstants.OPERATOR_CONTROLLER_PORT);
+    private final CommandJoystickController joystickController = new CommandJoystickController(0);
 
     private final SendableChooser<AutoManager.AutoStartLocation> autoStartLocationChooser;
     private boolean autoClimb = false;
@@ -144,6 +146,25 @@ public class RobotContainer {
                 driverController::getLeftY, () -> -driverController.getLeftX(), () -> -driverController.getRightX()));
 
         driverController.start().onTrue(swerveSubsystem.resetYaw());*/
+
+        swerveSubsystem.setDefaultCommand(swerveSubsystem.driveFieldOrientedCommand(
+                () -> -joystickController.getY(),
+                () -> -joystickController.getX(),
+                () -> -joystickController.getTwist()));
+        if (fuelSubsystem != null) {
+            joystickController
+                    .trigger(false, false)
+                    .whileTrue(fuelSubsystem.launchCommand(true))
+                    .and(shooterCalculator::isUsingSOTM)
+                    .whileTrue(swerveSubsystem.faceTowardsHubCommand());
+            joystickController
+                    .trigger(false, true)
+                    .whileTrue(fuelSubsystem.windUpCommand())
+                    .and(shooterCalculator::isUsingSOTM)
+                    .whileTrue(swerveSubsystem.faceTowardsHubCommand());
+            joystickController.topHat(false, false).whileTrue(fuelSubsystem.intakeCommand());
+        }
+        if (true) return;
 
         // for testing
         final var fieldOriented = true;

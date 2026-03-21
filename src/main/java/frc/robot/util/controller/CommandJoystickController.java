@@ -156,10 +156,12 @@ public class CommandJoystickController extends CommandGenericHID {
         }
     }
 
+    /** Right is positive */
     public double getX() {
         return m_hid.getX();
     }
 
+    /** Back is positive */
     public double getY() {
         return m_hid.getY();
     }
@@ -168,6 +170,7 @@ public class CommandJoystickController extends CommandGenericHID {
         return m_hid.getThrottle();
     }
 
+    /** Clockwise is positive * */
     public double getTwist() {
         return m_hid.getTwist();
     }
