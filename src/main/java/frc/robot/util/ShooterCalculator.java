@@ -16,6 +16,8 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
+import frc.robot.util.dashboard.LoggedNetworkBoolean;
+import frc.robot.util.dashboard.LoggedNetworkButton;
 import frc.robot.util.dashboard.LoggedNetworkDouble;
 import frc.robot.util.dashboard.LoggedNetworkInteger;
 import frc.robot.util.dashboard.LoggedNetworkUnit;
@@ -69,6 +71,7 @@ public class ShooterCalculator {
     private final LoggedNetworkInteger loggedSimHopperLimit;
     private final LoggedNetworkUnit<TimeUnit, Time> loggedSimShootCooldownMinMs;
     private final LoggedNetworkUnit<TimeUnit, Time> loggedSimShootCooldownMaxMs;
+    private final LoggedNetworkBoolean loggedSimToggleRemoveScoredBalls;
 
     private final BooleanEntry manualModeEntry;
     private final StringPublisher manualModeTextPublisher;
@@ -162,6 +165,9 @@ public class ShooterCalculator {
         loggedSimHopperLimit = new LoggedNetworkInteger("Sim/Hopper Limit", 20);
         loggedSimShootCooldownMinMs = new LoggedNetworkUnit<>("Sim/Shoot Cooldown Min MS", Milliseconds.of(100));
         loggedSimShootCooldownMaxMs = new LoggedNetworkUnit<>("Sim/Shoot Cooldown Max MS", Milliseconds.of(300));
+        new LoggedNetworkButton("Sim/Clear Balls", fuelPhysicsSim::clearBalls);
+        new LoggedNetworkButton("Sim/Spawn Balls", fuelPhysicsSim::placeFieldBalls);
+        loggedSimToggleRemoveScoredBalls = new LoggedNetworkBoolean("Sim/Remove Scored Balls", false);
 
         sotmSimulator = createProjectileSimulator();
         shotCalculator = createShotCalculator();
@@ -370,6 +376,30 @@ public class ShooterCalculator {
                 Meters.convertFrom(8, Inches),
                 () -> isIntaking.getAsBoolean() && loggedSimBallsInHopper.getAsInt() <= loggedSimHopperLimit.getAsInt(),
                 () -> loggedSimBallsInHopper.set(loggedSimBallsInHopper.getAsInt() + 1));
+        final var hubCollectionZoneWidth = Inches.of(27.4);
+        final var halfHub = new Translation2d(hubCollectionZoneWidth, hubCollectionZoneWidth).div(2);
+        final var blueHubCorner1 = FieldConstants.HUB_BLUE.minus(halfHub);
+        final var blueHubCorner2 = FieldConstants.HUB_BLUE.plus(halfHub);
+        final var redHubCorner1 = FieldConstants.HUB_RED.minus(halfHub);
+        final var redHubCorner2 = FieldConstants.HUB_RED.plus(halfHub);
+        final var zMax = Meters.convertFrom(74, Inches);
+        final var zMin = Meters.convertFrom(70, Inches);
+        fuelPhysicsSim.addFieldRelativeBallRemovalZone(
+                blueHubCorner1.getX(),
+                blueHubCorner2.getX(),
+                blueHubCorner1.getY(),
+                blueHubCorner2.getY(),
+                zMin,
+                zMax,
+                loggedSimToggleRemoveScoredBalls);
+        fuelPhysicsSim.addFieldRelativeBallRemovalZone(
+                redHubCorner1.getX(),
+                redHubCorner2.getX(),
+                redHubCorner1.getY(),
+                redHubCorner2.getY(),
+                zMin,
+                zMax,
+                loggedSimToggleRemoveScoredBalls);
     }
 
     public void simulationPeriodic() {
