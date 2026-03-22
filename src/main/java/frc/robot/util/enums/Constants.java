@@ -6,10 +6,7 @@ import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.VecBuilder;
-import edu.wpi.first.math.geometry.Rectangle2d;
-import edu.wpi.first.math.geometry.Rotation3d;
-import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.math.geometry.*;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.units.measure.*;
@@ -30,6 +27,7 @@ public final class Constants {
 
     public static final class PhysicalConstants { // TODO update length/width depending on bumper size
         public static final Distance BUMPERS_WIDTH = Inches.of(3.375);
+        public static final Distance BUMPERS_HEIGHT = Inches.of(5.0);
         public static final Distance WHEEL_CENTERS_DISTANCE_LENGTH_X = Inches.of(18.5); // 0.4699m
         public static final Distance WHEEL_CENTERS_DISTANCE_WIDTH_Y = Inches.of(23.5); // 0.5969m
         public static final Distance ROBOT_FULL_LENGTH_X =
@@ -48,7 +46,7 @@ public final class Constants {
     public static final class VisionConstants {
         public static final String LIMELIGHT_NAME = "limelight";
 
-        public static final boolean VISION_ENABLED = false;
+        public static final boolean VISION_ENABLED = true;
 
         // Tuning
         // Base standard deviations
@@ -61,11 +59,9 @@ public final class Constants {
         public static final double STD_DEV_DISTANCE_MULTIPLIER = 1.0 / 30;
 
         // Camera 1
-        public static final String CAMERA_1_NAME = "Arducam_OV9281_1";
-        public static final Translation3d CAMERA_1_TRANSLATION =
-                new Translation3d(Inches.of(6.26), Inches.of(-15.74), Inches.of(14.32)); // Robot to cam
-        public static final Rotation3d CAMERA_1_ROTATION =
-                new Rotation3d(Degrees.of(0), Degrees.of(0), Degrees.of(0)); // Robot to cam
+        public static final String CAMERA_1_NAME = "Arducam_OV9281_USB_Camera";
+        public static final Translation3d CAMERA_1_TRANSLATION = new Translation3d(0.162087, -0.250706, 0.674197);
+        public static final Rotation3d CAMERA_1_ROTATION = new Rotation3d(-0.007874, 0.014070, -3.123649);
     }
 
     public static final class DriveConstants {
@@ -77,6 +73,46 @@ public final class Constants {
         public static final Distance WHEEL_DIAMETER = Inches.of(4);
     }
 
+    public static final class ShootOnTheMoveConstants {
+        public static final Distance BALL_DIAMETER = Inches.of(5.906); // need to define this first
+
+        // Measure/tune:
+        public static final Distance FLYWHEEL_DIAMETER = Inches.of(3.94);
+        public static final Distance EXIT_HEIGHT = Inches.of(20.5); // floor to where ball leaves shooter
+        public static final Angle LAUNCH_ANGLE_FROM_HORIZONTAL = Degrees.of(60); // estimated
+        public static final double SLIP_FACTOR = 0.86; // 0 = no group, 1 = perfect
+        public static final Translation2d LAUNCHER_OFFSET = new Translation2d(Inches.of(7.4), Inches.zero());
+        public static final LinearVelocity MAX_VELOCITY_WHILE_SHOOTING = MetersPerSecond.of(1.0);
+        public static final Time PHASE_DELAY = Milliseconds.of(0); // vision pipeline latency
+        public static final Time MECHANISM_LATENCY = Milliseconds.of(20); // how long the mechanism takes to respond
+        public static final Distance HUB_HEIGHT = Inches.of(72) // hub height
+                .plus(BALL_DIAMETER.div(2))
+                .plus(Inches.of(3)); // buffer
+
+        public static final Mass BALL_MASS = Kilograms.of(0.215);
+        public static final double DRAG_COEFFICIENT = 0.11; // 0.47; // smooth sphere
+        public static final double MAGNUS_COEFFICIENT = 0.2;
+        public static final double AIR_DENSITY = 1.225; // kg/m³
+        public static final Time SIM_TIMESTEP = Seconds.of(0.002);
+        public static final AngularVelocity RPM_SEARCH_MIN = RPM.of(1500);
+        public static final AngularVelocity RPM_SEARCH_MAX = RPM.of(4000); // real limit: 3937
+        public static final int ITERATIONS = 25;
+        public static final Time MAX_SIM_TIME = Seconds.of(5);
+
+        public static final Angle MAXIMUM_TILT =
+                Degrees.of(5); // suppress firing when the chassis tilts past this (bumps/ramps)
+        // Heading tolerance tightens as robot speed increases.
+        // scaledMaxError = base / (1 + speedScalar * speed). Set to 0 to disable.
+        public static final double HEADING_SPEED_SCALAR = 1.0;
+        // Heading tolerance scales with distance from hub.
+        // Closer = tighter because small angle errors matter more up close.
+        // scaledMaxError *= referenceDistance / distance, clamped [0.5, 2.0].
+        public static final double HEADING_REFERENCE_DISTANCE = 2.5;
+
+        public static final Translation2d BLUE_HUB_FORWARD_VECTOR = new Translation2d(1, 0);
+        public static final Translation2d RED_HUB_FORWARD_VECTOR = new Translation2d(-1, 0);
+    }
+
     public static final class FuelConstants {
         public static final boolean FUEL_SUBSYSTEM_ENABLED = true;
 
@@ -84,7 +120,7 @@ public final class Constants {
         public static final int INTAKE_LAUNCHER_RIGHT_MOTOR_ID = 11;
         public static final int INDEXER_MOTOR_ID = 12;
 
-        public static final Distance WHEEL_RADIUS = Inches.of(2);
+        public static final Distance FLYWHEEL_RADIUS = ShootOnTheMoveConstants.FLYWHEEL_DIAMETER.div(2);
 
         public static final boolean INTAKE_LAUNCHER_INVERTED = false;
         public static final boolean INDEXER_INVERTED = false;
@@ -100,6 +136,9 @@ public final class Constants {
         public static final MotorMode INDEXER_MOTOR_MODE = MotorMode.BRAKE;
         public static final MechanismGearing INTAKE_LAUNCHER_GEARING = new MechanismGearing(60.0 / 40);
         public static final MechanismGearing INDEXER_GEARING = new MechanismGearing(32.0 / 18);
+        public static final int INTAKE_LAUNCHER_ENCODER_MEASUREMENT_PERIOD =
+                16; // must be between [1, 64]; default = 32ms
+        public static final int INTAKE_LAUNCHER_ENCODER_AVERAGE_DEPTH = 2; // must be 1, 2, 4, or 8; default = 8
 
         public static final AngularVelocity INTAKE_VELOCITY_INTAKE_LAUNCHER = RotationsPerSecond.of(20);
         public static final AngularVelocity INTAKE_VELOCITY_INDEXER = RotationsPerSecond.of(-16);
@@ -145,8 +184,6 @@ public final class Constants {
     public static final class ControllerConstants {
         public static final int DRIVER_CONTROLLER_PORT = 0;
         public static final int OPERATOR_CONTROLLER_PORT = 1;
-
-        public static final boolean OPERATOR_ENABLED = true;
 
         public static final double DRIVE_MIN_INPUT = 0.01; // deadband
         public static final double DRIVE_MAX_INPUT = 0.98;

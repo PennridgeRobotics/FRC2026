@@ -1,7 +1,11 @@
 package frc.robot.util;
 
-import static edu.wpi.first.units.Units.*;
+import static edu.wpi.first.units.Units.DegreesPerSecond;
+import static edu.wpi.first.units.Units.Meters;
+import static edu.wpi.first.units.Units.MetersPerSecond;
+import static edu.wpi.first.units.Units.Seconds;
 
+import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform2d;
@@ -9,6 +13,7 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import frc.robot.lib.BLine.FlippingUtil;
@@ -44,6 +49,8 @@ public class AutoManager {
     private final Supplier<Distance> distanceSupplier =
             new LoggedNetworkUnit<>("Auto/Move from hub & shoot distance (m)", Meters.of(1.8));
 
+    private @Nullable Pair<FollowPath, Path> currentPath;
+
     public AutoManager(
             SwerveSubsystem swerveDrive,
             FollowPath.Builder pathBuilder,
@@ -53,6 +60,9 @@ public class AutoManager {
         this.fuelSubsystem = fuelSubsystem;
         this.pathBuilder = pathBuilder;
         this.climberSubsystem = climberSubsystem;
+
+        FollowPath.setDoubleLoggingConsumer(pair -> SmartDashboard.putNumber(pair.getFirst(), pair.getSecond()));
+        FollowPath.setBooleanLoggingConsumer(pair -> SmartDashboard.putBoolean(pair.getFirst(), pair.getSecond()));
     }
 
     public void autonomousInit() {
@@ -65,10 +75,14 @@ public class AutoManager {
         pathBuilder.withPoseReset(pose -> {});
     }
 
-    public FollowPath getPathCommand(Path path) {
+    public Command getPathCommand(Path path) {
         final var builtPath = pathBuilder.build(path);
         pathBuilder.withPoseReset(unused -> {});
-        return builtPath;
+        final var pathPair = Pair.of(builtPath, path);
+        return Commands.sequence(Commands.runOnce(() -> currentPath = pathPair), builtPath)
+                .finallyDo(() -> {
+                    if (currentPath == pathPair) currentPath = null;
+                });
     }
 
     public Command getAutoCommand(AutoOptions autoOptions) {
@@ -127,7 +141,7 @@ public class AutoManager {
                                     case LEFT_HUB -> startLeftHubShootPath;
                                     case RIGHT_INNER_BUMP -> startRightInnerBumpShootPath;
                                 })),
-                fuelSubsystem.windUpAndLaunchCommand().withTimeout(Seconds.of(5)));
+                fuelSubsystem.launchCommand(true).withTimeout(Seconds.of(5)));
     }
 
     private Command pathInFrontOfHubAndShoot() {
@@ -141,8 +155,8 @@ public class AutoManager {
                     path.setPathConstraints(new Path.PathConstraints().setMaxVelocityMetersPerSec(1.2));
                     return fuelSubsystem
                             .windUpCommand()
-                            .withDeadline(pathBuilder.build(path))
-                            .andThen(fuelSubsystem.windUpAndLaunchCommand());
+                            .withDeadline(getPathCommand(path))
+                            .andThen(fuelSubsystem.launchCommand(true));
                 },
                 Set.of(swerveDrive, fuelSubsystem));
     }
@@ -174,8 +188,8 @@ public class AutoManager {
                     path.setPathConstraints(new Path.PathConstraints().setMaxVelocityMetersPerSec(0.4));
                     return fuelSubsystem
                             .windUpCommand()
-                            .withDeadline(pathBuilder.build(path))
-                            .andThen(fuelSubsystem.windUpAndLaunchCommand());
+                            .withDeadline(getPathCommand(path))
+                            .andThen(fuelSubsystem.launchCommand(true));
                 },
                 Set.of(swerveDrive, fuelSubsystem));
     }
@@ -198,8 +212,8 @@ public class AutoManager {
                             .setMaxAccelerationMetersPerSec2(4));
                     return fuelSubsystem
                             .windUpCommand()
-                            .withDeadline(pathBuilder.build(path))
-                            .andThen(fuelSubsystem.windUpAndLaunchCommand());
+                            .withDeadline(getPathCommand(path))
+                            .andThen(fuelSubsystem.launchCommand(true));
                 },
                 Set.of(swerveDrive, fuelSubsystem));
     }
@@ -217,7 +231,7 @@ public class AutoManager {
                     if (constraints != null) {
                         path.setPathConstraints(constraints);
                     }
-                    return pathBuilder.build(path);
+                    return getPathCommand(path);
                 },
                 Set.of(swerveDrive));
     }
@@ -247,13 +261,68 @@ public class AutoManager {
                             .setMaxVelocityMetersPerSec(1.5)
                             .setMaxAccelerationMetersPerSec2(1.5)
                             .setEndTranslationToleranceMeters(0.02));
-                    return pathBuilder.build(path);
+                    return getPathCommand(path);
                 },
                 Set.of(swerveDrive));
     }
 
     private boolean shouldFlip() {
         return DriverStation.getAlliance().orElse(null) == Alliance.Red;
+    }
+
+    public @Nullable List<Pose2d> getCurrentPoses() {
+        if (currentPath == null) return null;
+        final Pose2d currentPose = swerveDrive.getRobotPose();
+        final Translation2d currentTranslation = currentPose.getTranslation();
+        final FollowPath command = currentPath.getFirst();
+        final Path path = currentPath.getSecond();
+        final var states = new ArrayList<Pose2d>();
+        int translationElementsPassed = command.getCurrentTranslationElementIndex();
+        Translation2d previousTranslation = path.getStartPose().getTranslation();
+        for (var elementWithConstraints : path.getPathElementsWithConstraints()) {
+            final var element = elementWithConstraints.getFirst();
+            final Translation2d translation;
+            if (element instanceof Path.Waypoint waypoint) {
+                translation = waypoint.translationTarget().translation();
+            } else if (element instanceof Path.TranslationTarget translationTarget) {
+                translation = translationTarget.translation();
+            } else continue;
+            if (translationElementsPassed > 0) {
+                translationElementsPassed--;
+                previousTranslation = translation;
+                continue;
+            }
+            if (states.isEmpty()) {
+                final var progress = calculateSegmentProjectionT(previousTranslation, translation, currentTranslation);
+                final Translation2d newTranslation = previousTranslation.interpolate(translation, progress);
+                states.add(new Pose2d(newTranslation, Rotation2d.kZero));
+            }
+            states.add(new Pose2d(translation, Rotation2d.kZero));
+        }
+        return states;
+    }
+
+    /**
+     * Calculates the clamped projection ratio of a point onto a segment.
+     *
+     * @param segmentStart The start of the segment
+     * @param segmentEnd The end of the segment
+     * @param point The point to project
+     * @return Projection ratio along the segment in [0, 1]
+     */
+    private double calculateSegmentProjectionT(
+            Translation2d segmentStart, Translation2d segmentEnd, Translation2d point) {
+        double dx = segmentEnd.getX() - segmentStart.getX();
+        double dy = segmentEnd.getY() - segmentStart.getY();
+        double segmentLengthSquared = dx * dx + dy * dy;
+        if (segmentLengthSquared < 1e-6) {
+            return 0.0;
+        }
+
+        double dxPoint = point.getX() - segmentStart.getX();
+        double dyPoint = point.getY() - segmentStart.getY();
+        double t = (dxPoint * dx + dyPoint * dy) / segmentLengthSquared;
+        return Math.max(0.0, Math.min(1.0, t));
     }
 
     public enum AutoStartLocation {

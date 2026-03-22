@@ -3,6 +3,8 @@ package frc.robot.subsystems;
 import static edu.wpi.first.units.Units.Amps;
 import static edu.wpi.first.units.Units.Degrees;
 import static edu.wpi.first.units.Units.DegreesPerSecond;
+import static edu.wpi.first.units.Units.Inches;
+import static edu.wpi.first.units.Units.KilogramSquareMeters;
 import static edu.wpi.first.units.Units.Second;
 import static edu.wpi.first.units.Units.Seconds;
 import static edu.wpi.first.units.Units.Volts;
@@ -11,12 +13,14 @@ import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 import edu.wpi.first.math.filter.Debouncer;
 import edu.wpi.first.math.system.plant.DCMotor;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
+import frc.robot.util.dashboard.LoggedNetworkBoolean;
+import frc.robot.util.dashboard.LoggedNetworkButton;
 import frc.robot.util.dashboard.LoggedNetworkDouble;
+import frc.robot.util.dashboard.LoggedNetworkSendable;
 import frc.robot.util.dashboard.MultiMotorInfoSendable;
 import frc.robot.util.enums.Constants.ClimberConstants;
 import java.util.function.BooleanSupplier;
@@ -35,18 +39,18 @@ public class ClimberSubsystem extends SubsystemBase {
     private final SmartMotorController motorController;
     private final Arm climber;
 
-    private boolean isClimbing = false;
-    private final Trigger climbingTrigger = new Trigger(() -> isClimbing);
+    private final LoggedNetworkBoolean isClimbing = new LoggedNetworkBoolean("/Climber/Climbing", false);
+    private final Trigger climbingTrigger = new Trigger(isClimbing);
     private final Trigger isClimbed;
     private final Trigger isArmed;
     private final DoubleSupplier climbValue =
-            new LoggedNetworkDouble("Climber/Climb Value", ClimberConstants.CLIMB_VALUE);
+            new LoggedNetworkDouble("/Climber/Climb Value", ClimberConstants.CLIMB_VALUE);
     private final DoubleSupplier climbFastValue =
-            new LoggedNetworkDouble("Climber/Climb Fast Value", ClimberConstants.CLIMB_FAST_VALUE);
+            new LoggedNetworkDouble("/Climber/Climb Fast Value", ClimberConstants.CLIMB_FAST_VALUE);
     private final DoubleSupplier lowerValue =
-            new LoggedNetworkDouble("Climber/Lower Value", ClimberConstants.LOWER_VALUE);
+            new LoggedNetworkDouble("/Climber/Lower Value", ClimberConstants.LOWER_VALUE);
     private final DoubleSupplier lowerFastValue =
-            new LoggedNetworkDouble("Climber/Lower Fast Value", ClimberConstants.LOWER_FAST_VALUE);
+            new LoggedNetworkDouble("/Climber/Lower Fast Value", ClimberConstants.LOWER_FAST_VALUE);
 
     public ClimberSubsystem(MultiMotorInfoSendable motorInfo) {
         final var motorConfig = new SmartMotorControllerConfig()
@@ -64,6 +68,9 @@ public class ClimberSubsystem extends SubsystemBase {
         motorController = new SparkWrapper(sparkMaxMotor, DCMotor.getNEO(1), motorConfig);
         climber = new Arm(new ArmConfig(motorController)
                 .withStartingPosition(ClimberConstants.VERTICAL_ANGLE)
+                .withMOI(KilogramSquareMeters.of(11.151))
+                .withLength(Inches.of(6))
+                .withHardLimit(ClimberConstants.MINIMUM_ANGLE, ClimberConstants.MAXIMUM_ANGLE)
                 .withTelemetry("ClimberArm", TelemetryVerbosity.HIGH));
         /*SparkMaxConfig config = new SparkMaxConfig();
         config.smartCurrentLimit(80);
@@ -86,8 +93,10 @@ public class ClimberSubsystem extends SubsystemBase {
         /*SmartDashboard.putData(
         "Climber PID & FF",
         new PIDSendable(motorController, PIDSendable.Type.PID | PIDSendable.Type.ROTARY_FF));*/
-        SmartDashboard.putData("Climbing Subsystem", (builder) -> {
-            builder.addBooleanProperty("Climbing", () -> isClimbing, (v) -> isClimbing = v);
+        new LoggedNetworkButton("Climber/Set Climber Encoder to Vertical")
+                .getTrigger()
+                .onTrue(setClimberEncoderToVertical());
+        new LoggedNetworkSendable<>("/Climber", builder -> {
             builder.addDoubleProperty("Angle", () -> climber.getAngle().in(Degrees), v -> climber.getMotor()
                     .setEncoderPosition(Degrees.of(v)));
             builder.addDoubleProperty(
@@ -99,7 +108,7 @@ public class ClimberSubsystem extends SubsystemBase {
 
     public Command climbCommand(BooleanSupplier autoStop, BooleanSupplier fast) {
         return Commands.sequence(
-                        Commands.runOnce(() -> isClimbing = true),
+                        Commands.runOnce(() -> isClimbing.set(true)),
                         Commands.either(
                                 climber.run(ClimberConstants.CLIMBED_ANGLE),
                                 setDutyCycle(() ->
@@ -133,7 +142,7 @@ public class ClimberSubsystem extends SubsystemBase {
         final var runVolts = Volts.of(-1.0);
         final var currentThreshold = Amps.of(0); // change this
         final var velocityThreshold = DegreesPerSecond.of(2);
-        return startRun(() -> isClimbing = false, () -> motorController.setVoltage(runVolts))
+        return startRun(() -> isClimbing.set(false), () -> motorController.setVoltage(runVolts))
                 .until(() -> currentDebouncer.calculate(
                         motorController.getStatorCurrent().gte(currentThreshold)
                                 && motorController.getMechanismVelocity().abs(DegreesPerSecond)

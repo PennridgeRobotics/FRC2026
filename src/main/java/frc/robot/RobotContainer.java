@@ -4,11 +4,15 @@ import static edu.wpi.first.units.Units.Seconds;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.Pair;
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.StructPublisher;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.PowerDistribution;
+import edu.wpi.first.wpilibj.smartdashboard.FieldObject2d;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
@@ -23,10 +27,17 @@ import frc.robot.util.AutoManager;
 import frc.robot.util.HubTracker;
 import frc.robot.util.ShooterCalculator;
 import frc.robot.util.StringUtils;
-import frc.robot.util.dashboard.LoggedNetworkButton;
+import frc.robot.util.dashboard.Field2dElastic;
+import frc.robot.util.dashboard.LoggedNetworkBoolean;
 import frc.robot.util.dashboard.LoggedNetworkInput;
+import frc.robot.util.dashboard.LoggedNetworkSendable;
 import frc.robot.util.dashboard.MultiMotorInfoSendable;
-import frc.robot.util.enums.Constants.*;
+import frc.robot.util.dashboard.Pigeon2Sendable;
+import frc.robot.util.enums.Constants.ClimberConstants;
+import frc.robot.util.enums.Constants.ControllerConstants;
+import frc.robot.util.enums.Constants.FuelConstants;
+import frc.robot.util.enums.Constants.LightConstants;
+import frc.robot.util.enums.Constants.MiscConstants;
 import frc.robot.util.enums.PositionCalibrationLocation;
 import frc.robot.util.enums.SpeedMultiplier;
 import java.io.IOException;
@@ -48,21 +59,24 @@ public class RobotContainer {
     private final PowerDistribution powerDistribution;
     private final MultiMotorInfoSendable motorInfo = new MultiMotorInfoSendable();
     private final @Nullable AutoManager autoManager;
+    private final Field2dElastic field = new Field2dElastic();
+
+    private final StructPublisher<Pose2d> aheadRobotPose;
+    private final StructPublisher<Pose2d> behindRobotPose;
 
     // Initializes controllers
     private final CommandXboxController driverController =
             new CommandXboxController(ControllerConstants.DRIVER_CONTROLLER_PORT);
-    private final @Nullable CommandXboxController operatorController = ControllerConstants.OPERATOR_ENABLED
-            ? new CommandXboxController(ControllerConstants.OPERATOR_CONTROLLER_PORT)
-            : null;
+    private final CommandXboxController operatorController =
+            new CommandXboxController(ControllerConstants.OPERATOR_CONTROLLER_PORT);
 
     private final SendableChooser<AutoManager.AutoStartLocation> autoStartLocationChooser;
-    private boolean autoClimb = false;
-    private boolean autoDepot = false;
-    private boolean autoOutpost = false;
+    private final LoggedNetworkBoolean autoClimb = new LoggedNetworkBoolean("/Auto/Auto Climb", false);
+    private final LoggedNetworkBoolean autoDepot = new LoggedNetworkBoolean("/Auto/Auto Depot", false);
+    private final LoggedNetworkBoolean autoOutpost = new LoggedNetworkBoolean("/Auto/Auto Outpost", false);
 
-    private boolean useOdometry = true;
-    private final Trigger useOdometryTrigger = new Trigger(() -> useOdometry);
+    private final LoggedNetworkBoolean useOdometry = new LoggedNetworkBoolean("/Misc/Use Odometry", true);
+    private final Trigger useOdometryTrigger = new Trigger(useOdometry);
 
     /** The container for the robot. Contains subsystems, I/O devices, and commands. */
     public RobotContainer() {
@@ -77,7 +91,7 @@ public class RobotContainer {
                     "Error instantiating Swerve Subsystem: " + ex.getMessage(), finalException.getStackTrace());
             throw finalException;
         }
-        shooterCalculator = new ShooterCalculator(swerveSubsystem::getRobotPose);
+        shooterCalculator = swerveSubsystem.getShooterCalculator();
         fuelSubsystem = FuelConstants.FUEL_SUBSYSTEM_ENABLED ? new FuelSubsystem(shooterCalculator, motorInfo) : null;
         climberSubsystem = ClimberConstants.CLIMBER_ENABLED ? new ClimberSubsystem(motorInfo) : null;
         lightsSubsystem = LightConstants.LIGHTS_ENABLED
@@ -94,6 +108,13 @@ public class RobotContainer {
                 ? new AutoManager(swerveSubsystem, swerveSubsystem.getPathBuilder(), fuelSubsystem, climberSubsystem)
                 : null;
 
+        aheadRobotPose = NetworkTableInstance.getDefault()
+                .getStructTopic("Robot Pose Ahead", Pose2d.struct)
+                .publish();
+        behindRobotPose = NetworkTableInstance.getDefault()
+                .getStructTopic("Robot Pose Behind", Pose2d.struct)
+                .publish();
+
         configureBindings();
 
         initSmartDashboard();
@@ -102,14 +123,24 @@ public class RobotContainer {
     }
 
     public @Nullable Command getAutonomousCommand() {
-        updateSmartDashboard();
         return autoManager != null
                 ? autoManager.getAutoCommand(new AutoManager.AutoOptions(
-                        autoStartLocationChooser.getSelected(), autoDepot, autoOutpost, autoClimb))
+                        autoStartLocationChooser.getSelected(),
+                        autoDepot.getAsBoolean(),
+                        autoOutpost.getAsBoolean(),
+                        autoClimb.getAsBoolean()))
                 : null;
     }
 
-    public void periodic() {}
+    public void periodic() {
+        updateField();
+        updateAheadRobotPose();
+    }
+
+    private void updateAheadRobotPose() {
+        aheadRobotPose.set(swerveSubsystem.getRobotPose().plus(new Transform2d(100.0, 0, Rotation2d.kZero)));
+        behindRobotPose.set(swerveSubsystem.getRobotPose().plus(new Transform2d(-100.0, 0, Rotation2d.kZero)));
+    }
 
     private void configureBindings() {
         /*swerveSubsystem.setDefaultCommand(swerveSubsystem.driveFieldOrientedCommand(
@@ -121,7 +152,7 @@ public class RobotContainer {
         final var fieldOriented = true;
         final var forceRobotOrientedRotation = true;
         if (fieldOriented) {
-            if (forceRobotOrientedRotation && operatorController != null) {
+            if (forceRobotOrientedRotation) {
                 swerveSubsystem.setDefaultCommand(swerveSubsystem.driveFieldAndRobotOrientedCommand(
                         () -> -driverController.getLeftY(),
                         () -> -driverController.getLeftX(),
@@ -154,7 +185,11 @@ public class RobotContainer {
         driverController.y().whileTrue(swerveSubsystem.faceTowardsHubCommand());
         driverController.x().whileTrue(swerveSubsystem.lockPoseCommand());
         if (fuelSubsystem != null) {
-            driverController.b().whileTrue(fuelSubsystem.windUpAndLaunchCommand());
+            driverController
+                    .b()
+                    .whileTrue(fuelSubsystem.launchCommand(true))
+                    .and(shooterCalculator::isUsingSOTM)
+                    .whileTrue(swerveSubsystem.faceTowardsHubCommand());
             driverController.leftTrigger().whileTrue(fuelSubsystem.intakeCommand());
         }
         /*driverController
@@ -162,9 +197,6 @@ public class RobotContainer {
         .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
                 PositionCalibrationLocation.FRONT_LEFT_OF_HUB));*/
 
-        if (operatorController == null) {
-            return;
-        }
         // operatorController.start().whileTrue(swerveSubsystem.straightenWheelsCommand());
         final var calibrations = List.of(
                 new Pair<>(operatorController.leftTrigger(), PositionCalibrationLocation.FRONT_LEFT_OF_HUB),
@@ -205,11 +237,11 @@ public class RobotContainer {
             operatorController.leftBumper().whileTrue(fuelSubsystem.requestAsOperator(OperatorFuelRequest.EJECT));
             operatorController.a().whileTrue(fuelSubsystem.requestAsOperator(OperatorFuelRequest.INTAKE));
             operatorController.b().whileTrue(fuelSubsystem.requestAsOperator(OperatorFuelRequest.UNJAM));
-            operatorController.leftStick().toggleOnTrue(fuelSubsystem.temporarilyEnableManualLaunch());
+            operatorController.leftStick().toggleOnTrue(shooterCalculator.temporarilyEnableManualMode());
             new Trigger(() -> operatorController.getLeftX() < -0.5)
-                    .whileTrue(fuelSubsystem.decreaseManualLaunchVelocity());
+                    .whileTrue(shooterCalculator.decreaseManualLaunchVelocity());
             new Trigger(() -> operatorController.getLeftX() > 0.5)
-                    .whileTrue(fuelSubsystem.increaseManualLaunchVelocity());
+                    .whileTrue(shooterCalculator.increaseManualLaunchVelocity());
             new Trigger(() -> operatorController.getRightX() < -0.5)
                     .whileTrue(shooterCalculator.decreaseVelocityOffset());
             new Trigger(() -> operatorController.getRightX() > 0.5)
@@ -225,9 +257,6 @@ public class RobotContainer {
                     .x()
                     .whileTrue(climberSubsystem.armCommand(
                             operatorController.start().negate(), operatorController.back()));
-            new LoggedNetworkButton("Climber/Set Climber Encoder to Vertical")
-                    .getTrigger()
-                    .onTrue(climberSubsystem.setClimberEncoderToVertical());
         }
         /*if (autoManager != null) {
             operatorController.back().whileTrue(autoManager.testAuto());
@@ -235,21 +264,23 @@ public class RobotContainer {
     }
 
     public void initSmartDashboard() {
-        SmartDashboard.putData("Auto/Start Location Chooser", autoStartLocationChooser);
-        SmartDashboard.putBoolean("Auto/Auto Climb", autoClimb);
-        SmartDashboard.putBoolean("Auto/Auto Outpost", autoOutpost);
-        SmartDashboard.putBoolean("Auto/Auto Depot", autoDepot);
-        SmartDashboard.putData("Power Distribution", powerDistribution);
-        SmartDashboard.putData(
-                "RobotContainer",
-                builder -> builder.addBooleanProperty("Use Odometry", () -> useOdometry, v -> useOdometry = v));
-        SmartDashboard.putData("Motor Info", motorInfo);
+        new LoggedNetworkSendable<>("/Auto/Start Location Chooser", autoStartLocationChooser);
+        new LoggedNetworkSendable<>("/Misc/Power Distribution", powerDistribution);
+        new LoggedNetworkSendable<>("/Misc/Motor Info", motorInfo);
+        new LoggedNetworkSendable<>("/Misc/Field", field);
+        new LoggedNetworkSendable<>("/Pigeon2", new Pigeon2Sendable(swerveSubsystem.getPigeon2()));
     }
 
-    private void updateSmartDashboard() {
-        autoClimb = SmartDashboard.getBoolean("Auto/Auto Climb", autoClimb);
-        autoDepot = SmartDashboard.getBoolean("Auto/Auto Depot", autoDepot);
-        autoOutpost = SmartDashboard.getBoolean("Auto/Auto Outpost", autoOutpost);
+    private void updateField() {
+        field.setRobotPose(swerveSubsystem.getRobotPose());
+        if (autoManager == null) return;
+        final FieldObject2d trajectoryObject = field.getObject("BLine trajectory");
+        final List<Pose2d> currentTrajectory = autoManager.getCurrentPoses();
+        if (currentTrajectory == null) {
+            trajectoryObject.setPoses();
+            return;
+        }
+        trajectoryObject.setPoses(currentTrajectory);
     }
 
     public void preSchedulerUpdate() {
@@ -271,5 +302,13 @@ public class RobotContainer {
         if (autoManager != null) {
             autoManager.teleopInit();
         }
+    }
+
+    public void simulationInit() {
+        shooterCalculator.simulationInit();
+    }
+
+    public void simulationPeriodic() {
+        shooterCalculator.simulationPeriodic();
     }
 }

@@ -2,6 +2,8 @@ package frc.robot.util.dashboard;
 
 import edu.wpi.first.networktables.DoubleEntry;
 import edu.wpi.first.networktables.NetworkTableInstance;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -9,10 +11,12 @@ import org.jspecify.annotations.NullMarked;
 
 @NullMarked
 public class LoggedNetworkDoubleToObject<T> extends LoggedNetworkInput implements Supplier<T>, Consumer<T> {
+    private final List<Consumer<T>> listeners = new ArrayList<>();
     private final DoubleEntry entry;
     private final Function<T, Double> objectToDouble;
     private final Function<Double, T> doubleToObject;
     private T currentValue;
+    private double currentDoubleValue;
 
     public LoggedNetworkDoubleToObject(
             String rawTopicName,
@@ -26,17 +30,28 @@ public class LoggedNetworkDoubleToObject<T> extends LoggedNetworkInput implement
                 .getDoubleTopic(topicName)
                 .getEntry(objectToDouble.apply(defaultValue));
         entry.set(objectToDouble.apply(defaultValue));
-        currentValue = doubleToObject.apply(entry.get());
+        currentDoubleValue = entry.get();
+        currentValue = doubleToObject.apply(currentDoubleValue);
     }
 
     public void set(T value) {
-        entry.set(objectToDouble.apply(value));
+        set(value, false);
+    }
+
+    public void set(T value, boolean triggerListeners) {
+        if (currentValue.equals(value)) return;
+        currentDoubleValue = objectToDouble.apply(value);
+        entry.set(currentDoubleValue);
         currentValue = value;
+        if (triggerListeners) listeners.forEach(listener -> listener.accept(value));
     }
 
     @Override
     protected void periodic() {
-        currentValue = doubleToObject.apply(entry.get());
+        if (currentDoubleValue == entry.get()) return;
+        currentDoubleValue = entry.get();
+        currentValue = doubleToObject.apply(currentDoubleValue);
+        listeners.forEach(listener -> listener.accept(currentValue));
     }
 
     @Override
@@ -47,5 +62,9 @@ public class LoggedNetworkDoubleToObject<T> extends LoggedNetworkInput implement
     @Override
     public T get() {
         return currentValue;
+    }
+
+    public void addListener(Consumer<T> callback) {
+        listeners.add(callback);
     }
 }

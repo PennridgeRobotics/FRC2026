@@ -19,6 +19,10 @@ public class Robot extends TimedRobot {
         // and put our autonomous chooser on the dashboard.
 
         robotContainer = new RobotContainer();
+
+        for (int i = 0; i < 5; i++) {
+            System.out.println("Starting robot");
+        }
     }
 
     /**
@@ -92,11 +96,19 @@ public class Robot extends TimedRobot {
 
     /** This function is called once when the robot is first started up. */
     @Override
-    public void simulationInit() {}
+    public void simulationInit() {
+        if (robotContainer != null) {
+            robotContainer.simulationInit();
+        }
+    }
 
     /** This function is called periodically whilst in simulation. */
     @Override
-    public void simulationPeriodic() {}
+    public void simulationPeriodic() {
+        if (robotContainer != null) {
+            robotContainer.simulationPeriodic();
+        }
+    }
 
     @Override
     public void close() {

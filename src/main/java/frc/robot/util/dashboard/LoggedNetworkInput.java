@@ -6,7 +6,7 @@ import org.jspecify.annotations.NullMarked;
 
 @NullMarked
 public abstract class LoggedNetworkInput {
-    private static final String PREFIX = "NetworkInputs/";
+    private static final String PREFIX = "Tuning/";
     private static final List<LoggedNetworkInput> inputs = new ArrayList<>();
     protected final String topicName;
 
@@ -17,8 +17,9 @@ public abstract class LoggedNetworkInput {
 
     protected abstract void periodic();
 
-    protected String getAdjustedTopicName(String topicName) {
-        return PREFIX + (topicName.startsWith("/") ? topicName.substring(1) : topicName);
+    protected static String getAdjustedTopicName(String topicName) {
+        if (topicName.startsWith("/")) return topicName.substring(1);
+        return PREFIX + topicName;
     }
 
     public static void runAllPeriodic() {

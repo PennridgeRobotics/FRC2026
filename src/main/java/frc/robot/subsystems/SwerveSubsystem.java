@@ -1,6 +1,10 @@
 package frc.robot.subsystems;
 
-import static edu.wpi.first.units.Units.*;
+import static edu.wpi.first.units.Units.DegreesPerSecond;
+import static edu.wpi.first.units.Units.Meter;
+import static edu.wpi.first.units.Units.MetersPerSecond;
+import static edu.wpi.first.units.Units.MetersPerSecondPerSecond;
+import static edu.wpi.first.units.Units.RadiansPerSecond;
 
 import com.ctre.phoenix6.hardware.core.CorePigeon2;
 import com.revrobotics.spark.SparkMax;
@@ -12,6 +16,8 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
+import edu.wpi.first.units.AngularVelocityUnit;
+import edu.wpi.first.units.LinearVelocityUnit;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -29,10 +35,23 @@ import frc.robot.Robot;
 import frc.robot.lib.BLine.FollowPath;
 import frc.robot.lib.BLine.Path;
 import frc.robot.util.BumpManager;
+import frc.robot.util.ShooterCalculator;
 import frc.robot.util.SlewRateLimiter2d;
-import frc.robot.util.dashboard.*;
+import frc.robot.util.dashboard.LoggedNetworkBoolean;
+import frc.robot.util.dashboard.LoggedNetworkDouble;
+import frc.robot.util.dashboard.LoggedNetworkSendable;
+import frc.robot.util.dashboard.LoggedNetworkStruct;
+import frc.robot.util.dashboard.LoggedNetworkUnit;
+import frc.robot.util.dashboard.MultiMotorInfoSendable;
+import frc.robot.util.dashboard.PIDSendable;
 import frc.robot.util.dashboard.PIDSendable.PIDValues;
-import frc.robot.util.enums.Constants.*;
+import frc.robot.util.dashboard.SplitButtonChooser;
+import frc.robot.util.enums.Constants.ControllerConstants;
+import frc.robot.util.enums.Constants.DriveConstants;
+import frc.robot.util.enums.Constants.FieldConstants;
+import frc.robot.util.enums.Constants.PhysicalConstants;
+import frc.robot.util.enums.Constants.ShootOnTheMoveConstants;
+import frc.robot.util.enums.Constants.VisionConstants;
 import frc.robot.util.enums.PositionCalibrationLocation;
 import frc.robot.util.enums.SpeedMultiplier;
 import frc.robot.vision.PhotonCamera;
@@ -41,6 +60,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
@@ -56,6 +76,7 @@ public class SwerveSubsystem extends SubsystemBase {
     private final SwerveDrive swerveDrive;
     private VisionManager visionManager;
     private final BumpManager bumpManager;
+    private final ShooterCalculator shooterCalculator;
     private final MultiMotorInfoSendable motorInfo;
 
     private boolean forceNormalDriveMode = false;
@@ -74,6 +95,14 @@ public class SwerveSubsystem extends SubsystemBase {
 
     private final SlewRateLimiter2d linearDriveLimiter =
             new SlewRateLimiter2d(DriveConstants.MAX_LINEAR_ACCELERATION.in(MetersPerSecondPerSecond));
+
+    private final LoggedNetworkUnit<LinearVelocityUnit, LinearVelocity> loggedMaxVelocityWhileShooting;
+    private final LoggedNetworkStruct<Pose2d> loggedRobotPose;
+    private final LoggedNetworkUnit<LinearVelocityUnit, LinearVelocity> loggedTargetLinearVelocity;
+    private final LoggedNetworkStruct<Translation2d> loggedTargetTranslation;
+    private final LoggedNetworkUnit<AngularVelocityUnit, AngularVelocity> loggedTargetAngularVelocity;
+    private final LoggedNetworkBoolean loggedUsingSOTMHubLock;
+    private SOTMHubLockType sotmHubLockType = SOTMHubLockType.ANGLE_LOCK_AND_VELOCITY_FF;
 
     @SuppressWarnings("StaticAssignmentInConstructor")
     public SwerveSubsystem(final MultiMotorInfoSendable motorInfo) throws IOException {
@@ -96,6 +125,27 @@ public class SwerveSubsystem extends SubsystemBase {
 
         bumpManager = new BumpManager(
                 getPigeon2(), swerveDrive::getGyroRotation3d, this::getRobotPose, forceNormalDriveModeTrigger);
+        shooterCalculator = new ShooterCalculator(swerveDrive);
+
+        loggedMaxVelocityWhileShooting = new LoggedNetworkUnit<>(
+                "Shooter Calculator/Max Velocity While Shooting", ShootOnTheMoveConstants.MAX_VELOCITY_WHILE_SHOOTING);
+        loggedRobotPose = new LoggedNetworkStruct<>("Robot Pose Struct", Pose2d.struct, swerveDrive.getPose());
+        loggedRobotPose.addListener(this::resetPose);
+        loggedTargetLinearVelocity = new LoggedNetworkUnit<>("/Swerve/Target Linear Velocity", MetersPerSecond.zero());
+        loggedTargetTranslation =
+                new LoggedNetworkStruct<>("/Swerve/Target Translation", Translation2d.struct, new Translation2d());
+        loggedTargetAngularVelocity =
+                new LoggedNetworkUnit<>("/Swerve/Target Angular Velocity", DegreesPerSecond.zero());
+        loggedUsingSOTMHubLock = new LoggedNetworkBoolean("/Swerve/Using SOTM Hub Lock", false);
+        new LoggedNetworkSendable<>(
+                "Swerve/SOTM Hub Lock Type",
+                new SplitButtonChooser<>(
+                        () -> sotmHubLockType,
+                        Arrays.asList(SOTMHubLockType.values()),
+                        Set.of((newType) -> sotmHubLockType = newType),
+                        sotmHubLockType,
+                        SOTMHubLockType::fromDashboardName,
+                        SOTMHubLockType::getDashboardName));
 
         setupVisionManager();
         pathBuilder = setupBLine();
@@ -158,6 +208,7 @@ public class SwerveSubsystem extends SubsystemBase {
             swerveDrive.setHeadingCorrection(
                     headingCorrectionSupplier.getAsBoolean(), headingCorrectionDeadband.getAsDouble());
         }
+        loggedRobotPose.set(getRobotPose());
     }
 
     private void updateOdometry() {
@@ -309,25 +360,66 @@ public class SwerveSubsystem extends SubsystemBase {
         if (alliance.isEmpty()) {
             return;
         }
-        final var shouldFlip = DriverStation.getAlliance().orElse(null) == DriverStation.Alliance.Red;
-        final var adjustedXVelocity = shouldFlip ? xVelocity.unaryMinus() : xVelocity;
-        final var adjustedYVelocity = shouldFlip ? yVelocity.unaryMinus() : yVelocity;
-        final Translation2d limitedLinearVelocity = linearDriveLimiter.calculate(
-                adjustedXVelocity.in(MetersPerSecond), adjustedYVelocity.in(MetersPerSecond));
-        final AngularVelocity finalAngularVelocity;
+        var linearVelocity = new Translation2d(xVelocity.in(MetersPerSecond), yVelocity.in(MetersPerSecond));
+        if (!forceNormalDriveMode
+                && faceTowardsHub
+                && getShooterCalculator().isUsingSOTM()
+                && linearVelocity.getNorm()
+                        > loggedMaxVelocityWhileShooting.get().in(MetersPerSecond)) {
+            linearVelocity = linearVelocity
+                    .div(linearVelocity.getNorm())
+                    .times(loggedMaxVelocityWhileShooting.get().in(MetersPerSecond));
+        }
+        if (DriverStation.getAlliance().orElse(null) == DriverStation.Alliance.Red) { // flip if red
+            linearVelocity = linearVelocity.unaryMinus();
+        }
+        final Translation2d limitedLinearVelocity = linearDriveLimiter.calculate(linearVelocity);
+        final AngularVelocity determinedAngularVelocity;
+        boolean usingSOTMHubLock = false;
         if (forceNormalDriveMode) {
-            finalAngularVelocity = angularVelocity;
+            determinedAngularVelocity = angularVelocity;
         } else if (faceTowardsHub) {
-            finalAngularVelocity = getTargetAngularVelocity(getAngleToHub());
+            if (getShooterCalculator().isUsingSOTM()) {
+                determinedAngularVelocity = switch (sotmHubLockType) {
+                    case ANGLE_LOCK -> getTargetAngularVelocity(getAngleToHub());
+                    case VELOCITY_FF ->
+                        getShooterCalculator()
+                                        .calculateShotData()
+                                        .driveAngleFF()
+                                        .isEquivalent(DegreesPerSecond.zero())
+                                ? getTargetAngularVelocity(getAngleToHub())
+                                : getShooterCalculator().calculateShotData().driveAngleFF();
+                    case ANGLE_LOCK_AND_VELOCITY_FF ->
+                        getShooterCalculator()
+                                .calculateShotData()
+                                .driveAngleFF()
+                                .plus(getTargetAngularVelocity(getAngleToHub()));
+                };
+                usingSOTMHubLock = true;
+            } else determinedAngularVelocity = getTargetAngularVelocity(getAngleToHub());
         } else if (lockYawTowardsVelocity) {
-            finalAngularVelocity = getTargetAngularVelocity(getVelocityAngle(
+            determinedAngularVelocity = getTargetAngularVelocity(getVelocityAngle(
                     MetersPerSecond.of(limitedLinearVelocity.getX()),
                     MetersPerSecond.of(limitedLinearVelocity.getY())));
         } else if (bumpManager.isBumpLockEnabledTrigger().getAsBoolean()) {
-            finalAngularVelocity = getTargetAngularVelocity(bumpManager.getBumpLockAngle());
+            determinedAngularVelocity = getTargetAngularVelocity(bumpManager.getBumpLockAngle());
         } else {
-            finalAngularVelocity = angularVelocity;
+            determinedAngularVelocity = angularVelocity;
         }
+        loggedUsingSOTMHubLock.set(usingSOTMHubLock);
+        final AngularVelocity maxAngularVelocity = RadiansPerSecond.of(swerveDrive.getMaximumChassisAngularVelocity());
+        final AngularVelocity finalAngularVelocity = determinedAngularVelocity.gt(maxAngularVelocity)
+                ? maxAngularVelocity
+                : (determinedAngularVelocity.lt(maxAngularVelocity.unaryMinus())
+                        ? maxAngularVelocity.unaryMinus()
+                        : determinedAngularVelocity);
+
+        loggedTargetLinearVelocity.set(MetersPerSecond.of(limitedLinearVelocity.getNorm()));
+        loggedTargetTranslation.set(limitedLinearVelocity);
+        loggedTargetAngularVelocity.set(finalAngularVelocity);
+
+        shooterCalculator.setLastAngularVelocityInput(
+                !forceNormalDriveMode && faceTowardsHub ? DegreesPerSecond.zero() : determinedAngularVelocity);
         swerveDrive.driveFieldOriented(new ChassisSpeeds(
                 limitedLinearVelocity.getX(), limitedLinearVelocity.getY(), finalAngularVelocity.in(RadiansPerSecond)));
     }
@@ -399,10 +491,13 @@ public class SwerveSubsystem extends SubsystemBase {
     }
 
     public Command faceTowardsHubCommand() {
-        return Commands.startEnd(() -> faceTowardsHub = true, () -> faceTowardsHub = false);
+        return Commands.runEnd(() -> faceTowardsHub = true, () -> faceTowardsHub = false);
     }
 
     public Rotation2d getAngleToHub() {
+        if (getShooterCalculator().isUsingSOTM()) {
+            return getShooterCalculator().calculateShotData().heading();
+        }
         final var hubLoc = DriverStation.getAlliance().orElse(null) == Alliance.Red
                 ? FieldConstants.HUB_RED
                 : FieldConstants.HUB_BLUE;
@@ -521,14 +616,14 @@ public class SwerveSubsystem extends SubsystemBase {
     private LinearVelocity joystickToLinearVelocity(final double input) {
         final var withDeadband =
                 MathUtil.applyDeadband(input, ControllerConstants.DRIVE_MIN_INPUT, ControllerConstants.DRIVE_MAX_INPUT);
-        final var scaled = Math.pow(withDeadband, 3);
+        final var scaled = Math.abs(Math.pow(withDeadband, 3)) * Math.signum(withDeadband);
         return getMaximumChassisVelocity().times(scaled).times(speedMultiplier.getMultiplier());
     }
 
     private AngularVelocity joystickToAngularVelocity(final double input) {
         final var withDeadband =
                 MathUtil.applyDeadband(input, ControllerConstants.DRIVE_MIN_INPUT, ControllerConstants.DRIVE_MAX_INPUT);
-        final var scaled = Math.pow(withDeadband, 5);
+        final var scaled = Math.abs(Math.pow(withDeadband, 5)) * Math.signum(withDeadband);
         return getMaximumChassisAngularVelocity().times(scaled).times(speedMultiplier.getMultiplier());
     }
 
@@ -607,7 +702,7 @@ public class SwerveSubsystem extends SubsystemBase {
                 VisionConstants.CAMERA_1_ROTATION));
     }
 
-    private CorePigeon2 getPigeon2() {
+    public CorePigeon2 getPigeon2() {
         return (CorePigeon2) swerveDrive.getGyro().getIMU();
     }
 
@@ -622,5 +717,33 @@ public class SwerveSubsystem extends SubsystemBase {
     public boolean isRobotXFacingFieldX() {
         final var currentRot = getRobotPose().getRotation().getDegrees();
         return !MathUtil.isNear(90.0, Math.abs(currentRot) % 180, 45.0);
+    }
+
+    public ShooterCalculator getShooterCalculator() {
+        return shooterCalculator;
+    }
+
+    private enum SOTMHubLockType {
+        ANGLE_LOCK("Angle Lock"),
+        VELOCITY_FF("Velocity FF"),
+        ANGLE_LOCK_AND_VELOCITY_FF("Both"),
+        ;
+
+        private final String dashboardName;
+
+        SOTMHubLockType(String dashboardName) {
+            this.dashboardName = dashboardName;
+        }
+
+        public String getDashboardName() {
+            return dashboardName;
+        }
+
+        public static SOTMHubLockType fromDashboardName(String dashboardName) {
+            return Arrays.stream(values())
+                    .filter(type -> type.getDashboardName().equals(dashboardName))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Invalid dashboard name: " + dashboardName));
+        }
     }
 }

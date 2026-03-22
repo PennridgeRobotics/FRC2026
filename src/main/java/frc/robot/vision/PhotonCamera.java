@@ -73,6 +73,7 @@ public class PhotonCamera extends Camera {
     private final StructArrayPublisher<Pose3d> trackedTargetsPublisher;
     private final StructArrayPublisher<Translation2d> trackedCornersPublisher;
     private final DoublePublisher stdDevsPublisher;
+    private final DoublePublisher confidencePublisher;
 
     /**
      * Constructs a {@code PhotonCamera} with full configuration
@@ -95,6 +96,9 @@ public class PhotonCamera extends Camera {
                 .publish();
         stdDevsPublisher = NetworkTableInstance.getDefault()
                 .getDoubleTopic(topicPrefix + "Standard Deviations")
+                .publish();
+        confidencePublisher = NetworkTableInstance.getDefault()
+                .getDoubleTopic(topicPrefix + "Confidence")
                 .publish();
 
         // Simulation configuration
