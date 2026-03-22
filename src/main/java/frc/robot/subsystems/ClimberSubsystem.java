@@ -20,7 +20,7 @@ import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.util.dashboard.LoggedNetworkBoolean;
 import frc.robot.util.dashboard.LoggedNetworkButton;
 import frc.robot.util.dashboard.LoggedNetworkDouble;
-import frc.robot.util.dashboard.LoggedNetworkInput;
+import frc.robot.util.dashboard.LoggedNetworkSendable;
 import frc.robot.util.dashboard.MultiMotorInfoSendable;
 import frc.robot.util.enums.Constants.ClimberConstants;
 import java.util.function.BooleanSupplier;
@@ -96,7 +96,7 @@ public class ClimberSubsystem extends SubsystemBase {
         new LoggedNetworkButton("Climber/Set Climber Encoder to Vertical")
                 .getTrigger()
                 .onTrue(setClimberEncoderToVertical());
-        LoggedNetworkInput.publishSendable("/Climber", builder -> {
+        new LoggedNetworkSendable<>("/Climber", builder -> {
             builder.addDoubleProperty("Angle", () -> climber.getAngle().in(Degrees), v -> climber.getMotor()
                     .setEncoderPosition(Degrees.of(v)));
             builder.addDoubleProperty(

@@ -88,7 +88,7 @@ public class BumpManager {
     private Command updateBumpLock(boolean bumpLockEnabled, @Nullable Supplier<@Nullable String> cause) {
         return Commands.runOnce(() -> {
             if (cause != null && cause.get() != null) {
-                System.out.println("Updated bump lock to " + bumpLockEnabled + " (" + cause.get() + ")");
+                // System.out.println("Updated bump lock to " + bumpLockEnabled + " (" + cause.get() + ")");
             }
             this.rawBumpLockEnabled = bumpLockEnabled;
         });

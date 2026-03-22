@@ -36,8 +36,8 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import frc.robot.util.dashboard.LoggedNetworkBoolean;
 import frc.robot.util.dashboard.LoggedNetworkButton;
 import frc.robot.util.dashboard.LoggedNetworkDouble;
-import frc.robot.util.dashboard.LoggedNetworkInput;
 import frc.robot.util.dashboard.LoggedNetworkInteger;
+import frc.robot.util.dashboard.LoggedNetworkSendable;
 import frc.robot.util.dashboard.LoggedNetworkString;
 import frc.robot.util.dashboard.LoggedNetworkStruct;
 import frc.robot.util.dashboard.LoggedNetworkUnit;
@@ -168,7 +168,7 @@ public class ShooterCalculator {
         loggedMechanismDelay.addListener(unused -> shotCalculator = createShotCalculator());
         loggedManualLaunchVelocity =
                 new LoggedNetworkUnit<>(topicPrefix + "Manual Launch Velocity", RotationsPerSecond.of(47));
-        LoggedNetworkInput.publishSendable(
+        new LoggedNetworkSendable<>(
                 topicPrefix + "Calculation Mode",
                 SplitButtonChooser.withEnum(
                         () -> calculationMode,

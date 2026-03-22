@@ -39,11 +39,13 @@ import frc.robot.util.ShooterCalculator;
 import frc.robot.util.SlewRateLimiter2d;
 import frc.robot.util.dashboard.LoggedNetworkBoolean;
 import frc.robot.util.dashboard.LoggedNetworkDouble;
+import frc.robot.util.dashboard.LoggedNetworkSendable;
 import frc.robot.util.dashboard.LoggedNetworkStruct;
 import frc.robot.util.dashboard.LoggedNetworkUnit;
 import frc.robot.util.dashboard.MultiMotorInfoSendable;
 import frc.robot.util.dashboard.PIDSendable;
 import frc.robot.util.dashboard.PIDSendable.PIDValues;
+import frc.robot.util.dashboard.SplitButtonChooser;
 import frc.robot.util.enums.Constants.ControllerConstants;
 import frc.robot.util.enums.Constants.DriveConstants;
 import frc.robot.util.enums.Constants.FieldConstants;
@@ -58,6 +60,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
@@ -98,6 +101,8 @@ public class SwerveSubsystem extends SubsystemBase {
     private final LoggedNetworkUnit<LinearVelocityUnit, LinearVelocity> loggedTargetLinearVelocity;
     private final LoggedNetworkStruct<Translation2d> loggedTargetTranslation;
     private final LoggedNetworkUnit<AngularVelocityUnit, AngularVelocity> loggedTargetAngularVelocity;
+    private final LoggedNetworkBoolean loggedUsingSOTMHubLock;
+    private SOTMHubLockType sotmHubLockType = SOTMHubLockType.ANGLE_LOCK_AND_VELOCITY_FF;
 
     @SuppressWarnings("StaticAssignmentInConstructor")
     public SwerveSubsystem(final MultiMotorInfoSendable motorInfo) throws IOException {
@@ -131,6 +136,16 @@ public class SwerveSubsystem extends SubsystemBase {
                 new LoggedNetworkStruct<>("/Swerve/Target Translation", Translation2d.struct, new Translation2d());
         loggedTargetAngularVelocity =
                 new LoggedNetworkUnit<>("/Swerve/Target Angular Velocity", DegreesPerSecond.zero());
+        loggedUsingSOTMHubLock = new LoggedNetworkBoolean("/Swerve/Using SOTM Hub Lock", false);
+        new LoggedNetworkSendable<>(
+                "Swerve/SOTM Hub Lock Type",
+                new SplitButtonChooser<>(
+                        () -> sotmHubLockType,
+                        Arrays.asList(SOTMHubLockType.values()),
+                        Set.of((newType) -> sotmHubLockType = newType),
+                        sotmHubLockType,
+                        SOTMHubLockType::fromDashboardName,
+                        SOTMHubLockType::getDashboardName));
 
         setupVisionManager();
         pathBuilder = setupBLine();
@@ -360,10 +375,28 @@ public class SwerveSubsystem extends SubsystemBase {
         }
         final Translation2d limitedLinearVelocity = linearDriveLimiter.calculate(linearVelocity);
         final AngularVelocity determinedAngularVelocity;
+        boolean usingSOTMHubLock = false;
         if (forceNormalDriveMode) {
             determinedAngularVelocity = angularVelocity;
         } else if (faceTowardsHub) {
-            determinedAngularVelocity = getTargetAngularVelocity(getAngleToHub());
+            if (getShooterCalculator().isUsingSOTM()) {
+                determinedAngularVelocity = switch (sotmHubLockType) {
+                    case ANGLE_LOCK -> getTargetAngularVelocity(getAngleToHub());
+                    case VELOCITY_FF ->
+                        getShooterCalculator()
+                                        .calculateShotData()
+                                        .driveAngleFF()
+                                        .isEquivalent(DegreesPerSecond.zero())
+                                ? getTargetAngularVelocity(getAngleToHub())
+                                : getShooterCalculator().calculateShotData().driveAngleFF();
+                    case ANGLE_LOCK_AND_VELOCITY_FF ->
+                        getShooterCalculator()
+                                .calculateShotData()
+                                .driveAngleFF()
+                                .plus(getTargetAngularVelocity(getAngleToHub()));
+                };
+                usingSOTMHubLock = true;
+            } else determinedAngularVelocity = getTargetAngularVelocity(getAngleToHub());
         } else if (lockYawTowardsVelocity) {
             determinedAngularVelocity = getTargetAngularVelocity(getVelocityAngle(
                     MetersPerSecond.of(limitedLinearVelocity.getX()),
@@ -373,6 +406,7 @@ public class SwerveSubsystem extends SubsystemBase {
         } else {
             determinedAngularVelocity = angularVelocity;
         }
+        loggedUsingSOTMHubLock.set(usingSOTMHubLock);
         final AngularVelocity maxAngularVelocity = RadiansPerSecond.of(swerveDrive.getMaximumChassisAngularVelocity());
         final AngularVelocity finalAngularVelocity = determinedAngularVelocity.gt(maxAngularVelocity)
                 ? maxAngularVelocity
@@ -385,7 +419,7 @@ public class SwerveSubsystem extends SubsystemBase {
         loggedTargetAngularVelocity.set(finalAngularVelocity);
 
         shooterCalculator.setLastAngularVelocityInput(
-                !forceNormalDriveMode && faceTowardsHub ? angularVelocity : determinedAngularVelocity);
+                !forceNormalDriveMode && faceTowardsHub ? DegreesPerSecond.zero() : determinedAngularVelocity);
         swerveDrive.driveFieldOriented(new ChassisSpeeds(
                 limitedLinearVelocity.getX(), limitedLinearVelocity.getY(), finalAngularVelocity.in(RadiansPerSecond)));
     }
@@ -687,5 +721,29 @@ public class SwerveSubsystem extends SubsystemBase {
 
     public ShooterCalculator getShooterCalculator() {
         return shooterCalculator;
+    }
+
+    private enum SOTMHubLockType {
+        ANGLE_LOCK("Angle Lock"),
+        VELOCITY_FF("Velocity FF"),
+        ANGLE_LOCK_AND_VELOCITY_FF("Both"),
+        ;
+
+        private final String dashboardName;
+
+        SOTMHubLockType(String dashboardName) {
+            this.dashboardName = dashboardName;
+        }
+
+        public String getDashboardName() {
+            return dashboardName;
+        }
+
+        public static SOTMHubLockType fromDashboardName(String dashboardName) {
+            return Arrays.stream(values())
+                    .filter(type -> type.getDashboardName().equals(dashboardName))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Invalid dashboard name: " + dashboardName));
+        }
     }
 }
