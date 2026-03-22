@@ -147,8 +147,6 @@ public class RobotContainer {
 
         driverController.start().onTrue(swerveSubsystem.resetYaw());*/
 
-        if (true) return;
-
         // for testing
         final var fieldOriented = true;
         final var forceRobotOrientedRotation = true;
