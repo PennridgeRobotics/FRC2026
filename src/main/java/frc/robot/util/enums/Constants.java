@@ -74,22 +74,25 @@ public final class Constants {
     }
 
     public static final class ShootOnTheMoveConstants {
+        public static final Distance BALL_DIAMETER = Inches.of(5.906); // need to define this first
+
         // Measure/tune:
         public static final Distance FLYWHEEL_DIAMETER = Inches.of(3.94);
         public static final Distance EXIT_HEIGHT = Inches.of(20.5); // floor to where ball leaves shooter
-        public static final Angle LAUNCH_ANGLE_FROM_HORIZONTAL = Degrees.of(59); // estimated
-        public static final double SLIP_FACTOR = 0.81; // 0 = no group, 1 = perfect
+        public static final Angle LAUNCH_ANGLE_FROM_HORIZONTAL = Degrees.of(60); // estimated
+        public static final double SLIP_FACTOR = 0.86; // 0 = no group, 1 = perfect
         public static final Translation2d LAUNCHER_OFFSET = new Translation2d(Inches.of(7.4), Inches.zero());
         public static final LinearVelocity MAX_VELOCITY_WHILE_SHOOTING = MetersPerSecond.of(1.0);
         public static final Time PHASE_DELAY = Milliseconds.of(0); // vision pipeline latency
         public static final Time MECHANISM_LATENCY = Milliseconds.of(20); // how long the mechanism takes to respond
+        public static final Distance HUB_HEIGHT = Inches.of(72) // hub height
+                .plus(BALL_DIAMETER.div(2))
+                .plus(Inches.of(3)); // buffer
 
         public static final Mass BALL_MASS = Kilograms.of(0.215);
-        public static final Distance BALL_DIAMETER = Inches.of(5.906);
-        public static final double DRAG_COEFFICIENT = 0.47; // smooth sphere
+        public static final double DRAG_COEFFICIENT = 0.11; // 0.47; // smooth sphere
         public static final double MAGNUS_COEFFICIENT = 0.2;
         public static final double AIR_DENSITY = 1.225; // kg/m³
-        public static final Distance HUB_HEIGHT = Inches.of(72); // from game manual
         public static final Time SIM_TIMESTEP = Seconds.of(0.002);
         public static final AngularVelocity RPM_SEARCH_MIN = RPM.of(1500);
         public static final AngularVelocity RPM_SEARCH_MAX = RPM.of(4000); // real limit: 3937

@@ -23,7 +23,7 @@ public class LoggedNetworkBoolean extends LoggedNetworkInput implements BooleanS
     }
 
     public void set(boolean value) {
-        set(value, true);
+        set(value, false);
     }
 
     public void set(boolean value, boolean triggerListeners) {

@@ -25,11 +25,11 @@ import com.ctre.phoenix6.signals.StripTypeValue;
 import com.ctre.phoenix6.signals.VBatOutputModeValue;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.MatchType;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.util.Color;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.commands.light.LightChooserCommand;
+import frc.robot.util.dashboard.LoggedNetworkInput;
 import frc.robot.util.enums.Constants.LightConstants;
 import java.util.HashMap;
 import java.util.List;
@@ -71,7 +71,7 @@ public class LightsSubsystem extends SubsystemBase {
 
         addRules();
 
-        SmartDashboard.putData("CANdle", candle);
+        LoggedNetworkInput.publishSendable("/Lights/CANdle", candle);
     }
 
     private void addRules() {

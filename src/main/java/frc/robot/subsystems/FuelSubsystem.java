@@ -7,9 +7,7 @@ import static edu.wpi.first.units.Units.Amps;
 import static edu.wpi.first.units.Units.KilogramSquareMeters;
 import static edu.wpi.first.units.Units.Meters;
 import static edu.wpi.first.units.Units.MetersPerSecond;
-import static edu.wpi.first.units.Units.Milliseconds;
 import static edu.wpi.first.units.Units.RotationsPerSecond;
-import static edu.wpi.first.units.Units.RotationsPerSecondPerSecond;
 import static edu.wpi.first.units.Units.Seconds;
 
 import com.revrobotics.PersistMode;
@@ -22,7 +20,6 @@ import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.math.filter.Debouncer.DebounceType;
 import edu.wpi.first.math.system.plant.DCMotor;
-import edu.wpi.first.units.AngularVelocityUnit;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.LinearVelocity;
@@ -87,8 +84,6 @@ public class FuelSubsystem extends SubsystemBase {
             "Fuel/Intake Velocity Intake-Launcher", FuelConstants.INTAKE_VELOCITY_INTAKE_LAUNCHER);
     private final Supplier<AngularVelocity> intakeVelocityIndexer =
             new LoggedNetworkUnit<>("Fuel/Intake Velocity Indexer", FuelConstants.INTAKE_VELOCITY_INDEXER);
-    private final LoggedNetworkUnit<AngularVelocityUnit, AngularVelocity> launchVelocityIntakeLauncher =
-            new LoggedNetworkUnit<>("Fuel/Launch Velocity Intake-Launcher", RotationsPerSecond.of(47));
     private final Supplier<AngularVelocity> launchVelocityIndexer =
             new LoggedNetworkUnit<>("Fuel/Launch Velocity Indexer", FuelConstants.LAUNCH_VELOCITY_INDEXER);
     private final Supplier<AngularVelocity> windUpVelocityIndexer =
@@ -318,22 +313,6 @@ public class FuelSubsystem extends SubsystemBase {
         }
     }
 
-    public Command increaseManualLaunchVelocity() {
-        return adjustManualLaunchVelocity(true);
-    }
-
-    public Command decreaseManualLaunchVelocity() {
-        return adjustManualLaunchVelocity(false);
-    }
-
-    private Command adjustManualLaunchVelocity(boolean increase) {
-        return Commands.run(() -> {
-            final var velocityChange = RotationsPerSecondPerSecond.of(6).times(Milliseconds.of(20));
-            launchVelocityIntakeLauncher.set(
-                    launchVelocityIntakeLauncher.get().plus(increase ? velocityChange : velocityChange.unaryMinus()));
-        });
-    }
-
     public Command idleCommand() {
         return run(this::reset); // System.out.println("SET VELOCITY TO 0");
     }
@@ -397,9 +376,7 @@ public class FuelSubsystem extends SubsystemBase {
     }
 
     private AngularVelocity getShooterVelocity() {
-        return shooterCalculator.isManualModeEnabled()
-                ? launchVelocityIntakeLauncher.get()
-                : shooterCalculator.calculateShotData().velocity();
+        return shooterCalculator.calculateShotData().velocity();
     }
 
     private LinearVelocity getBallVelocity(AngularVelocity angularVelocity) {

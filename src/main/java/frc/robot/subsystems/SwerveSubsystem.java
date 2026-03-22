@@ -1,6 +1,10 @@
 package frc.robot.subsystems;
 
-import static edu.wpi.first.units.Units.*;
+import static edu.wpi.first.units.Units.DegreesPerSecond;
+import static edu.wpi.first.units.Units.Meter;
+import static edu.wpi.first.units.Units.MetersPerSecond;
+import static edu.wpi.first.units.Units.MetersPerSecondPerSecond;
+import static edu.wpi.first.units.Units.RadiansPerSecond;
 
 import com.ctre.phoenix6.hardware.core.CorePigeon2;
 import com.revrobotics.spark.SparkMax;
@@ -12,8 +16,7 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
-import edu.wpi.first.networktables.NetworkTableInstance;
-import edu.wpi.first.networktables.StructPublisher;
+import edu.wpi.first.units.AngularVelocityUnit;
 import edu.wpi.first.units.LinearVelocityUnit;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.LinearVelocity;
@@ -34,9 +37,19 @@ import frc.robot.lib.BLine.Path;
 import frc.robot.util.BumpManager;
 import frc.robot.util.ShooterCalculator;
 import frc.robot.util.SlewRateLimiter2d;
-import frc.robot.util.dashboard.*;
+import frc.robot.util.dashboard.LoggedNetworkBoolean;
+import frc.robot.util.dashboard.LoggedNetworkDouble;
+import frc.robot.util.dashboard.LoggedNetworkStruct;
+import frc.robot.util.dashboard.LoggedNetworkUnit;
+import frc.robot.util.dashboard.MultiMotorInfoSendable;
+import frc.robot.util.dashboard.PIDSendable;
 import frc.robot.util.dashboard.PIDSendable.PIDValues;
-import frc.robot.util.enums.Constants.*;
+import frc.robot.util.enums.Constants.ControllerConstants;
+import frc.robot.util.enums.Constants.DriveConstants;
+import frc.robot.util.enums.Constants.FieldConstants;
+import frc.robot.util.enums.Constants.PhysicalConstants;
+import frc.robot.util.enums.Constants.ShootOnTheMoveConstants;
+import frc.robot.util.enums.Constants.VisionConstants;
 import frc.robot.util.enums.PositionCalibrationLocation;
 import frc.robot.util.enums.SpeedMultiplier;
 import frc.robot.vision.PhotonCamera;
@@ -81,7 +94,10 @@ public class SwerveSubsystem extends SubsystemBase {
             new SlewRateLimiter2d(DriveConstants.MAX_LINEAR_ACCELERATION.in(MetersPerSecondPerSecond));
 
     private final LoggedNetworkUnit<LinearVelocityUnit, LinearVelocity> loggedMaxVelocityWhileShooting;
-    private final StructPublisher<Pose2d> robotPosePublisher;
+    private final LoggedNetworkStruct<Pose2d> loggedRobotPose;
+    private final LoggedNetworkUnit<LinearVelocityUnit, LinearVelocity> loggedTargetLinearVelocity;
+    private final LoggedNetworkStruct<Translation2d> loggedTargetTranslation;
+    private final LoggedNetworkUnit<AngularVelocityUnit, AngularVelocity> loggedTargetAngularVelocity;
 
     @SuppressWarnings("StaticAssignmentInConstructor")
     public SwerveSubsystem(final MultiMotorInfoSendable motorInfo) throws IOException {
@@ -108,9 +124,13 @@ public class SwerveSubsystem extends SubsystemBase {
 
         loggedMaxVelocityWhileShooting = new LoggedNetworkUnit<>(
                 "Shooter Calculator/Max Velocity While Shooting", ShootOnTheMoveConstants.MAX_VELOCITY_WHILE_SHOOTING);
-        robotPosePublisher = NetworkTableInstance.getDefault()
-                .getStructTopic("Robot Pose Struct", Pose2d.struct)
-                .publish();
+        loggedRobotPose = new LoggedNetworkStruct<>("Robot Pose Struct", Pose2d.struct, swerveDrive.getPose());
+        loggedRobotPose.addListener(this::resetPose);
+        loggedTargetLinearVelocity = new LoggedNetworkUnit<>("/Swerve/Target Linear Velocity", MetersPerSecond.zero());
+        loggedTargetTranslation =
+                new LoggedNetworkStruct<>("/Swerve/Target Translation", Translation2d.struct, new Translation2d());
+        loggedTargetAngularVelocity =
+                new LoggedNetworkUnit<>("/Swerve/Target Angular Velocity", DegreesPerSecond.zero());
 
         setupVisionManager();
         pathBuilder = setupBLine();
@@ -173,7 +193,7 @@ public class SwerveSubsystem extends SubsystemBase {
             swerveDrive.setHeadingCorrection(
                     headingCorrectionSupplier.getAsBoolean(), headingCorrectionDeadband.getAsDouble());
         }
-        robotPosePublisher.set(getRobotPose());
+        loggedRobotPose.set(getRobotPose());
     }
 
     private void updateOdometry() {
@@ -339,22 +359,33 @@ public class SwerveSubsystem extends SubsystemBase {
             linearVelocity = linearVelocity.unaryMinus();
         }
         final Translation2d limitedLinearVelocity = linearDriveLimiter.calculate(linearVelocity);
-        final AngularVelocity finalAngularVelocity;
+        final AngularVelocity determinedAngularVelocity;
         if (forceNormalDriveMode) {
-            finalAngularVelocity = angularVelocity;
+            determinedAngularVelocity = angularVelocity;
         } else if (faceTowardsHub) {
-            finalAngularVelocity = getTargetAngularVelocity(getAngleToHub());
+            determinedAngularVelocity = getTargetAngularVelocity(getAngleToHub());
         } else if (lockYawTowardsVelocity) {
-            finalAngularVelocity = getTargetAngularVelocity(getVelocityAngle(
+            determinedAngularVelocity = getTargetAngularVelocity(getVelocityAngle(
                     MetersPerSecond.of(limitedLinearVelocity.getX()),
                     MetersPerSecond.of(limitedLinearVelocity.getY())));
         } else if (bumpManager.isBumpLockEnabledTrigger().getAsBoolean()) {
-            finalAngularVelocity = getTargetAngularVelocity(bumpManager.getBumpLockAngle());
+            determinedAngularVelocity = getTargetAngularVelocity(bumpManager.getBumpLockAngle());
         } else {
-            finalAngularVelocity = angularVelocity;
+            determinedAngularVelocity = angularVelocity;
         }
+        final AngularVelocity maxAngularVelocity = RadiansPerSecond.of(swerveDrive.getMaximumChassisAngularVelocity());
+        final AngularVelocity finalAngularVelocity = determinedAngularVelocity.gt(maxAngularVelocity)
+                ? maxAngularVelocity
+                : (determinedAngularVelocity.lt(maxAngularVelocity.unaryMinus())
+                        ? maxAngularVelocity.unaryMinus()
+                        : determinedAngularVelocity);
+
+        loggedTargetLinearVelocity.set(MetersPerSecond.of(limitedLinearVelocity.getNorm()));
+        loggedTargetTranslation.set(limitedLinearVelocity);
+        loggedTargetAngularVelocity.set(finalAngularVelocity);
+
         shooterCalculator.setLastAngularVelocityInput(
-                !forceNormalDriveMode && faceTowardsHub ? angularVelocity : finalAngularVelocity);
+                !forceNormalDriveMode && faceTowardsHub ? angularVelocity : determinedAngularVelocity);
         swerveDrive.driveFieldOriented(new ChassisSpeeds(
                 limitedLinearVelocity.getX(), limitedLinearVelocity.getY(), finalAngularVelocity.in(RadiansPerSecond)));
     }
@@ -637,7 +668,7 @@ public class SwerveSubsystem extends SubsystemBase {
                 VisionConstants.CAMERA_1_ROTATION));
     }
 
-    private CorePigeon2 getPigeon2() {
+    public CorePigeon2 getPigeon2() {
         return (CorePigeon2) swerveDrive.getGyro().getIMU();
     }
 

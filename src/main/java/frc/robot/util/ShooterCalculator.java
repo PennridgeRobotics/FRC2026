@@ -1,25 +1,45 @@
 package frc.robot.util;
 
-import static edu.wpi.first.units.Units.*;
+import static edu.wpi.first.units.Units.Degrees;
+import static edu.wpi.first.units.Units.DegreesPerSecond;
+import static edu.wpi.first.units.Units.Inches;
+import static edu.wpi.first.units.Units.Kilograms;
+import static edu.wpi.first.units.Units.Meters;
+import static edu.wpi.first.units.Units.Milliseconds;
+import static edu.wpi.first.units.Units.RPM;
+import static edu.wpi.first.units.Units.Radians;
+import static edu.wpi.first.units.Units.RadiansPerSecond;
+import static edu.wpi.first.units.Units.RotationsPerSecond;
+import static edu.wpi.first.units.Units.RotationsPerSecondPerSecond;
+import static edu.wpi.first.units.Units.Seconds;
 
-import edu.wpi.first.math.geometry.*;
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
-import edu.wpi.first.networktables.*;
+import edu.wpi.first.networktables.DoublePublisher;
+import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.StringPublisher;
 import edu.wpi.first.units.AngleUnit;
+import edu.wpi.first.units.AngularVelocityUnit;
 import edu.wpi.first.units.TimeUnit;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.units.measure.Time;
 import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import frc.robot.util.dashboard.LoggedNetworkBoolean;
 import frc.robot.util.dashboard.LoggedNetworkButton;
 import frc.robot.util.dashboard.LoggedNetworkDouble;
+import frc.robot.util.dashboard.LoggedNetworkInput;
 import frc.robot.util.dashboard.LoggedNetworkInteger;
+import frc.robot.util.dashboard.LoggedNetworkString;
+import frc.robot.util.dashboard.LoggedNetworkStruct;
 import frc.robot.util.dashboard.LoggedNetworkUnit;
 import frc.robot.util.dashboard.SplitButtonChooser;
 import frc.robot.util.enums.Constants.FieldConstants;
@@ -53,8 +73,7 @@ public class ShooterCalculator {
             new TreeMap<>(); // because InterpolatingDoubleTreeMap won't let us extract its values
     private @Nullable ShotData lastShotData;
     private CalculationMode calculationMode = CalculationMode.SOTM;
-    private boolean manualMode = false;
-    private String originalExpression = "-45.66 * x^(-2.622) + 56.778";
+    private final String defaultExpression = "-45.66 * x^(-2.622) + 56.778";
     private CompiledExpression compiledExpression = Crunch.compileExpression("0");
     private long lastUpdateTimestampMillis;
     private ShotCalculator shotCalculator;
@@ -72,25 +91,25 @@ public class ShooterCalculator {
     private final LoggedNetworkUnit<TimeUnit, Time> loggedSimShootCooldownMinMs;
     private final LoggedNetworkUnit<TimeUnit, Time> loggedSimShootCooldownMaxMs;
     private final LoggedNetworkBoolean loggedSimToggleRemoveScoredBalls;
+    private final LoggedNetworkStruct<Translation3d> loggedSimBallTargetPos;
 
-    private final BooleanEntry manualModeEntry;
+    private final LoggedNetworkBoolean loggedManualMode;
     private final StringPublisher manualModeTextPublisher;
     private final DoublePublisher shotDistancePublisher;
     private final DoublePublisher shotVelocityPublisher;
     private final DoublePublisher shotHeadingPublisher;
     private final DoublePublisher invertedShotHeadingPublisher;
     private final DoublePublisher savedDataCountPublisher;
-    private final StringEntry savedShooterDistanceVelocityMapEntry;
-    private final BooleanEntry saveCurrentDataButtonEntry;
-    private final BooleanEntry exportToConsoleButton;
-    private final StringSubscriber equationSubscriber;
-    private final DoubleEntry velocityOffsetEntry;
+    private final LoggedNetworkString loggedSavedShooterDistanceVelocityMap;
+    private final LoggedNetworkString loggedEquation;
+    private final LoggedNetworkUnit<AngularVelocityUnit, AngularVelocity> loggedVelocityOffset;
     private final DoublePublisher shotConfidencePublisher;
     private final DoublePublisher driveAngleFFPublisher;
     private final LoggedNetworkUnit<AngleUnit, Angle> loggedLaunchAngle;
     private final LoggedNetworkDouble loggedSlipFactor;
     private final LoggedNetworkUnit<TimeUnit, Time> loggedPhaseDelay;
     private final LoggedNetworkUnit<TimeUnit, Time> loggedMechanismDelay;
+    private final LoggedNetworkUnit<AngularVelocityUnit, AngularVelocity> loggedManualLaunchVelocity;
 
     private static final String NO_DATA_TEXT = "(No Data)";
 
@@ -98,12 +117,9 @@ public class ShooterCalculator {
         this.swerveDrive = swerveDrive;
 
         final var topicPrefix = "Shooter Calculator/";
-        manualModeEntry = NetworkTableInstance.getDefault()
-                .getBooleanTopic(topicPrefix + "Manual Mode")
-                .getEntry(manualMode);
-        manualModeEntry.set(manualMode);
+        loggedManualMode = new LoggedNetworkBoolean(topicPrefix + "Manual Mode", false);
         manualModeTextPublisher = NetworkTableInstance.getDefault()
-                .getStringTopic("Manual Mode Text")
+                .getStringTopic(topicPrefix + "Manual Mode Text")
                 .publish();
         shotDistancePublisher = NetworkTableInstance.getDefault()
                 .getDoubleTopic(topicPrefix + "Shot Distance")
@@ -120,28 +136,18 @@ public class ShooterCalculator {
         savedDataCountPublisher = NetworkTableInstance.getDefault()
                 .getDoubleTopic(topicPrefix + "Saved Data Count")
                 .publish();
-        savedShooterDistanceVelocityMapEntry = NetworkTableInstance.getDefault()
-                .getStringTopic(topicPrefix + "Saved Shooter Distance Velocity Map")
-                .getEntry(NO_DATA_TEXT);
-        savedShooterDistanceVelocityMapEntry.set(NO_DATA_TEXT);
-        saveCurrentDataButtonEntry = NetworkTableInstance.getDefault()
-                .getBooleanTopic(topicPrefix + "Save Current Distance and Velocity")
-                .getEntry(false);
-        saveCurrentDataButtonEntry.set(false);
-        exportToConsoleButton = NetworkTableInstance.getDefault()
-                .getBooleanTopic(topicPrefix + "Export to Console")
-                .getEntry(false);
-        exportToConsoleButton.set(false);
-        var equationEntry = NetworkTableInstance.getDefault()
-                .getStringTopic(topicPrefix + "Equation")
-                .getEntry(originalExpression);
-        equationEntry.set(originalExpression);
-        equationSubscriber = equationEntry.getTopic().subscribe(originalExpression);
+        loggedSavedShooterDistanceVelocityMap =
+                new LoggedNetworkString(topicPrefix + "Saved Shooter Distance Velocity Map", NO_DATA_TEXT);
+        loggedSavedShooterDistanceVelocityMap.addListener(unused -> importData());
+        new LoggedNetworkButton(topicPrefix + "Save Current Distance and Velocity", () -> {
+            if (lastShotData == null) return;
+            addDistanceVelocityData(lastShotData.distance(), lastShotData.velocity());
+        });
+        new LoggedNetworkButton(topicPrefix + "Export to Console", () -> System.out.println("EXPORT: " + exportData()));
+        loggedEquation = new LoggedNetworkString(topicPrefix + "Equation", defaultExpression);
+        loggedEquation.addListener(unused -> compileEquation());
         compileEquation();
-        velocityOffsetEntry = NetworkTableInstance.getDefault()
-                .getDoubleTopic(topicPrefix + "Velocity Offset")
-                .getEntry(0.0);
-        velocityOffsetEntry.set(0.0);
+        loggedVelocityOffset = new LoggedNetworkUnit<>(topicPrefix + "Velocity Offset", RotationsPerSecond.zero());
         shotConfidencePublisher = NetworkTableInstance.getDefault()
                 .getDoubleTopic(topicPrefix + "Shot Confidence")
                 .publish();
@@ -160,26 +166,29 @@ public class ShooterCalculator {
         loggedMechanismDelay =
                 new LoggedNetworkUnit<>(topicPrefix + "Mechanism Delay", ShootOnTheMoveConstants.MECHANISM_LATENCY);
         loggedMechanismDelay.addListener(unused -> shotCalculator = createShotCalculator());
-
-        loggedSimBallsInHopper = new LoggedNetworkInteger("Sim/Balls in Hopper", 0);
-        loggedSimHopperLimit = new LoggedNetworkInteger("Sim/Hopper Limit", 20);
-        loggedSimShootCooldownMinMs = new LoggedNetworkUnit<>("Sim/Shoot Cooldown Min MS", Milliseconds.of(100));
-        loggedSimShootCooldownMaxMs = new LoggedNetworkUnit<>("Sim/Shoot Cooldown Max MS", Milliseconds.of(300));
-        new LoggedNetworkButton("Sim/Clear Balls", fuelPhysicsSim::clearBalls);
-        new LoggedNetworkButton("Sim/Spawn Balls", fuelPhysicsSim::placeFieldBalls);
-        loggedSimToggleRemoveScoredBalls = new LoggedNetworkBoolean("Sim/Remove Scored Balls", false);
-        loggedSimToggleRemoveScoredBalls.addListener(fuelPhysicsSim::setRemoveScoredBalls);
-
-        sotmSimulator = createProjectileSimulator();
-        shotCalculator = createShotCalculator();
-
-        SmartDashboard.putData(
-                topicPrefix + "/SmartDashboard/Calculation Mode",
+        loggedManualLaunchVelocity =
+                new LoggedNetworkUnit<>(topicPrefix + "Manual Launch Velocity", RotationsPerSecond.of(47));
+        LoggedNetworkInput.publishSendable(
+                topicPrefix + "Calculation Mode",
                 SplitButtonChooser.withEnum(
                         () -> calculationMode,
                         Set.of(newMode -> calculationMode = newMode),
                         calculationMode,
                         CalculationMode.class));
+
+        loggedSimBallsInHopper = new LoggedNetworkInteger("/Sim/Balls in Hopper", 1000);
+        loggedSimHopperLimit = new LoggedNetworkInteger("/Sim/Hopper Limit", 20);
+        loggedSimShootCooldownMinMs = new LoggedNetworkUnit<>("/Sim/Shoot Cooldown Min MS", Milliseconds.of(80));
+        loggedSimShootCooldownMaxMs = new LoggedNetworkUnit<>("/Sim/Shoot Cooldown Max MS", Milliseconds.of(100));
+        new LoggedNetworkButton("/Sim/Clear Balls", fuelPhysicsSim::clearBalls);
+        new LoggedNetworkButton("/Sim/Spawn Balls", fuelPhysicsSim::placeFieldBalls);
+        loggedSimToggleRemoveScoredBalls = new LoggedNetworkBoolean("/Sim/Remove Scored Balls", true);
+        loggedSimToggleRemoveScoredBalls.addListener(fuelPhysicsSim::setRemoveScoredBalls);
+        loggedSimBallTargetPos =
+                new LoggedNetworkStruct<>("/Sim Ball Target Pos", Translation3d.struct, new Translation3d());
+
+        sotmSimulator = createProjectileSimulator();
+        shotCalculator = createShotCalculator();
 
         addPreviouslySavedData();
     }
@@ -233,12 +242,12 @@ public class ShooterCalculator {
         final Translation2d target = getTarget();
         final double distanceToTarget = target.getDistance(robotTranslation);
 
-        final double targetVelocity = calculateAngularVelocity(distanceToTarget) + velocityOffsetEntry.get();
+        final double targetVelocity = calculateAngularVelocity(distanceToTarget);
         final var sotmData = isUsingSOTM() ? calculateSOTM() : null;
         final Rotation2d targetHeading = (sotmData != null
                 ? sotmData.driveAngle().rotateBy(Rotation2d.k180deg)
                 : target.minus(robotTranslation).getAngle());
-        final var distance = Meters.of(sotmData != null ? sotmData.solvedDistanceM() : distanceToTarget);
+        final var distance = Meters.of(distanceToTarget);
         final var shooterVelocity = RotationsPerSecond.of(targetVelocity);
         final var driveAngleFF = RadiansPerSecond.of(sotmData != null ? sotmData.driveAngularVelocityRadPerSec() : 0);
         final var isReady = sotmData != null
@@ -285,8 +294,10 @@ public class ShooterCalculator {
         final var shotCalcConfig = new ShotCalculator.Config();
         shotCalcConfig.launcherOffsetX = ShootOnTheMoveConstants.LAUNCHER_OFFSET.getX();
         shotCalcConfig.launcherOffsetY = ShootOnTheMoveConstants.LAUNCHER_OFFSET.getY();
-        shotCalcConfig.phaseDelayMs = loggedPhaseDelay.get().in(Milliseconds);
-        shotCalcConfig.mechLatencyMs = loggedMechanismDelay.get().in(Milliseconds);
+        shotCalcConfig.phaseDelayMs =
+                RobotBase.isReal() ? loggedPhaseDelay.get().in(Milliseconds) : 0;
+        shotCalcConfig.mechLatencyMs =
+                RobotBase.isReal() ? loggedMechanismDelay.get().in(Milliseconds) : 0;
         shotCalcConfig.maxTiltDeg = ShootOnTheMoveConstants.MAXIMUM_TILT.in(Degrees);
         shotCalcConfig.headingSpeedScalar = ShootOnTheMoveConstants.HEADING_SPEED_SCALAR;
         shotCalcConfig.headingReferenceDistance = ShootOnTheMoveConstants.HEADING_REFERENCE_DISTANCE;
@@ -308,7 +319,7 @@ public class ShooterCalculator {
         System.out.println("Added distance " + distance + "m with velocity " + velocity + "rot/s");
         shooterDistanceVelocityMap.put(distance, velocity);
         savedShooterDistanceVelocityMap.put(distance, velocity);
-        savedShooterDistanceVelocityMapEntry.set(exportData());
+        loggedSavedShooterDistanceVelocityMap.set(exportData());
         savedDataCountPublisher.set(savedShooterDistanceVelocityMap.size());
     }
 
@@ -327,11 +338,16 @@ public class ShooterCalculator {
     }
 
     private double calculateAngularVelocity(double distanceToTarget) {
+        if (loggedManualMode.getAsBoolean()) {
+            return loggedManualLaunchVelocity.get().in(RotationsPerSecond);
+        }
         return switch (calculationMode) {
-            case INTERPOLATION -> Objects.requireNonNullElse(shooterDistanceVelocityMap.get(distanceToTarget), 0.0);
-            case EQUATION -> compiledExpression.evaluate(distanceToTarget);
-            case SOTM -> RotationsPerSecond.convertFrom(calculateSOTM().rpm(), RPM);
-        };
+                    case INTERPOLATION ->
+                        Objects.requireNonNullElse(shooterDistanceVelocityMap.get(distanceToTarget), 0.0);
+                    case EQUATION -> compiledExpression.evaluate(distanceToTarget);
+                    case SOTM -> RotationsPerSecond.convertFrom(calculateSOTM().rpm(), RPM);
+                }
+                + loggedVelocityOffset.get().in(RotationsPerSecond);
     }
 
     private String exportData() {
@@ -345,7 +361,7 @@ public class ShooterCalculator {
     private void importData() {
         shooterDistanceVelocityMap.clear(); // clear the interpolation map
         savedShooterDistanceVelocityMap.clear(); // clear the saved map
-        final var data = savedShooterDistanceVelocityMapEntry.get();
+        final var data = loggedSavedShooterDistanceVelocityMap.get();
         if (data.equals(NO_DATA_TEXT)) {
             return;
         }
@@ -361,7 +377,7 @@ public class ShooterCalculator {
 
     public void simulationInit() {
         fuelPhysicsSim.enable();
-        fuelPhysicsSim.placeFieldBalls();
+        // fuelPhysicsSim.placeFieldBalls();
 
         fuelPhysicsSim.configureRobot(
                 PhysicalConstants.ROBOT_WIDTH_Y.in(Meters),
@@ -382,46 +398,70 @@ public class ShooterCalculator {
 
     public void simulationPeriodic() {
         fuelPhysicsSim.tick();
-        if (isLaunching.getAsBoolean()) {
-            if (System.currentTimeMillis() < simLastLaunchTime) {
-                return;
-            }
-            if (loggedSimBallsInHopper.getAsInt() <= 0) {
-                return;
-            }
-            final var minShootCooldown = loggedSimShootCooldownMinMs.get().in(Milliseconds);
-            final var maxShootCooldown = loggedSimShootCooldownMaxMs.get().in(Milliseconds);
-            simLastLaunchTime = System.currentTimeMillis()
-                    + (maxShootCooldown <= minShootCooldown
-                            ? Math.round(Math.max(minShootCooldown, maxShootCooldown))
-                            : ThreadLocalRandom.current()
-                                    .nextLong(
-                                            Math.round(loggedSimShootCooldownMinMs
-                                                    .get()
-                                                    .in(Milliseconds)),
-                                            Math.round(loggedSimShootCooldownMaxMs
-                                                    .get()
-                                                    .in(Milliseconds))));
-            loggedSimBallsInHopper.set(loggedSimBallsInHopper.getAsInt() - 1);
-            final var shotData = calculateShotData();
-            final var rpm = shotData.velocity().in(RPM);
-            final var ballSpeed = sotmSimulator.exitVelocity(rpm);
-            fuelPhysicsSim.launchBall(
-                    new Translation3d(swerveDrive.getPose().getTranslation())
-                            .plus(new Translation3d(
-                                            ShootOnTheMoveConstants.LAUNCHER_OFFSET.getMeasureX(),
-                                            ShootOnTheMoveConstants.LAUNCHER_OFFSET.getMeasureY(),
-                                            ShootOnTheMoveConstants.EXIT_HEIGHT)
-                                    .rotateBy(swerveDrive.getGyroRotation3d())),
-                    new Translation3d(
-                            ballSpeed,
-                            new Rotation3d(
-                                            Degrees.zero(),
-                                            ShootOnTheMoveConstants.LAUNCH_ANGLE_FROM_HORIZONTAL.plus(Degrees.of(180)),
-                                            Degrees.zero())
-                                    .rotateBy(swerveDrive.getGyroRotation3d())),
-                    rpm);
+
+        loggedSimBallTargetPos.set(new Translation3d(
+                FieldConstants.HUB_RED.getMeasureX(),
+                FieldConstants.HUB_RED.getMeasureY(),
+                ShootOnTheMoveConstants.HUB_HEIGHT));
+
+        if (!isLaunching.getAsBoolean()) {
+            return;
         }
+        if (System.currentTimeMillis() < simLastLaunchTime) {
+            return;
+        }
+        if (loggedSimBallsInHopper.getAsInt() <= 0) {
+            return;
+        }
+        final var minShootCooldown = loggedSimShootCooldownMinMs.get().in(Milliseconds);
+        final var maxShootCooldown = loggedSimShootCooldownMaxMs.get().in(Milliseconds);
+        simLastLaunchTime = System.currentTimeMillis()
+                + (maxShootCooldown <= minShootCooldown
+                        ? Math.round(Math.max(minShootCooldown, maxShootCooldown))
+                        : ThreadLocalRandom.current()
+                                .nextLong(
+                                        Math.round(loggedSimShootCooldownMinMs
+                                                .get()
+                                                .in(Milliseconds)),
+                                        Math.round(loggedSimShootCooldownMaxMs
+                                                .get()
+                                                .in(Milliseconds))));
+        loggedSimBallsInHopper.set(loggedSimBallsInHopper.getAsInt() - 1);
+        final var shotData = calculateShotData();
+        final var rpm = shotData.velocity().in(RPM);
+        final var ballSpeed = sotmSimulator.exitVelocity(rpm);
+
+        // ball spin
+        final var ballSpinRadPerSec =
+                ballSpeed / ShootOnTheMoveConstants.BALL_DIAMETER.div(2).in(Meters);
+        final var ballSpinVector =
+                new Translation3d(0.0, ballSpinRadPerSec, 0.0).rotateBy(swerveDrive.getGyroRotation3d());
+
+        final var launchPosition = new Translation3d(swerveDrive.getPose().getTranslation())
+                .plus(new Translation3d(
+                                ShootOnTheMoveConstants.LAUNCHER_OFFSET.getMeasureX(),
+                                ShootOnTheMoveConstants.LAUNCHER_OFFSET.getMeasureY(),
+                                ShootOnTheMoveConstants.EXIT_HEIGHT)
+                        .rotateBy(swerveDrive.getGyroRotation3d()));
+
+        final var launchAngleRadians = loggedLaunchAngle.get().in(Radians);
+        final var ballVelocityWhileStill = new Translation3d(
+                        -ballSpeed * Math.cos(launchAngleRadians), 0.0, ballSpeed * Math.sin(launchAngleRadians))
+                .rotateBy(swerveDrive.getGyroRotation3d());
+
+        // see ShotCalculator#calculate
+        final var cosH = swerveDrive.getPose().getRotation().getCos();
+        final var sinH = swerveDrive.getPose().getRotation().getSin();
+        final var launcherFieldOffX = ShootOnTheMoveConstants.LAUNCHER_OFFSET.getX() * cosH
+                - ShootOnTheMoveConstants.LAUNCHER_OFFSET.getY() * sinH;
+        final var launcherFieldOffY = ShootOnTheMoveConstants.LAUNCHER_OFFSET.getX() * sinH
+                + ShootOnTheMoveConstants.LAUNCHER_OFFSET.getY() * cosH;
+        final var omega = swerveDrive.getGyro().getYawAngularVelocity().in(RadiansPerSecond);
+        final var vx = swerveDrive.getFieldVelocity().vxMetersPerSecond + (-launcherFieldOffY) * omega;
+        final var vy = swerveDrive.getFieldVelocity().vyMetersPerSecond + launcherFieldOffX * omega;
+        final var ballVelocity = ballVelocityWhileStill.plus(new Translation3d(vx, vy, 0.0));
+
+        fuelPhysicsSim.launchBall(launchPosition, ballVelocity, ballSpinVector);
     }
 
     public void prePeriodic() {
@@ -429,28 +469,7 @@ public class ShooterCalculator {
         lastSOTMLaunchParameters = null;
 
         // NetworkTables
-        if (saveCurrentDataButtonEntry.get()) {
-            // button pressed
-            saveCurrentDataButtonEntry.set(false);
-            if (lastShotData == null) return;
-            addDistanceVelocityData(lastShotData.distance(), lastShotData.velocity());
-        }
-        if (exportToConsoleButton.get()) {
-            // button pressed
-            exportToConsoleButton.set(false);
-            System.out.println("EXPORT: " + exportData());
-        }
-        final var currentDashboardData = savedShooterDistanceVelocityMapEntry.get();
-        final var exportedData = exportData();
-        if (!currentDashboardData.equals(exportedData)) {
-            importData();
-        }
-        if (!equationSubscriber.get().equals(originalExpression)) {
-            originalExpression = equationSubscriber.get();
-            compileEquation();
-        }
-        manualMode = manualModeEntry.get();
-        manualModeTextPublisher.set(manualMode ? "Custom" : "Calculator");
+        manualModeTextPublisher.set(loggedManualMode.getAsBoolean() ? "Custom" : "Calculator");
 
         if (System.currentTimeMillis() - lastUpdateTimestampMillis >= 100L) {
             calculateShotData();
@@ -460,7 +479,7 @@ public class ShooterCalculator {
     private void compileEquation() {
         final var env = new EvaluationEnvironment();
         env.setVariableNames("x");
-        final var rawExpression = equationSubscriber.get();
+        final var rawExpression = loggedEquation.get();
         CompiledExpression compiled;
         try {
             compiled = Crunch.compileExpression(rawExpression, env);
@@ -468,7 +487,6 @@ public class ShooterCalculator {
             DriverStation.reportError("Error compiling equation for shooter: " + ex.getMessage(), ex.getStackTrace());
             compiled = Crunch.compileExpression("0");
         }
-        originalExpression = rawExpression;
         this.compiledExpression = compiled;
     }
 
@@ -482,26 +500,38 @@ public class ShooterCalculator {
 
     private Command adjustVelocityOffset(boolean increase) {
         return Commands.run(() -> {
-            final var velocityChange =
-                    RotationsPerSecondPerSecond.of(6).times(Milliseconds.of(20)).in(RotationsPerSecond);
-            velocityOffsetEntry.set(velocityOffsetEntry.get() + (increase ? velocityChange : -velocityChange));
+            final var velocityChange = RotationsPerSecondPerSecond.of(6).times(Milliseconds.of(20));
+            loggedVelocityOffset.set(
+                    loggedVelocityOffset.get().plus(increase ? velocityChange : velocityChange.unaryMinus()));
         });
     }
 
-    private void setManualMode(boolean newMode) {
-        manualMode = newMode;
-        manualModeEntry.set(newMode);
+    public Command increaseManualLaunchVelocity() {
+        return adjustManualLaunchVelocity(true);
+    }
+
+    public Command decreaseManualLaunchVelocity() {
+        return adjustManualLaunchVelocity(false);
+    }
+
+    private Command adjustManualLaunchVelocity(boolean increase) {
+        return Commands.run(() -> {
+            final var velocityChange = RotationsPerSecondPerSecond.of(6).times(Milliseconds.of(20));
+            loggedManualLaunchVelocity.set(
+                    loggedManualLaunchVelocity.get().plus(increase ? velocityChange : velocityChange.unaryMinus()));
+        });
     }
 
     public Command temporarilyEnableManualMode() {
         return Commands.deferredProxy(() -> {
-            if (manualMode) return Commands.none(); // already enabled, so this wouldn't do anything
-            return Commands.startEnd(() -> setManualMode(true), () -> setManualMode(false));
+            if (loggedManualMode.getAsBoolean())
+                return Commands.none(); // already enabled, so this wouldn't do anything
+            return Commands.startEnd(() -> loggedManualMode.set(true), () -> loggedManualMode.set(false));
         });
     }
 
     public boolean isManualModeEnabled() {
-        return manualMode;
+        return loggedManualMode.getAsBoolean();
     }
 
     public void setIsIntaking(BooleanSupplier isIntaking) {
