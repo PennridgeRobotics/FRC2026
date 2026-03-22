@@ -1,5 +1,8 @@
 package frc.robot.util.dashboard;
 
+import static edu.wpi.first.units.Units.MetersPerSecond;
+import static edu.wpi.first.units.Units.MetersPerSecondPerSecond;
+
 import com.revrobotics.PersistMode;
 import com.revrobotics.ResetMode;
 import com.revrobotics.spark.ClosedLoopSlot;
@@ -18,7 +21,6 @@ import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
-import yams.math.ExponentialProfilePIDController;
 import yams.motorcontrollers.SmartMotorController;
 import yams.motorcontrollers.SmartMotorControllerConfig;
 
@@ -32,6 +34,7 @@ public class PIDSendable implements Sendable {
     private final @Nullable SimpleMotorFeedforward simpleMotorFeedforward;
     private final @Nullable ElevatorFeedforward elevatorFeedforward;
     private final @Nullable ArmFeedforward armFeedforward;
+    private TrapezoidProfile.@Nullable Constraints trapezoidProfileConstraints;
     private final @Nullable SmartMotorController yams;
     private final PIDValues sparkMaxPIDValues;
 
@@ -45,6 +48,7 @@ public class PIDSendable implements Sendable {
             @Nullable SimpleMotorFeedforward simpleMotorFeedforward,
             @Nullable ElevatorFeedforward elevatorFeedforward,
             @Nullable ArmFeedforward armFeedforward,
+            TrapezoidProfile.@Nullable Constraints trapezoidProfileConstraints,
             @Nullable SmartMotorController yams) {
         this.type = type;
         this.sparkMaxPIDValues = defaults != null ? defaults.copy() : new PIDValues();
@@ -55,6 +59,7 @@ public class PIDSendable implements Sendable {
         this.simpleMotorFeedforward = simpleMotorFeedforward;
         this.elevatorFeedforward = elevatorFeedforward;
         this.armFeedforward = armFeedforward;
+        this.trapezoidProfileConstraints = trapezoidProfileConstraints;
         this.yams = yams;
         if ((type & Type.G) != 0 && (type & Type.COS) != 0) {
             throw new IllegalArgumentException("Cannot have both G and COS feedforward types");
@@ -63,13 +68,13 @@ public class PIDSendable implements Sendable {
 
     // Spark MAX
     public PIDSendable(SparkMax sparkMax, ClosedLoopSlot slot, int types, PIDValues defaults) {
-        this(types, defaults, sparkMax, slot, null, null, null, null, null, null);
+        this(types, defaults, sparkMax, slot, null, null, null, null, null, null, null);
         checkSupported("SparkMax", types, Type.PID | Type.I_ZONE | Type.LINEAR_FF | Type.COS);
     }
 
     // PIDController
     public PIDSendable(PIDController pidController, int types, @Nullable PIDValues defaults) {
-        this(types, defaults, null, null, pidController, null, null, null, null, null);
+        this(types, defaults, null, null, pidController, null, null, null, null, null, null);
         checkSupported("PIDController", types, Type.PID | Type.I_ZONE);
     }
 
@@ -86,7 +91,7 @@ public class PIDSendable implements Sendable {
             ElevatorFeedforward elevatorFeedforward,
             int types,
             @Nullable PIDValues defaults) {
-        this(types, defaults, null, null, pidController, null, null, elevatorFeedforward, null, null);
+        this(types, defaults, null, null, pidController, null, null, elevatorFeedforward, null, null, null);
         checkSupported("PIDController/ElevatorFeedforward", types, Type.PID | Type.I_ZONE | Type.LINEAR_FF);
     }
 
@@ -104,7 +109,7 @@ public class PIDSendable implements Sendable {
     // PIDController + ArmFeedforward
     public PIDSendable(
             PIDController pidController, ArmFeedforward armFeedforward, int types, @Nullable PIDValues defaults) {
-        this(types, defaults, null, null, pidController, null, null, null, armFeedforward, null);
+        this(types, defaults, null, null, pidController, null, null, null, armFeedforward, null, null);
         checkSupported("PIDController/ArmFeedforward", types, Type.PID | Type.I_ZONE | Type.ROTARY_FF);
     }
 
@@ -118,7 +123,7 @@ public class PIDSendable implements Sendable {
 
     // ProfiledPIDController
     public PIDSendable(ProfiledPIDController profiledPIDController, int types, @Nullable PIDValues defaults) {
-        this(types, defaults, null, null, null, profiledPIDController, null, null, null, null);
+        this(types, defaults, null, null, null, profiledPIDController, null, null, null, null, null);
         checkSupported("ProfiledPIDController", types, Type.PID | Type.I_ZONE | Type.CONSTRAINTS);
     }
 
@@ -135,7 +140,7 @@ public class PIDSendable implements Sendable {
             ElevatorFeedforward elevatorFeedforward,
             int types,
             @Nullable PIDValues defaults) {
-        this(types, defaults, null, null, null, profiledPIDController, null, elevatorFeedforward, null, null);
+        this(types, defaults, null, null, null, profiledPIDController, null, elevatorFeedforward, null, null, null);
         checkSupported(
                 "ProfiledPIDController/ElevatorFeedforward",
                 types,
@@ -160,7 +165,7 @@ public class PIDSendable implements Sendable {
             ArmFeedforward armFeedforward,
             int types,
             @Nullable PIDValues defaults) {
-        this(types, defaults, null, null, null, profiledPIDController, null, null, armFeedforward, null);
+        this(types, defaults, null, null, null, profiledPIDController, null, null, armFeedforward, null, null);
         checkSupported(
                 "ProfiledPIDController/ArmFeedforward",
                 types,
@@ -181,7 +186,7 @@ public class PIDSendable implements Sendable {
 
     // Feedforwards
     public PIDSendable(SimpleMotorFeedforward simpleMotorFeedforward, int types, @Nullable PIDValues defaults) {
-        this(types, defaults, null, null, null, null, simpleMotorFeedforward, null, null, null);
+        this(types, defaults, null, null, null, null, simpleMotorFeedforward, null, null, null, null);
         checkSupported("SimpleMotorFeedforward", types, Type.BASE_FF);
     }
 
@@ -194,7 +199,7 @@ public class PIDSendable implements Sendable {
     }
 
     public PIDSendable(ElevatorFeedforward elevatorFeedforward, int types, @Nullable PIDValues defaults) {
-        this(types, defaults, null, null, null, null, null, elevatorFeedforward, null, null);
+        this(types, defaults, null, null, null, null, null, elevatorFeedforward, null, null, null);
         checkSupported("ElevatorFeedforward", types, Type.LINEAR_FF);
     }
 
@@ -207,7 +212,7 @@ public class PIDSendable implements Sendable {
     }
 
     public PIDSendable(ArmFeedforward armFeedforward, int types, @Nullable PIDValues defaults) {
-        this(types, defaults, null, null, null, null, null, null, armFeedforward, null);
+        this(types, defaults, null, null, null, null, null, null, armFeedforward, null, null);
         checkSupported("ArmFeedforward", types, Type.ROTARY_FF);
     }
 
@@ -226,34 +231,34 @@ public class PIDSendable implements Sendable {
                 defaults,
                 null,
                 null,
-                yams.getConfig().getSimpleClosedLoopController().orElse(null),
-                yams.getConfig().getClosedLoopController().orElse(null),
+                yams.getConfig().getPID().orElse(null),
+                null,
                 yams.getConfig().getSimpleFeedforward().orElse(null),
                 yams.getConfig().getElevatorFeedforward().orElse(null),
                 yams.getConfig().getArmFeedforward().orElse(null),
+                yams.getConfig().getTrapezoidProfile().orElse(null),
                 yams);
-        yams.getConfig().getClosedLoopController();
         final var config = yams.getConfig();
         int supportedTypes = 0;
-        final var simple = config.getSimpleClosedLoopController();
-        final var profiled = config.getClosedLoopController();
-        final var exponential = config.getExponentiallyProfiledClosedLoopController();
+        final var pid = config.getPID();
+        final var constraints = config.getTrapezoidProfile();
         final var simpleFF = config.getSimpleFeedforward();
         final var elevatorFF = config.getElevatorFeedforward();
         final var armFF = config.getArmFeedforward();
-        if (simple.isPresent() || profiled.isPresent() || exponential.isPresent()) supportedTypes |= Type.PID;
+        if (pid.isPresent()) supportedTypes |= Type.PID;
         // if (simple.isPresent() || profiled.isPresent()) supportedTypes |= Type.I_ZONE;
         // if (profiled.isPresent()) supportedTypes |= Type.CONSTRAINTS;
+        if (constraints.isPresent()) supportedTypes |= Type.CONSTRAINTS;
         if (simpleFF.isPresent()) supportedTypes |= Type.BASE_FF;
         if (elevatorFF.isPresent()) supportedTypes |= Type.LINEAR_FF;
         if (armFF.isPresent()) supportedTypes |= Type.ROTARY_FF;
         String name = "YAMS";
-        if (simple.isPresent()) name += " (PIDController)";
-        if (profiled.isPresent()) name += " (ProfiledPIDController)";
-        if (exponential.isPresent()) name += " (ExponentialProfiledPIDController)";
-        if (simpleFF.isPresent()) name += " (SimpleMotorFeedforward)";
-        if (elevatorFF.isPresent()) name += " (ElevatorFeedforward)";
-        if (armFF.isPresent()) name += " (ArmFeedforward)";
+        if (pid.isPresent()) name += " (PIDController";
+        if (simpleFF.isPresent()) name += " (SimpleMotorFeedforward";
+        if (elevatorFF.isPresent()) name += " (ElevatorFeedforward";
+        if (armFF.isPresent()) name += " (ArmFeedforward";
+        if (constraints.isPresent()) name += " + TrapezoidProfile";
+        if (name.contains("(")) name += ")";
         checkSupported(name, types, supportedTypes);
     }
 
@@ -425,19 +430,39 @@ public class PIDSendable implements Sendable {
                 });
             }
         }
-        if ((type & Type.MAX_VELOCITY) != 0 && profiledPIDController != null) {
-            builder.addDoubleProperty(
-                    "Max Velocity",
-                    () -> profiledPIDController.getConstraints().maxVelocity,
-                    (v) -> profiledPIDController.setConstraints(new TrapezoidProfile.Constraints(
-                            v, profiledPIDController.getConstraints().maxAcceleration)));
+        if ((type & Type.MAX_VELOCITY) != 0) {
+            if (profiledPIDController != null) {
+                builder.addDoubleProperty(
+                        "Max Velocity",
+                        () -> profiledPIDController.getConstraints().maxVelocity,
+                        (v) -> profiledPIDController.setConstraints(new TrapezoidProfile.Constraints(
+                                v, profiledPIDController.getConstraints().maxAcceleration)));
+            } else if (trapezoidProfileConstraints != null) {
+                builder.addDoubleProperty(
+                        "Max Velocity", () -> Objects.requireNonNull(trapezoidProfileConstraints).maxVelocity, (v) -> {
+                            trapezoidProfileConstraints = new TrapezoidProfile.Constraints(
+                                    v, Objects.requireNonNull(trapezoidProfileConstraints).maxAcceleration);
+                            if (yams != null) yams.setMotionProfileMaxVelocity(MetersPerSecond.of(v));
+                        });
+            }
         }
-        if ((type & Type.MAX_ACCELERATION) != 0 && profiledPIDController != null) {
-            builder.addDoubleProperty(
-                    "Max Acceleration",
-                    () -> profiledPIDController.getConstraints().maxAcceleration,
-                    (v) -> profiledPIDController.setConstraints(
-                            new TrapezoidProfile.Constraints(profiledPIDController.getConstraints().maxVelocity, v)));
+        if ((type & Type.MAX_ACCELERATION) != 0) {
+            if (profiledPIDController != null) {
+                builder.addDoubleProperty(
+                        "Max Acceleration",
+                        () -> profiledPIDController.getConstraints().maxAcceleration,
+                        (v) -> profiledPIDController.setConstraints(new TrapezoidProfile.Constraints(
+                                profiledPIDController.getConstraints().maxVelocity, v)));
+            } else if (trapezoidProfileConstraints != null) {
+                builder.addDoubleProperty(
+                        "Max Acceleration",
+                        () -> Objects.requireNonNull(trapezoidProfileConstraints).maxAcceleration,
+                        (v) -> {
+                            trapezoidProfileConstraints = new TrapezoidProfile.Constraints(
+                                    Objects.requireNonNull(trapezoidProfileConstraints).maxVelocity, v);
+                            if (yams != null) yams.setMotionProfileMaxAcceleration(MetersPerSecondPerSecond.of(v));
+                        });
+            }
         }
         final SparkBase sparkBase;
         final ClosedLoopSlot closedLoopSlot;
@@ -563,6 +588,10 @@ public class PIDSendable implements Sendable {
             return new PIDValues(0, 0, 0, 0, 0, s, g, v, a, 0, 0);
         }
 
+        public static PIDValues constraints(double maxVelocity, double maxAcceleration) {
+            return new PIDValues(0, 0, 0, 0, 0, 0, 0, 0, 0, maxVelocity, maxAcceleration);
+        }
+
         public static PIDValues from(PIDController pidController) {
             return pidf(
                     pidController.getP(),
@@ -585,15 +614,8 @@ public class PIDSendable implements Sendable {
                     profiledPIDController.getConstraints().maxAcceleration);
         }
 
-        public static PIDValues from(ExponentialProfilePIDController exponentialProfilePIDController) {
-            return pidf(
-                    exponentialProfilePIDController.getP(),
-                    exponentialProfilePIDController.getI(),
-                    exponentialProfilePIDController.getD(),
-                    0,
-                    0,
-                    0,
-                    0);
+        public static PIDValues from(TrapezoidProfile.Constraints trapezoidProfileConstraints) {
+            return constraints(trapezoidProfileConstraints.maxVelocity, trapezoidProfileConstraints.maxAcceleration);
         }
 
         public static PIDValues from(SimpleMotorFeedforward simpleMotorFeedforward) {
@@ -633,19 +655,12 @@ public class PIDSendable implements Sendable {
 
         public static PIDValues from(SmartMotorControllerConfig smartMotorControllerConfig) {
             var pidValues = new PIDValues();
-            if (smartMotorControllerConfig.getSimpleClosedLoopController().isPresent())
-                pidValues = pidValues.and(PIDValues.from(smartMotorControllerConfig
-                        .getSimpleClosedLoopController()
-                        .get()));
-            if (smartMotorControllerConfig.getClosedLoopController().isPresent())
+            if (smartMotorControllerConfig.getPID().isPresent())
+                pidValues = pidValues.and(
+                        PIDValues.from(smartMotorControllerConfig.getPID().get()));
+            if (smartMotorControllerConfig.getTrapezoidProfile().isPresent())
                 pidValues = pidValues.and(PIDValues.from(
-                        smartMotorControllerConfig.getClosedLoopController().get()));
-            if (smartMotorControllerConfig
-                    .getExponentiallyProfiledClosedLoopController()
-                    .isPresent())
-                pidValues = pidValues.and(PIDValues.from(smartMotorControllerConfig
-                        .getExponentiallyProfiledClosedLoopController()
-                        .get()));
+                        smartMotorControllerConfig.getTrapezoidProfile().get()));
             if (smartMotorControllerConfig.getSimpleFeedforward().isPresent())
                 pidValues = pidValues.and(PIDValues.from(
                         smartMotorControllerConfig.getSimpleFeedforward().get()));
@@ -742,11 +757,11 @@ public class PIDSendable implements Sendable {
             this.d = d;
         }
 
-        public double getFf() {
+        public double getFF() {
             return ff;
         }
 
-        public void setFf(double ff) {
+        public void setFF(double ff) {
             this.ff = ff;
         }
 
