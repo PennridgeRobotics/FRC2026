@@ -1,16 +1,39 @@
 package frc.robot;
 
+import edu.wpi.first.wpilibj.DataLogManager;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.littletonrobotics.urcl.URCL;
 
 @NullMarked
 public class Robot extends TimedRobot {
     private @Nullable Command autonomousCommand;
     private @Nullable RobotContainer robotContainer;
+
+    public Robot() {
+        DataLogManager.start();
+        URCL.start(Map.ofEntries(
+                Map.entry(1, "Front-Left Drive"),
+                Map.entry(2, "Front-Left Angle"),
+                Map.entry(3, "Front-Right Drive"),
+                Map.entry(4, "Front-Right Angle"),
+                Map.entry(5, "Back-Right Drive"),
+                Map.entry(6, "Back-Right Angle"),
+                Map.entry(7, "Back-Left Drive"),
+                Map.entry(8, "Back-Left Angle"),
+                Map.entry(9, "Climber"),
+                Map.entry(10, "Intake-Launcher Left"),
+                Map.entry(11, "Intake-Launcher Right"),
+                Map.entry(12, "Indexer"),
+                Map.entry(13, "Pigeon2"),
+                Map.entry(14, "Power Distribution Hub"),
+                Map.entry(16, "CANdle")));
+    }
 
     /** This function is run when the robot is first started up and should be used for any initialization code. */
     @Override

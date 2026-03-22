@@ -58,7 +58,9 @@ wpi {
         addGui().apply {
             defaultEnabled = true
         }
-        addDriverstation()
+        addDriverstation().apply {
+            defaultEnabled = true
+        }
     }
 }
 
