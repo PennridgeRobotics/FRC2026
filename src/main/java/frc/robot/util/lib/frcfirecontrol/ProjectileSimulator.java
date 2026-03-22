@@ -79,7 +79,7 @@ public class ProjectileSimulator {
             double maxSimTime) {}
 
     public record TrajectoryResult(
-            double zAtTarget, double tof, boolean reachedTarget, double maxHeight, double apexX) {}
+            double zAtTarget, double tof, boolean reachedTarget, double maxHeight, double apexX, double vzAtTarget) {}
 
     // One row: distance -> RPM that lands it, TOF, reachable flag
     public record LUTEntry(double distanceM, double rpm, double tof, boolean reachable) {}
@@ -128,8 +128,13 @@ public class ProjectileSimulator {
         double maxTime = params.maxSimTime();
 
         while (t < maxTime) {
+            // store previous x, z, vz
+            double prevX = x;
+            double prevZ = z;
+            double prevVz = vz;
+
             // RK4 step
-            double[] state = {x, z, vx, vz};
+            double[] state = {x, z, vx, vz, t};
             double[] k1 = derivatives(state);
             double[] s2 = addScaled(state, k1, dt / 2.0);
             double[] k2 = derivatives(s2);
@@ -152,22 +157,23 @@ public class ProjectileSimulator {
             // Check if we've passed or reached the target distance
             if (x >= targetDistanceM) {
                 // Linear interpolation to find z at exact target x
-                double prevX = x - vx * dt; // approximate previous x
-                double prevZ = z - vz * dt; // approximate previous z
+                /*double prevX = x - vx * dt; // approximate previous x
+                double prevZ = z - vz * dt; // approximate previous z*/
                 double frac = (targetDistanceM - prevX) / (x - prevX);
                 double zAtTarget = prevZ + frac * (z - prevZ);
                 double tofAtTarget = t - dt + frac * dt;
-                return new TrajectoryResult(zAtTarget, tofAtTarget, true, maxHeight, apexX);
+                double vzAtTarget = prevVz + frac * (vz - prevVz);
+                return new TrajectoryResult(zAtTarget, tofAtTarget, true, maxHeight, apexX, vzAtTarget);
             }
 
             // Ball hit the ground
             if (z < 0) {
-                return new TrajectoryResult(0, t, false, maxHeight, apexX);
+                return new TrajectoryResult(0, t, false, maxHeight, apexX, vz);
             }
         }
 
         // Timed out without reaching target
-        return new TrajectoryResult(0, maxTime, false, maxHeight, apexX);
+        return new TrajectoryResult(0, maxTime, false, maxHeight, apexX, vz);
     }
 
     // state = [x, z, vx, vz]
@@ -197,24 +203,30 @@ public class ProjectileSimulator {
      * Binary search for the RPM that puts the ball at the target height. Returns reachable=false if max RPM can't
      * reach.
      */
-    public LUTEntry findRPMForDistance(double distanceM) {
+    public LUTEntry findRPMForDistance(double distanceCenterM) {
         double heightTolerance = 0.02; // 2cm
         double lo = params.rpmMin();
         double hi = params.rpmMax();
 
         // Quick feasibility check: can max RPM even reach this distance?
-        TrajectoryResult maxCheck = simulate(hi, distanceM);
+        TrajectoryResult maxCheck = simulate(hi, distanceCenterM);
         if (!maxCheck.reachedTarget()) {
-            return new LUTEntry(distanceM, 0, 0, false);
+            return new LUTEntry(distanceCenterM, 0, 0, false);
+        }
+
+        // Quick feasibility check 2: can max RPM reach the target height?
+        if (maxCheck.zAtTarget() < params.targetHeightM()) {
+            return new LUTEntry(distanceCenterM, 0, 0, false);
         }
 
         double bestRpm = hi;
         double bestTof = maxCheck.tof();
         double bestError = Math.abs(maxCheck.zAtTarget() - params.targetHeightM());
+        boolean bestIsFalling = false;
 
         for (int i = 0; i < params.binarySearchIters(); i++) {
             double mid = (lo + hi) / 2.0;
-            TrajectoryResult result = simulate(mid, distanceM);
+            TrajectoryResult result = simulate(mid, distanceCenterM);
 
             if (!result.reachedTarget()) {
                 // Too slow, need more RPM
@@ -229,10 +241,13 @@ public class ProjectileSimulator {
                 bestRpm = mid;
                 bestTof = result.tof();
                 bestError = absError;
+                bestIsFalling = result.vzAtTarget() < 0;
             }
 
             if (absError < heightTolerance) {
-                return new LUTEntry(distanceM, mid, result.tof(), true);
+                // check if ball is falling into hub from above
+                boolean isFalling = result.vzAtTarget() < 0;
+                return new LUTEntry(distanceCenterM, mid, result.tof(), isFalling);
             }
 
             if (error > 0) {
@@ -245,7 +260,7 @@ public class ProjectileSimulator {
         }
 
         // Return best found even if not perfectly converged (0.004 RPM precision after 25 iters)
-        return new LUTEntry(distanceM, bestRpm, bestTof, bestError < 0.10);
+        return new LUTEntry(distanceCenterM, bestRpm, bestTof, (bestError < 0.10) && bestIsFalling);
     }
 
     /** Generate the full lookup table: 0.50m to 5.00m in 5cm steps (91 entries). Takes ~200ms. */

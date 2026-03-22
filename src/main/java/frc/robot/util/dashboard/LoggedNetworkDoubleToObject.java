@@ -35,7 +35,7 @@ public class LoggedNetworkDoubleToObject<T> extends LoggedNetworkInput implement
     }
 
     public void set(T value) {
-        set(value, true);
+        set(value, false);
     }
 
     public void set(T value, boolean triggerListeners) {

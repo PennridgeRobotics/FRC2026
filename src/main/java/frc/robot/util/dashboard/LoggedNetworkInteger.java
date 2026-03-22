@@ -23,7 +23,7 @@ public class LoggedNetworkInteger extends LoggedNetworkInput implements LongSupp
     }
 
     public void set(long value) {
-        set(value, true);
+        set(value, false);
     }
 
     public void set(long value, boolean triggerListeners) {

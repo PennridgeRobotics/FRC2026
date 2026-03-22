@@ -1,7 +1,8 @@
 package frc.robot.util.dashboard;
 
 import edu.wpi.first.networktables.NetworkTableInstance;
-import edu.wpi.first.networktables.StringEntry;
+import edu.wpi.first.networktables.StructEntry;
+import edu.wpi.first.util.struct.Struct;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -9,23 +10,25 @@ import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
 
 @NullMarked
-public class LoggedNetworkString extends LoggedNetworkInput implements Supplier<String>, Consumer<String> {
-    private final List<Consumer<String>> listeners = new ArrayList<>();
-    private final StringEntry entry;
-    private String currentValue;
+public class LoggedNetworkStruct<T> extends LoggedNetworkInput implements Supplier<T>, Consumer<T> {
+    private final List<Consumer<T>> listeners = new ArrayList<>();
+    private final StructEntry<T> entry;
+    private T currentValue;
 
-    public LoggedNetworkString(String rawTopicName, String defaultValue) {
+    public LoggedNetworkStruct(String rawTopicName, Struct<T> struct, T defaultValue) {
         super(rawTopicName);
-        entry = NetworkTableInstance.getDefault().getStringTopic(topicName).getEntry(defaultValue);
+        entry = NetworkTableInstance.getDefault()
+                .getStructTopic(topicName, struct)
+                .getEntry(defaultValue);
         entry.set(defaultValue);
         currentValue = entry.get();
     }
 
-    public void set(String value) {
+    public void set(T value) {
         set(value, false);
     }
 
-    public void set(String value, boolean triggerListeners) {
+    public void set(T value, boolean triggerListeners) {
         if (currentValue.equals(value)) return;
         entry.set(value);
         currentValue = value;
@@ -40,16 +43,16 @@ public class LoggedNetworkString extends LoggedNetworkInput implements Supplier<
     }
 
     @Override
-    public String get() {
+    public T get() {
         return currentValue;
     }
 
     @Override
-    public void accept(String value) {
+    public void accept(T value) {
         entry.set(value);
     }
 
-    public void addListener(Consumer<String> callback) {
+    public void addListener(Consumer<T> callback) {
         listeners.add(callback);
     }
 }

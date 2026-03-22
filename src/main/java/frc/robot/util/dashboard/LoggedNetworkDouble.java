@@ -22,7 +22,7 @@ public class LoggedNetworkDouble extends LoggedNetworkInput implements DoubleSup
     }
 
     public void set(double value) {
-        set(value, true);
+        set(value, false);
     }
 
     public void set(double value, boolean triggerListeners) {
