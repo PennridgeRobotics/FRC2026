@@ -1,10 +1,5 @@
 package frc.robot.util.dashboard;
 
-import edu.wpi.first.networktables.NetworkTable;
-import edu.wpi.first.networktables.NetworkTableInstance;
-import edu.wpi.first.util.sendable.Sendable;
-import edu.wpi.first.util.sendable.SendableRegistry;
-import edu.wpi.first.wpilibj.smartdashboard.SendableBuilderImpl;
 import java.util.ArrayList;
 import java.util.List;
 import org.jspecify.annotations.NullMarked;
@@ -31,15 +26,5 @@ public abstract class LoggedNetworkInput {
         for (final var input : inputs) {
             input.periodic();
         }
-    }
-
-    public static void publishSendable(String rawTopicName, Sendable sendable) {
-        final var topicName = getAdjustedTopicName(rawTopicName);
-        final NetworkTable table = NetworkTableInstance.getDefault().getTable(topicName);
-        final SendableBuilderImpl builder = new SendableBuilderImpl();
-        builder.setTable(table);
-        SendableRegistry.publish(sendable, builder);
-        builder.startListeners();
-        table.getEntry(".name").setString(topicName);
     }
 }

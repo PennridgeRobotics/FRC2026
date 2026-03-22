@@ -29,7 +29,7 @@ import edu.wpi.first.wpilibj.util.Color;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.commands.light.LightChooserCommand;
-import frc.robot.util.dashboard.LoggedNetworkInput;
+import frc.robot.util.dashboard.LoggedNetworkSendable;
 import frc.robot.util.enums.Constants.LightConstants;
 import java.util.HashMap;
 import java.util.List;
@@ -71,7 +71,7 @@ public class LightsSubsystem extends SubsystemBase {
 
         addRules();
 
-        LoggedNetworkInput.publishSendable("/Lights/CANdle", candle);
+        new LoggedNetworkSendable<>("/Lights/CANdle", candle);
     }
 
     private void addRules() {

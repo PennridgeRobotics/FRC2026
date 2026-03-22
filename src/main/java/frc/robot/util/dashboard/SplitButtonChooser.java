@@ -105,6 +105,7 @@ public class SplitButtonChooser<T> implements Sendable {
                 },
                 null);
         builder.addStringProperty("selected", null, newValue -> {
+            System.out.println("Selected: " + newValue);
             final String before = selected;
             selected = newValue;
             if (!Objects.equals(before, newValue)) {

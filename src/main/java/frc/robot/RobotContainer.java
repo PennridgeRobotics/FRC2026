@@ -31,6 +31,7 @@ import frc.robot.util.controller.CommandJoystickController;
 import frc.robot.util.dashboard.Field2dElastic;
 import frc.robot.util.dashboard.LoggedNetworkBoolean;
 import frc.robot.util.dashboard.LoggedNetworkInput;
+import frc.robot.util.dashboard.LoggedNetworkSendable;
 import frc.robot.util.dashboard.MultiMotorInfoSendable;
 import frc.robot.util.dashboard.Pigeon2Sendable;
 import frc.robot.util.enums.Constants.ClimberConstants;
@@ -284,11 +285,11 @@ public class RobotContainer {
     }
 
     public void initSmartDashboard() {
-        LoggedNetworkInput.publishSendable("/Auto/Start Location Chooser", autoStartLocationChooser);
-        LoggedNetworkInput.publishSendable("/Misc/Power Distribution", powerDistribution);
-        LoggedNetworkInput.publishSendable("/Misc/Motor Info", motorInfo);
-        LoggedNetworkInput.publishSendable("/Misc/Field", field);
-        LoggedNetworkInput.publishSendable("/Pigeon2", new Pigeon2Sendable(swerveSubsystem.getPigeon2()));
+        new LoggedNetworkSendable<>("/Auto/Start Location Chooser", autoStartLocationChooser);
+        new LoggedNetworkSendable<>("/Misc/Power Distribution", powerDistribution);
+        new LoggedNetworkSendable<>("/Misc/Motor Info", motorInfo);
+        new LoggedNetworkSendable<>("/Misc/Field", field);
+        new LoggedNetworkSendable<>("/Pigeon2", new Pigeon2Sendable(swerveSubsystem.getPigeon2()));
     }
 
     private void updateField() {
