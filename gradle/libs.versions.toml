@@ -1,5 +1,5 @@
 [versions]
-bline-lib = "v0.8.4"
+bline-lib = "0.7.2"
 caffeine = "3.2.3"
 crunch = "2.0.3"
 error-prone = "2.42.0"
