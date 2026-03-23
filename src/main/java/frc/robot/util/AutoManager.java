@@ -240,27 +240,27 @@ public class AutoManager {
         return Commands.defer(
                 () -> {
                     Pose2d currentPose = swerveDrive.getRobotPose();
+                    final var xDist = 1.5;
+                    final var yDist = 1.5;
                     final var transforms = List.of(
-                            new Transform2d(1, 0, Rotation2d.kZero),
-                            new Transform2d(0, 1, Rotation2d.kZero),
-                            new Transform2d(-1, -1, Rotation2d.kZero));
+                            new Transform2d(xDist, 0, Rotation2d.kZero),
+                            new Transform2d(0, yDist, Rotation2d.kZero),
+                            new Transform2d(-xDist, -yDist, Rotation2d.kZero));
                     final var waypoints = new ArrayList<Path.PathElement>();
                     // waypoints.add(new Path.Waypoint(currentPose));
                     var rotation = 0;
-                    for (final var transform : transforms) {
+                    final var startRotation = currentPose.getRotation();
+                    for (int i = 0; i < transforms.size(); i++) {
+                        final var transform = transforms.get(i);
                         rotation += 90;
                         currentPose = new Pose2d(
                                 currentPose.getMeasureX().plus(transform.getMeasureX()),
                                 currentPose.getMeasureY().plus(transform.getMeasureY()),
-                                Rotation2d.fromDegrees(rotation));
+                                i == transforms.size() - 1 ? startRotation : Rotation2d.fromDegrees(rotation));
                         final var waypoint = new Path.Waypoint(currentPose, 0.15);
                         waypoints.add(waypoint);
                     }
                     final Path path = new Path(waypoints);
-                    path.setPathConstraints(new Path.PathConstraints()
-                            .setMaxVelocityMetersPerSec(1.5)
-                            .setMaxAccelerationMetersPerSec2(1.5)
-                            .setEndTranslationToleranceMeters(0.02));
                     return getPathCommand(path);
                 },
                 Set.of(swerveDrive));
