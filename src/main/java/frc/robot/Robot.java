@@ -15,37 +15,33 @@ public class Robot extends TimedRobot {
     private @Nullable Command autonomousCommand;
     private @Nullable RobotContainer robotContainer;
 
-    public Robot() {
-        DataLogManager.start();
-        URCL.start(Map.ofEntries(
-                Map.entry(1, "Front-Left Drive"),
-                Map.entry(2, "Front-Left Angle"),
-                Map.entry(3, "Front-Right Drive"),
-                Map.entry(4, "Front-Right Angle"),
-                Map.entry(5, "Back-Right Drive"),
-                Map.entry(6, "Back-Right Angle"),
-                Map.entry(7, "Back-Left Drive"),
-                Map.entry(8, "Back-Left Angle"),
-                Map.entry(9, "Climber"),
-                Map.entry(10, "Intake-Launcher Left"),
-                Map.entry(11, "Intake-Launcher Right"),
-                Map.entry(12, "Indexer"),
-                Map.entry(13, "Pigeon2"),
-                Map.entry(14, "Power Distribution Hub"),
-                Map.entry(16, "CANdle")));
-    }
-
     /** This function is run when the robot is first started up and should be used for any initialization code. */
     @Override
     public void robotInit() {
+        if (isReal()) {
+            DataLogManager.start();
+            URCL.start(Map.ofEntries(
+                    Map.entry(1, "Front-Left Drive"),
+                    Map.entry(2, "Front-Left Angle"),
+                    Map.entry(3, "Front-Right Drive"),
+                    Map.entry(4, "Front-Right Angle"),
+                    Map.entry(5, "Back-Right Drive"),
+                    Map.entry(6, "Back-Right Angle"),
+                    Map.entry(7, "Back-Left Drive"),
+                    Map.entry(8, "Back-Left Angle"),
+                    Map.entry(9, "Climber"),
+                    Map.entry(10, "Intake-Launcher Left"),
+                    Map.entry(11, "Intake-Launcher Right"),
+                    Map.entry(12, "Indexer"),
+                    Map.entry(13, "Pigeon2"),
+                    Map.entry(14, "Power Distribution Hub"),
+                    Map.entry(16, "CANdle")));
+        }
+
         // Instantiate our RobotContainer. This will perform all our button bindings,
         // and put our autonomous chooser on the dashboard.
 
         robotContainer = new RobotContainer();
-
-        for (int i = 0; i < 5; i++) {
-            System.out.println("Starting robot");
-        }
     }
 
     /**
