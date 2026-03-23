@@ -12,6 +12,7 @@ build*/
 simgui-ds.json
 simgui-window.json
 simgui.json
+logs/
 
 networktables.json
 *.bck
