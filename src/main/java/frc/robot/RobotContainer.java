@@ -31,6 +31,7 @@ import frc.robot.util.dashboard.Field2dElastic;
 import frc.robot.util.dashboard.LoggedNetworkBoolean;
 import frc.robot.util.dashboard.LoggedNetworkInput;
 import frc.robot.util.dashboard.LoggedNetworkSendable;
+import frc.robot.util.dashboard.LoggedNetworkStructArray;
 import frc.robot.util.dashboard.MultiMotorInfoSendable;
 import frc.robot.util.dashboard.Pigeon2Sendable;
 import frc.robot.util.enums.Constants.ClimberConstants;
@@ -74,9 +75,13 @@ public class RobotContainer {
     private final LoggedNetworkBoolean autoClimb = new LoggedNetworkBoolean("/Auto/Auto Climb", false);
     private final LoggedNetworkBoolean autoDepot = new LoggedNetworkBoolean("/Auto/Auto Depot", false);
     private final LoggedNetworkBoolean autoOutpost = new LoggedNetworkBoolean("/Auto/Auto Outpost", false);
+    private final LoggedNetworkBoolean autoCollectFromMid = new LoggedNetworkBoolean("/Auto/Collect From Mid", false);
 
     private final LoggedNetworkBoolean useOdometry = new LoggedNetworkBoolean("/Misc/Use Odometry", true);
     private final Trigger useOdometryTrigger = new Trigger(useOdometry);
+
+    private final LoggedNetworkStructArray<Pose2d> loggedBLineTrajectory =
+            new LoggedNetworkStructArray<>("/Misc/BLine Trajectory", Pose2d.struct, new Pose2d[0]);
 
     /** The container for the robot. Contains subsystems, I/O devices, and commands. */
     public RobotContainer() {
@@ -105,7 +110,12 @@ public class RobotContainer {
         }
 
         autoManager = ((fuelSubsystem != null) && (climberSubsystem != null))
-                ? new AutoManager(swerveSubsystem, swerveSubsystem.getPathBuilder(), fuelSubsystem, climberSubsystem)
+                ? new AutoManager(
+                        swerveSubsystem,
+                        swerveSubsystem.getPathBuilder(),
+                        fuelSubsystem,
+                        climberSubsystem,
+                        swerveSubsystem::getBumpLockAngle)
                 : null;
 
         aheadRobotPose = NetworkTableInstance.getDefault()
@@ -128,7 +138,8 @@ public class RobotContainer {
                         autoStartLocationChooser.getSelected(),
                         autoDepot.getAsBoolean(),
                         autoOutpost.getAsBoolean(),
-                        autoClimb.getAsBoolean()))
+                        autoClimb.getAsBoolean(),
+                        autoCollectFromMid.getAsBoolean()))
                 : null;
     }
 
@@ -278,9 +289,11 @@ public class RobotContainer {
         final List<Pose2d> currentTrajectory = autoManager.getCurrentPoses();
         if (currentTrajectory == null) {
             trajectoryObject.setPoses();
+            loggedBLineTrajectory.set(new Pose2d[0]);
             return;
         }
         trajectoryObject.setPoses(currentTrajectory);
+        loggedBLineTrajectory.set(currentTrajectory.toArray(Pose2d[]::new));
     }
 
     public void preSchedulerUpdate() {
