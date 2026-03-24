@@ -1,9 +1,6 @@
 package frc.robot.util;
 
-import static edu.wpi.first.units.Units.DegreesPerSecond;
-import static edu.wpi.first.units.Units.Meters;
-import static edu.wpi.first.units.Units.MetersPerSecond;
-import static edu.wpi.first.units.Units.Seconds;
+import static edu.wpi.first.units.Units.*;
 
 import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.geometry.Pose2d;
@@ -217,6 +214,23 @@ public class AutoManager {
                 },
                 Set.of(swerveDrive, fuelSubsystem));
     }
+
+    /*public Command goOverBump(boolean leftSide, boolean intoCenter) {
+        return Commands.defer(
+            () -> {
+                final var isRed = DriverStation.getAlliance().orElse(null) == Alliance.Red;
+                final Distance distanceYFromHub = Inches.of(60);
+                final Distance distanceXFromHub = Meters.of(1.2);
+                final Translation2d hub = isRed ? FieldConstants.HUB_RED : FieldConstants.HUB_BLUE;
+                final boolean posX = isRed == intoCenter;
+                if (leftSide) {
+                    if (intoCenter) {
+                        startTranslation = isRed ? FieldConstants.
+                    }
+                }
+            }, Set.of(swerveDrive)
+        );
+    }*/
 
     public Command moveRobotDriverOriented(
             Translation2d translation, @Nullable Rotation2d rotation, Path.@Nullable PathConstraints constraints) {
