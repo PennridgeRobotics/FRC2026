@@ -1,6 +1,17 @@
 package frc.robot.util;
 
-import static edu.wpi.first.units.Units.*;
+import static edu.wpi.first.units.Units.Degrees;
+import static edu.wpi.first.units.Units.DegreesPerSecond;
+import static edu.wpi.first.units.Units.Inches;
+import static edu.wpi.first.units.Units.Kilograms;
+import static edu.wpi.first.units.Units.Meters;
+import static edu.wpi.first.units.Units.Milliseconds;
+import static edu.wpi.first.units.Units.RPM;
+import static edu.wpi.first.units.Units.Radians;
+import static edu.wpi.first.units.Units.RadiansPerSecond;
+import static edu.wpi.first.units.Units.RotationsPerSecond;
+import static edu.wpi.first.units.Units.RotationsPerSecondPerSecond;
+import static edu.wpi.first.units.Units.Seconds;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -20,10 +31,17 @@ import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.units.measure.Time;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.RobotBase;
-import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
-import frc.robot.util.dashboard.*;
+import frc.robot.util.dashboard.LoggedNetworkBoolean;
+import frc.robot.util.dashboard.LoggedNetworkButton;
+import frc.robot.util.dashboard.LoggedNetworkDouble;
+import frc.robot.util.dashboard.LoggedNetworkInteger;
+import frc.robot.util.dashboard.LoggedNetworkSendable;
+import frc.robot.util.dashboard.LoggedNetworkString;
+import frc.robot.util.dashboard.LoggedNetworkStruct;
+import frc.robot.util.dashboard.LoggedNetworkUnit;
+import frc.robot.util.dashboard.SplitButtonChooser;
 import frc.robot.util.enums.Constants.FieldConstants;
 import frc.robot.util.enums.Constants.PhysicalConstants;
 import frc.robot.util.enums.Constants.ShootOnTheMoveConstants;
@@ -92,8 +110,6 @@ public class ShooterCalculator {
     private final LoggedNetworkUnit<TimeUnit, Time> loggedPhaseDelay;
     private final LoggedNetworkUnit<TimeUnit, Time> loggedMechanismDelay;
     private final LoggedNetworkUnit<AngularVelocityUnit, AngularVelocity> loggedManualLaunchVelocity;
-
-    private final LoggedNetworkUnit<TimeUnit, Time> loggedTimeTaken;
 
     private static final String NO_DATA_TEXT = "(No Data)";
 
@@ -171,8 +187,6 @@ public class ShooterCalculator {
         loggedSimBallTargetPos =
                 new LoggedNetworkStruct<>("/Sim Ball Target Pos", Translation3d.struct, new Translation3d());
 
-        loggedTimeTaken = new LoggedNetworkUnit<>("/" + topicPrefix + "Time Taken", Seconds.zero());
-
         sotmSimulator = createProjectileSimulator();
         shotCalculator = createShotCalculator();
 
@@ -202,16 +216,7 @@ public class ShooterCalculator {
                 0.9, // vision confidence, from 0 to 1
                 swerveDrive.getPitch().getDegrees(),
                 swerveDrive.getRoll().getDegrees());
-        final ShotCalculator.LaunchParameters shot;
-        try {
-            shot = shotCalculator.calculate(shotInputs);
-        } catch (Throwable ex) {
-            DriverStation.reportError("Failed to calculate shot", ex.getStackTrace());
-            shotConfidencePublisher.set(0);
-            driveAngleFFPublisher.set(0);
-            lastSOTMLaunchParameters = null;
-            throw new RuntimeException(ex);
-        }
+        final var shot = shotCalculator.calculate(shotInputs);
         // System.out.println("\n\nShot: " + shot + "\n\nrpm map: ");
         shotConfidencePublisher.set(shot.confidence());
         driveAngleFFPublisher.set(DegreesPerSecond.convertFrom(shot.driveAngularVelocityRadPerSec(), RadiansPerSecond));
@@ -231,7 +236,6 @@ public class ShooterCalculator {
         if (lastShotData != null) {
             return lastShotData;
         }
-        final var timeStart = Timer.getFPGATimestamp();
         lastUpdateTimestampMillis = System.currentTimeMillis();
         final Pose2d robotPose = swerveDrive.getPose();
         final Translation2d robotTranslation = robotPose.getTranslation();
@@ -240,18 +244,9 @@ public class ShooterCalculator {
 
         final double targetVelocity = calculateAngularVelocity(distanceToTarget);
         final var sotmData = isUsingSOTM() ? calculateSOTM() : null;
-
-        final var hubLoc = DriverStation.getAlliance().orElse(null) == DriverStation.Alliance.Red
-                ? FieldConstants.HUB_RED
-                : FieldConstants.HUB_BLUE;
-        final var currentLoc = robotPose.getTranslation();
-        final var normalTargetHeading = hubLoc.minus(currentLoc).getAngle().rotateBy(Rotation2d.k180deg);
-
         final Rotation2d targetHeading = (sotmData != null
-                        && !(sotmData.confidence() == 0.0
-                                && sotmData.driveAngle().equals(Rotation2d.kZero))
                 ? sotmData.driveAngle().rotateBy(Rotation2d.k180deg)
-                : normalTargetHeading);
+                : target.minus(robotTranslation).getAngle());
         final var distance = Meters.of(distanceToTarget);
         final var shooterVelocity = RotationsPerSecond.of(targetVelocity);
         final var driveAngleFF = RadiansPerSecond.of(sotmData != null ? sotmData.driveAngularVelocityRadPerSec() : 0);
@@ -264,7 +259,6 @@ public class ShooterCalculator {
         shotHeadingPublisher.set(shot.heading().getDegrees());
         invertedShotHeadingPublisher.set(-(shot.heading.getDegrees() + 180));
         lastShotData = shot;
-        loggedTimeTaken.set(Seconds.of(Timer.getFPGATimestamp() - timeStart));
         return shot;
     }
 
