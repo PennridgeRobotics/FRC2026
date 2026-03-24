@@ -167,6 +167,9 @@ public class RobotContainer {
                     .whileTrue(swerveSubsystem.faceTowardsHubCommand());
             joystickController.topHat(false, false).whileTrue(fuelSubsystem.intakeCommand());
         }
+        if (autoManager != null) {
+            joystickController.a1().whileTrue(autoManager.testAuto());
+        }
         if (true) return;
 
         // for testing
