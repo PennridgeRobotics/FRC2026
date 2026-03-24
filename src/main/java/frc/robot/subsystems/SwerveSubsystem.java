@@ -88,7 +88,8 @@ public class SwerveSubsystem extends SubsystemBase {
 
     private final Trigger forceNormalDriveModeTrigger = new Trigger(() -> forceNormalDriveMode);
 
-    private final PIDController bLineTranslationPID = new PIDController(5.0, 0, 0.8);
+    private final PIDController bLineTranslationPID =
+            Robot.isReal() ? new PIDController(5.0, 0, 0.8) : new PIDController(1.9, 0.1, 0.4);
     private final PIDController bLineRotationPID = new PIDController(5.0, 0, 0.3);
     private final PIDController bLineCrossTrackPID = new PIDController(2.0, 0, 0);
     private final FollowPath.Builder pathBuilder;
@@ -510,6 +511,10 @@ public class SwerveSubsystem extends SubsystemBase {
         return bumpManager.enableManualBumpLock();
     }
 
+    public Rotation2d getBumpLockAngle() {
+        return bumpManager.getBumpLockAngle();
+    }
+
     public Command setSpeedMultiplierCommand(SpeedMultiplier speedMultiplier) {
         return Commands.runOnce(() -> this.speedMultiplier = speedMultiplier);
     }
@@ -638,9 +643,10 @@ public class SwerveSubsystem extends SubsystemBase {
     }
 
     private FollowPath.Builder setupBLine() {
-        SmartDashboard.putData("BLine Translation PID", new PIDSendable(bLineTranslationPID, PIDSendable.Type.PID));
-        SmartDashboard.putData("BLine Rotation PID", new PIDSendable(bLineRotationPID, PIDSendable.Type.PID));
-        SmartDashboard.putData("BLine Cross Track PID", new PIDSendable(bLineCrossTrackPID, PIDSendable.Type.PID));
+        new LoggedNetworkSendable<>(
+                "BLine/Translation PID", new PIDSendable(bLineTranslationPID, PIDSendable.Type.PID));
+        new LoggedNetworkSendable<>("BLine/Rotation PID", new PIDSendable(bLineRotationPID, PIDSendable.Type.PID));
+        new LoggedNetworkSendable<>("BLine/Cross Track PID", new PIDSendable(bLineCrossTrackPID, PIDSendable.Type.PID));
         return new FollowPath.Builder(
                         this,
                         this::getRobotPose,
