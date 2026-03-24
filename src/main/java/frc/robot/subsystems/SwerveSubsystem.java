@@ -495,14 +495,7 @@ public class SwerveSubsystem extends SubsystemBase {
     }
 
     public Rotation2d getAngleToHub() {
-        if (getShooterCalculator().isUsingSOTM()) {
-            return getShooterCalculator().calculateShotData().heading();
-        }
-        final var hubLoc = DriverStation.getAlliance().orElse(null) == Alliance.Red
-                ? FieldConstants.HUB_RED
-                : FieldConstants.HUB_BLUE;
-        final var currentLoc = getRobotPose().getTranslation();
-        return hubLoc.minus(currentLoc).getAngle().rotateBy(Rotation2d.k180deg);
+        return getShooterCalculator().calculateShotData().heading();
     }
 
     public Command straightenWheelsCommand() {
