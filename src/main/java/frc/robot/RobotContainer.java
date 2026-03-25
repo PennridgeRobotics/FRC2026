@@ -104,12 +104,7 @@ public class RobotContainer {
         }
 
         autoManager = ((fuelSubsystem != null) && (climberSubsystem != null))
-                ? new AutoManager(
-                        swerveSubsystem,
-                        swerveSubsystem.getPathBuilder(),
-                        fuelSubsystem,
-                        climberSubsystem,
-                        swerveSubsystem::getBumpLockAngle)
+                ? new AutoManager(swerveSubsystem, swerveSubsystem.getPathBuilder(), fuelSubsystem, climberSubsystem)
                 : null;
 
         aheadRobotPose = NetworkTableInstance.getDefault()

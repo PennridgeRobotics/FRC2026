@@ -454,6 +454,12 @@ public class SwerveSubsystem extends SubsystemBase {
         });
     }
 
+    public Command stopDrivingCommand() {
+        return run(() -> driveFieldOriented(MetersPerSecond.zero(), MetersPerSecond.zero(), DegreesPerSecond.zero()))
+                .until(() -> MathUtil.isNear(
+                        0.0, linearDriveLimiter.getPrevTranslation().getSquaredNorm(), 0.0001));
+    }
+
     public Command centerModulesCommand() {
         return run(() -> Arrays.asList(swerveDrive.getModules()).forEach(mod -> mod.setAngle(0.0)));
     }

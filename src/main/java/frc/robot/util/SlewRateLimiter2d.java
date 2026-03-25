@@ -71,4 +71,8 @@ public class SlewRateLimiter2d {
     public void setRateLimit(double rateLimit) {
         this.rateLimit = rateLimit;
     }
+
+    public Translation2d getPrevTranslation() {
+        return prevTranslation;
+    }
 }
