@@ -174,6 +174,7 @@ public class RobotContainer {
         }
         if (autoManager != null) {
             joystickController.a1().whileTrue(autoManager.testAuto());
+            joystickController.a2().whileTrue(autoManager.testOnePointPath());
         }
         if (true) return;
 
