@@ -58,10 +58,14 @@ public final class Constants {
         public static final double STD_DEV_DISTANCE_EXPONENT = 2.0;
         public static final double STD_DEV_DISTANCE_MULTIPLIER = 1.0 / 30;
 
-        // Camera 1
-        public static final String CAMERA_1_NAME = "Arducam_OV9281_USB_Camera";
-        public static final Translation3d CAMERA_1_TRANSLATION = new Translation3d(0.162087, -0.250706, 0.674197);
-        public static final Rotation3d CAMERA_1_ROTATION = new Rotation3d(-0.007874, 0.014070, -3.123649);
+        // Back Camera
+        public static final String CAMERA_BACK_NAME = "Arducam_OV9281_Back";
+        public static final Translation3d CAMERA_BACK_TRANSLATION = new Translation3d(0.162087, -0.250706, 0.674197);
+        public static final Rotation3d CAMERA_BACK_ROTATION = new Rotation3d(-0.007874, 0.014070, -3.123649);
+        // Front Camera
+        public static final String CAMERA_FRONT_NAME = "Arducam_OV9281_Front";
+        public static final Translation3d CAMERA_FRONT_TRANSLATION = new Translation3d(0.162087, -0.250706, 0.674197);
+        public static final Rotation3d CAMERA_FRONT_ROTATION = new Rotation3d(-0.007874, 0.014070, -3.123649);
     }
 
     public static final class DriveConstants {
@@ -83,8 +87,8 @@ public final class Constants {
         public static final double SLIP_FACTOR = 0.86; // 0 = no group, 1 = perfect
         public static final Translation2d LAUNCHER_OFFSET = new Translation2d(Inches.of(7.4), Inches.zero());
         public static final LinearVelocity MAX_VELOCITY_WHILE_SHOOTING = MetersPerSecond.of(2.5);
-        public static final Time PHASE_DELAY = Milliseconds.of(0); // vision pipeline latency
-        public static final Time MECHANISM_LATENCY = Milliseconds.of(20); // how long the mechanism takes to respond
+        public static final Time PHASE_DELAY = Milliseconds.of(100); // vision pipeline latency
+        public static final Time MECHANISM_LATENCY = Milliseconds.of(50); // how long the mechanism takes to respond
         public static final Distance HUB_HEIGHT = Inches.of(72) // hub height
                 .plus(BALL_DIAMETER.div(2))
                 .plus(Inches.of(3)); // buffer
