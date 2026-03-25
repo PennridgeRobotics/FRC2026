@@ -7,6 +7,9 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.units.AngleUnit;
+import edu.wpi.first.units.DistanceUnit;
+import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
@@ -35,7 +38,6 @@ public class AutoManager {
     private final FollowPath.Builder pathBuilder;
     private final FuelSubsystem fuelSubsystem;
     private final ClimberSubsystem climberSubsystem;
-    private final Supplier<Rotation2d> bumpLockAngleSupplier;
 
     // Built-in paths
     private final Path startLeftHubShootPath = new Path("start_left_hub_shoot");
@@ -52,17 +54,22 @@ public class AutoManager {
     private @Nullable Pair<FollowPath, Path> currentPath;
     private @Nullable Pose2d pathStart;
 
+    private final LoggedNetworkUnit<DistanceUnit, Distance> testAutoX =
+            new LoggedNetworkUnit<>("Auto/Test X", Meters.of(2));
+    private final LoggedNetworkUnit<DistanceUnit, Distance> testAutoY =
+            new LoggedNetworkUnit<>("Auto/Test Y", Meters.of(0));
+    private final LoggedNetworkUnit<AngleUnit, Angle> testAutoAngle =
+            new LoggedNetworkUnit<>("Auto/Test Angle", Degrees.of(0));
+
     public AutoManager(
             SwerveSubsystem swerveDrive,
             FollowPath.Builder pathBuilder,
             FuelSubsystem fuelSubsystem,
-            ClimberSubsystem climberSubsystem,
-            Supplier<Rotation2d> bumpLockAngleSupplier) {
+            ClimberSubsystem climberSubsystem) {
         this.swerveDrive = swerveDrive;
         this.fuelSubsystem = fuelSubsystem;
         this.pathBuilder = pathBuilder;
         this.climberSubsystem = climberSubsystem;
-        this.bumpLockAngleSupplier = bumpLockAngleSupplier;
 
         FollowPath.setDoubleLoggingConsumer(pair -> SmartDashboard.putNumber(pair.getFirst(), pair.getSecond()));
         FollowPath.setBooleanLoggingConsumer(pair -> SmartDashboard.putBoolean(pair.getFirst(), pair.getSecond()));
@@ -78,7 +85,7 @@ public class AutoManager {
         pathBuilder.withPoseReset(pose -> {});
     }
 
-    public Command getPathCommand(Path path) {
+    public Command getPathCommand(Path path, boolean stopAfter) {
         final var builtPath = pathBuilder.build(path);
         pathBuilder.withPoseReset(unused -> {});
         final var pathPair = Pair.of(builtPath, path);
@@ -88,7 +95,8 @@ public class AutoManager {
                             currentPath = pathPair;
                             pathStart = swerveDrive.getRobotPose();
                         }),
-                        builtPath)
+                        builtPath,
+                        stopAfter ? swerveDrive.stopDrivingCommand() : Commands.none())
                 .finallyDo(() -> {
                     System.out.println("Finished path");
                     if (currentPath == pathPair) {
@@ -124,7 +132,7 @@ public class AutoManager {
     private Command climbAutoCommand() {
         return climberSubsystem
                 .armCommand(() -> true, () -> true)
-                .withDeadline(getPathCommand(alignClimbPath)
+                .withDeadline(getPathCommand(alignClimbPath, false)
                         .andThen(swerveDrive
                                 .driveFieldOrientedCommand(
                                         () -> MetersPerSecond.of(0.2 * (shouldFlip() ? -1 : 1)),
@@ -137,14 +145,14 @@ public class AutoManager {
     private Command outpostAndShootAutoCommand() {
         return fuelSubsystem
                 .idleCommand()
-                .withDeadline(getPathCommand(toOutpostPath).andThen(Commands.waitTime(Seconds.of(3))))
+                .withDeadline(getPathCommand(toOutpostPath, true).andThen(Commands.waitTime(Seconds.of(3))))
                 .andThen(pathInFrontOfHubAndShoot());
     }
 
     private Command depotIntakeAndShootAutoCommand() {
         return fuelSubsystem
                 .intakeCommand()
-                .withDeadline(getPathCommand(depotPath))
+                .withDeadline(getPathCommand(depotPath, false))
                 .andThen(pathInFrontOfHubAndShoot());
     }
 
@@ -157,8 +165,12 @@ public class AutoManager {
                                     case LEFT_INNER_BUMP -> startLeftInnerBumpShootPath;
                                     case LEFT_HUB -> startLeftHubShootPath;
                                     case RIGHT_INNER_BUMP -> startRightInnerBumpShootPath;
-                                })),
-                fuelSubsystem.launchCommand(true).withTimeout(Seconds.of(5)));
+                                },
+                                true)),
+                fuelSubsystem
+                        .launchCommand(true)
+                        .withDeadline(Commands.waitUntil(fuelSubsystem.isReadyToLaunchTrigger())
+                                .andThen(Commands.waitTime(Seconds.of(4)))));
     }
 
     private Command pathInFrontOfHubAndShoot() {
@@ -172,7 +184,7 @@ public class AutoManager {
                     path.setPathConstraints(new Path.PathConstraints().setMaxVelocityMetersPerSec(1.2));
                     return fuelSubsystem
                             .windUpCommand()
-                            .withDeadline(getPathCommand(path))
+                            .withDeadline(getPathCommand(path, true))
                             .andThen(fuelSubsystem.launchCommand(true));
                 },
                 Set.of(swerveDrive, fuelSubsystem));
@@ -205,7 +217,7 @@ public class AutoManager {
                     path.setPathConstraints(new Path.PathConstraints().setMaxVelocityMetersPerSec(0.4));
                     return fuelSubsystem
                             .windUpCommand()
-                            .withDeadline(getPathCommand(path))
+                            .withDeadline(getPathCommand(path, true))
                             .andThen(fuelSubsystem.launchCommand(true));
                 },
                 Set.of(swerveDrive, fuelSubsystem));
@@ -229,7 +241,7 @@ public class AutoManager {
                             .setMaxAccelerationMetersPerSec2(4));
                     return fuelSubsystem
                             .windUpCommand()
-                            .withDeadline(getPathCommand(path))
+                            .withDeadline(getPathCommand(path, true))
                             .andThen(fuelSubsystem.launchCommand(true));
                 },
                 Set.of(swerveDrive, fuelSubsystem));
@@ -241,9 +253,10 @@ public class AutoManager {
                         fuelSubsystem
                                 .intakeCommand()
                                 .withDeadline(Commands.sequence(
-                                        goOverBump(leftSide, true),
-                                        getPathCommand(leftSide ? collectMidFromLeftPath : collectMidFromRightPath),
-                                        goOverBump(leftSide, false))),
+                                        goOverBump(leftSide, true, false),
+                                        getPathCommand(
+                                                leftSide ? collectMidFromLeftPath : collectMidFromRightPath, false),
+                                        goOverBump(leftSide, false, false))),
                         Commands.sequence(fuelSubsystem
                                 .windUpCommand()
                                 .withDeadline(Commands.defer(
@@ -264,14 +277,14 @@ public class AutoManager {
                                                                     originalPath.getEndTranslationToleranceMeters())
                                                             .setEndRotationToleranceDeg(
                                                                     originalPath.getEndRotationToleranceDeg()));
-                                            return getPathCommand(path);
+                                            return getPathCommand(path, true);
                                         },
                                         Set.of(swerveDrive)))),
                         fuelSubsystem.launchCommand(true).withTimeout(Seconds.of(15))),
                 Set.of(swerveDrive, fuelSubsystem));
     }
 
-    public Command goOverBump(boolean leftSide, boolean intoCenter) {
+    public Command goOverBump(boolean leftSide, boolean intoCenter, boolean stopAfter) {
         return Commands.defer(
                 () -> {
                     final var isRed = DriverStation.getAlliance().orElse(null) == Alliance.Red;
@@ -289,8 +302,11 @@ public class AutoManager {
                     final Pose2d pose1 = new Pose2d(x1, y, angle);
                     final Pose2d pose2 = new Pose2d(x2, y, angle);
                     final Path path = new Path(new Path.Waypoint(pose1), new Path.Waypoint(pose2));
-                    path.setPathConstraints(new Path.PathConstraints().setMaxVelocityMetersPerSec(1.2));
-                    return getPathCommand(path);
+                    path.setPathConstraints(new Path.PathConstraints()
+                            .setMaxVelocityMetersPerSec(1.2)
+                            .setEndTranslationToleranceMeters(0.35)
+                            .setEndRotationToleranceDeg(30));
+                    return getPathCommand(path, stopAfter);
                 },
                 Set.of(swerveDrive));
     }
@@ -308,7 +324,7 @@ public class AutoManager {
                     if (constraints != null) {
                         path.setPathConstraints(constraints);
                     }
-                    return getPathCommand(path);
+                    return getPathCommand(path, true);
                 },
                 Set.of(swerveDrive));
     }
@@ -317,8 +333,8 @@ public class AutoManager {
         return Commands.defer(
                 () -> {
                     Pose2d currentPose = swerveDrive.getRobotPose();
-                    final var xDist = 1.5;
-                    final var yDist = 1.5;
+                    final var xDist = 1;
+                    final var yDist = 1;
                     final var transforms = List.of(
                             new Transform2d(xDist, 0, Rotation2d.kZero),
                             new Transform2d(0, yDist, Rotation2d.kZero),
@@ -329,7 +345,7 @@ public class AutoManager {
                     final var startRotation = currentPose.getRotation();
                     for (int i = 0; i < transforms.size(); i++) {
                         final var transform = transforms.get(i);
-                        rotation += 90;
+                        // rotation += 90;
                         currentPose = new Pose2d(
                                 currentPose.getMeasureX().plus(transform.getMeasureX()),
                                 currentPose.getMeasureY().plus(transform.getMeasureY()),
@@ -338,7 +354,22 @@ public class AutoManager {
                         waypoints.add(waypoint);
                     }
                     final Path path = new Path(waypoints);
-                    return getPathCommand(path);
+                    return getPathCommand(path, true);
+                },
+                Set.of(swerveDrive));
+    }
+
+    public Command testOnePointPath() {
+        return Commands.defer(
+                () -> {
+                    final var pose = swerveDrive.getRobotPose();
+                    final Path path = new Path(new Path.Waypoint(new Pose2d(
+                            pose.getMeasureX().plus(testAutoX.get()),
+                            pose.getMeasureY().plus(testAutoY.get()),
+                            pose.getRotation()
+                                    .plus(Rotation2d.fromDegrees(
+                                            testAutoAngle.get().in(Degrees))))));
+                    return getPathCommand(path, true);
                 },
                 Set.of(swerveDrive));
     }
@@ -356,7 +387,6 @@ public class AutoManager {
         if (currentPath == null) {
             return null;
         }
-        System.out.println("--------");
         final Pose2d currentPose = swerveDrive.getRobotPose();
         final Translation2d currentTranslation = currentPose.getTranslation();
         final FollowPath command = currentPath.getFirst();

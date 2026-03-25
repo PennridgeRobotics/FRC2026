@@ -89,7 +89,7 @@ public class SwerveSubsystem extends SubsystemBase {
     private final Trigger forceNormalDriveModeTrigger = new Trigger(() -> forceNormalDriveMode);
 
     private final PIDController bLineTranslationPID =
-            Robot.isReal() ? new PIDController(5.0, 0, 0.8) : new PIDController(1.9, 0.1, 0.4);
+            Robot.isReal() ? new PIDController(5.0, 0, 2.8) : new PIDController(1.9, 0.1, 0.4);
     private final PIDController bLineRotationPID = new PIDController(5.0, 0, 0.3);
     private final PIDController bLineCrossTrackPID = new PIDController(2.0, 0, 0);
     private final FollowPath.Builder pathBuilder;
@@ -425,6 +425,14 @@ public class SwerveSubsystem extends SubsystemBase {
                 limitedLinearVelocity.getX(), limitedLinearVelocity.getY(), finalAngularVelocity.in(RadiansPerSecond)));
     }
 
+    public void driveRobotOriented(final ChassisSpeeds chassisSpeeds) {
+        final var fieldRelative = ChassisSpeeds.fromRobotRelativeSpeeds(chassisSpeeds, swerveDrive.getYaw());
+        driveFieldOriented(
+                MetersPerSecond.of(fieldRelative.vxMetersPerSecond),
+                MetersPerSecond.of(fieldRelative.vyMetersPerSecond),
+                RadiansPerSecond.of(fieldRelative.omegaRadiansPerSecond));
+    }
+
     public Command driveFieldOrientedTestCommand(
             DoubleSupplier translationX,
             DoubleSupplier translationY,
@@ -444,6 +452,12 @@ public class SwerveSubsystem extends SubsystemBase {
                     swerveDrive.getOdometryHeading().getRadians(),
                     swerveDrive.getMaximumChassisVelocity()));
         });
+    }
+
+    public Command stopDrivingCommand() {
+        return run(() -> driveFieldOriented(MetersPerSecond.zero(), MetersPerSecond.zero(), DegreesPerSecond.zero()))
+                .until(() -> MathUtil.isNear(
+                        0.0, linearDriveLimiter.getPrevTranslation().getSquaredNorm(), 0.0001));
     }
 
     public Command centerModulesCommand() {
@@ -651,7 +665,7 @@ public class SwerveSubsystem extends SubsystemBase {
                         this,
                         this::getRobotPose,
                         swerveDrive::getRobotVelocity,
-                        swerveDrive::drive,
+                        this::driveRobotOriented,
                         bLineTranslationPID,
                         bLineRotationPID,
                         bLineCrossTrackPID)

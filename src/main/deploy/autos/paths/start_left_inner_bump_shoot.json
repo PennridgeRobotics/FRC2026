@@ -26,7 +26,7 @@
     }
   ],
   "constraints": {
-    "end_translation_tolerance_meters": 0.02,
+    "end_translation_tolerance_meters": 0.1,
     "end_rotation_tolerance_deg": 1.0,
     "max_velocity_meters_per_sec": [
       {

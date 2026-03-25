@@ -100,7 +100,7 @@ public final class Constants {
         public static final Time MAX_SIM_TIME = Seconds.of(5);
 
         public static final Angle MAXIMUM_TILT =
-                Degrees.of(5); // suppress firing when the chassis tilts past this (bumps/ramps)
+                Degrees.of(15); // suppress firing when the chassis tilts past this (bumps/ramps)
         // Heading tolerance tightens as robot speed increases.
         // scaledMaxError = base / (1 + speedScalar * speed). Set to 0 to disable.
         public static final double HEADING_SPEED_SCALAR = 1.0;
