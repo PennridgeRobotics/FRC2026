@@ -1,9 +1,6 @@
 package frc.robot;
 
-import static edu.wpi.first.units.Units.Seconds;
-
 import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform2d;
@@ -14,7 +11,6 @@ import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.smartdashboard.FieldObject2d;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
@@ -40,11 +36,9 @@ import frc.robot.util.enums.Constants.ControllerConstants;
 import frc.robot.util.enums.Constants.FuelConstants;
 import frc.robot.util.enums.Constants.LightConstants;
 import frc.robot.util.enums.Constants.MiscConstants;
-import frc.robot.util.enums.PositionCalibrationLocation;
 import frc.robot.util.enums.SpeedMultiplier;
 import java.io.IOException;
 import java.util.List;
-import java.util.Set;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
@@ -232,26 +226,13 @@ public class RobotContainer {
         .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
                 PositionCalibrationLocation.FRONT_LEFT_OF_HUB));*/
 
-        // operatorController.start().whileTrue(swerveSubsystem.straightenWheelsCommand());
-        final var calibrations = List.of(
-                new Pair<>(operatorController.leftTrigger(), PositionCalibrationLocation.FRONT_LEFT_OF_HUB),
-                new Pair<>(operatorController.leftBumper(), PositionCalibrationLocation.LEFT_DEPOT_CORNER),
-                new Pair<>(operatorController.rightTrigger(), PositionCalibrationLocation.FRONT_RIGHT_OF_HUB),
-                new Pair<>(operatorController.rightBumper(), PositionCalibrationLocation.RIGHT_OUTPOST_CORNER));
-        for (var calibration : calibrations) {
-            operatorController
-                    .start()
-                    .and(calibration.getFirst())
-                    .whileTrue(Commands.defer(
-                            () -> Commands.waitTime(Seconds.of(0.1))
-                                    .andThen(swerveSubsystem
-                                            .resetPoseFromCalibrationPosition(calibration.getSecond())
-                                            .andThen(
-                                                    (autoManager != null && fuelSubsystem != null)
-                                                            ? Commands.waitTime(Seconds.of(0.1))
-                                                                    .andThen(autoManager.moveFromHubAndShoot())
-                                                            : Commands.none())),
-                            fuelSubsystem != null ? Set.of(swerveSubsystem, fuelSubsystem) : Set.of(swerveSubsystem)));
+        operatorController
+                .leftTrigger()
+                .and(operatorController.start())
+                .whileTrue(swerveSubsystem.straightenWheelsCommand());
+
+        if (autoManager != null) {
+            operatorController.leftBumper().and(operatorController.start()).whileTrue(autoManager.testOnePointPath());
         }
 
         if (fuelSubsystem != null) {

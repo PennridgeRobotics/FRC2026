@@ -400,6 +400,10 @@ public class FuelSubsystem extends SubsystemBase {
         return windingUpTrigger;
     }
 
+    public Trigger isReadyToLaunchTrigger() {
+        return readyToLaunchTrigger;
+    }
+
     public Command addCurrentDataToShooterMap() {
         return Commands.runOnce(() -> shooterCalculator.addCurrentDataToMap(intakeLauncher.getSpeed()));
     }

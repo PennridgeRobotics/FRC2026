@@ -244,12 +244,6 @@ public class ShotCalculator {
                 || inputs.robotPose() == null
                 || inputs.fieldVelocity() == null
                 || inputs.robotVelocity() == null) {
-            System.out.printf(
-                    "[SOTM] Bad inputs! is inputs null: %s, is robotPose null: %s, is fieldVelocity null: %s, is robotVelocity null: %s\n",
-                    inputs != null,
-                    inputs.robotPose() != null,
-                    inputs.fieldVelocity() != null,
-                    inputs.robotVelocity() != null);
             return LaunchParameters.INVALID;
         }
 
@@ -260,9 +254,6 @@ public class ShotCalculator {
         double poseX = rawPose.getX();
         double poseY = rawPose.getY();
         if (Double.isNaN(poseX) || Double.isNaN(poseY) || Double.isInfinite(poseX) || Double.isInfinite(poseY)) {
-            System.out.printf(
-                    "[SOTM] Bad pose! is poseX NaN: %s, is poseY NaN: %s, is poseX infinite: %s, is poseY infinite: %s\n",
-                    Double.isNaN(poseX), Double.isNaN(poseY), Double.isInfinite(poseX), Double.isInfinite(poseY));
             return LaunchParameters.INVALID;
         }
 
@@ -295,9 +286,6 @@ public class ShotCalculator {
         Translation2d hubForward = inputs.hubForward();
         double dot = (hubX - robotX) * hubForward.getX() + (hubY - robotY) * hubForward.getY();
         if (dot < 0) {
-            System.out.printf(
-                    "[SOTM] Behind hub! dot product: %f, hubX: %f, robotX: %f, hubY: %f, robotY: %f\n",
-                    dot, hubX, robotX, hubY, robotY);
             // return LaunchParameters.INVALID;
             isValid = false;
         }
@@ -305,9 +293,6 @@ public class ShotCalculator {
         // Tilt gate. Bumps and ramps knock the launcher off-axis, so
         // suppress firing when the chassis is tilted beyond the threshold.
         if (Math.abs(inputs.pitchDeg()) > config.maxTiltDeg || Math.abs(inputs.rollDeg()) > config.maxTiltDeg) {
-            System.out.printf(
-                    "[SOTM] Tilt gate! pitch: %f, roll: %f, maxTiltDeg: %f\n",
-                    inputs.pitchDeg(), inputs.rollDeg(), config.maxTiltDeg);
             // return LaunchParameters.INVALID;
             isValid = false;
         }
@@ -331,9 +316,6 @@ public class ShotCalculator {
         double distance = Math.hypot(rx, ry);
 
         if (distance < config.minScoringDistance || distance > config.maxScoringDistance) {
-            System.out.printf(
-                    "[SOTM] Out of range! distance: %f, minScoringDistance: %f, maxScoringDistance: %f\n",
-                    distance, config.minScoringDistance, config.maxScoringDistance);
             // return LaunchParameters.INVALID;
             isValid = false;
         }
@@ -342,7 +324,6 @@ public class ShotCalculator {
 
         // Speed cap: shots above this speed are out of calibration range
         if (robotSpeed > config.maxSOTMSpeed) {
-            System.out.printf("[SOTM] Speed cap! robotSpeed: %f, maxSOTMSpeed: %f\n", robotSpeed, config.maxSOTMSpeed);
             // return LaunchParameters.INVALID;
             isValid = false;
         }

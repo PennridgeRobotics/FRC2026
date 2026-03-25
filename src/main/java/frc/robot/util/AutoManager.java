@@ -7,6 +7,9 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.units.AngleUnit;
+import edu.wpi.first.units.DistanceUnit;
+import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
@@ -158,7 +161,10 @@ public class AutoManager {
                                     case LEFT_HUB -> startLeftHubShootPath;
                                     case RIGHT_INNER_BUMP -> startRightInnerBumpShootPath;
                                 })),
-                fuelSubsystem.launchCommand(true).withTimeout(Seconds.of(5)));
+                fuelSubsystem
+                        .launchCommand(true)
+                        .withDeadline(Commands.waitUntil(fuelSubsystem.isReadyToLaunchTrigger())
+                                .andThen(Commands.waitTime(Seconds.of(4)))));
     }
 
     private Command pathInFrontOfHubAndShoot() {
@@ -289,7 +295,10 @@ public class AutoManager {
                     final Pose2d pose1 = new Pose2d(x1, y, angle);
                     final Pose2d pose2 = new Pose2d(x2, y, angle);
                     final Path path = new Path(new Path.Waypoint(pose1), new Path.Waypoint(pose2));
-                    path.setPathConstraints(new Path.PathConstraints().setMaxVelocityMetersPerSec(1.2));
+                    path.setPathConstraints(new Path.PathConstraints()
+                            .setMaxVelocityMetersPerSec(1.2)
+                            .setEndTranslationToleranceMeters(0.35)
+                            .setEndRotationToleranceDeg(30));
                     return getPathCommand(path);
                 },
                 Set.of(swerveDrive));
@@ -317,8 +326,8 @@ public class AutoManager {
         return Commands.defer(
                 () -> {
                     Pose2d currentPose = swerveDrive.getRobotPose();
-                    final var xDist = 1.5;
-                    final var yDist = 1.5;
+                    final var xDist = 1;
+                    final var yDist = 1;
                     final var transforms = List.of(
                             new Transform2d(xDist, 0, Rotation2d.kZero),
                             new Transform2d(0, yDist, Rotation2d.kZero),
@@ -329,7 +338,7 @@ public class AutoManager {
                     final var startRotation = currentPose.getRotation();
                     for (int i = 0; i < transforms.size(); i++) {
                         final var transform = transforms.get(i);
-                        rotation += 90;
+                        // rotation += 90;
                         currentPose = new Pose2d(
                                 currentPose.getMeasureX().plus(transform.getMeasureX()),
                                 currentPose.getMeasureY().plus(transform.getMeasureY()),
@@ -338,6 +347,28 @@ public class AutoManager {
                         waypoints.add(waypoint);
                     }
                     final Path path = new Path(waypoints);
+                    return getPathCommand(path);
+                },
+                Set.of(swerveDrive));
+    }
+
+    private final LoggedNetworkUnit<DistanceUnit, Distance> testAutoX =
+            new LoggedNetworkUnit<>("Auto/Test X", Meters.of(2));
+    private final LoggedNetworkUnit<DistanceUnit, Distance> testAutoY =
+            new LoggedNetworkUnit<>("Auto/Test Y", Meters.of(0));
+    private final LoggedNetworkUnit<AngleUnit, Angle> testAutoAngle =
+            new LoggedNetworkUnit<>("Auto/Test Angle", Degrees.of(0));
+
+    public Command testOnePointPath() {
+        return Commands.defer(
+                () -> {
+                    final var pose = swerveDrive.getRobotPose();
+                    final Path path = new Path(new Path.Waypoint(new Pose2d(
+                            pose.getMeasureX().plus(testAutoX.get()),
+                            pose.getMeasureY().plus(testAutoY.get()),
+                            pose.getRotation()
+                                    .plus(Rotation2d.fromDegrees(
+                                            testAutoAngle.get().in(Degrees))))));
                     return getPathCommand(path);
                 },
                 Set.of(swerveDrive));
@@ -356,7 +387,6 @@ public class AutoManager {
         if (currentPath == null) {
             return null;
         }
-        System.out.println("--------");
         final Pose2d currentPose = swerveDrive.getRobotPose();
         final Translation2d currentTranslation = currentPose.getTranslation();
         final FollowPath command = currentPath.getFirst();
