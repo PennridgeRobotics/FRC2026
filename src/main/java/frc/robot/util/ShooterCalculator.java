@@ -295,8 +295,26 @@ public class ShooterCalculator {
                 shotCalc.loadLUTEntry(entry.distanceM(), entry.rpm(), entry.tof());
             }
         }
+        final var tests = Map.of(
+                2.0, 47.0,
+                2.5, 50.0,
+                3.2, 52.8,
+                4.0, 58.0);
+        double totalError = 0.0;
+        for (var entry : tests.entrySet()) {
+            final var distance = entry.getKey();
+            final var velocity = entry.getValue();
+            final var percentError = Math.abs(shotCalc.getBaseRPM(distance) / 60.0 - velocity) / velocity;
+            totalError += percentError;
+            System.out.printf(
+                    "Expected for %.1fm: %.1f; got %.1f (%.1f%% error)\n",
+                    distance, velocity, shotCalc.getBaseRPM(distance) / 60.0, percentError * 100);
+        }
+        System.out.printf("Average error: %.1f%%\n", totalError / tests.size() * 100);
         return shotCalc;
     }
+
+    // 48.1, 56.1, 51.9, 45.8
 
     private void addDistanceVelocityData(Distance distance, AngularVelocity velocity) {
         addRawDistanceVelocityData(distance.in(Meters), velocity.in(RotationsPerSecond));

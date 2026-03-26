@@ -83,8 +83,8 @@ public final class Constants {
         // Measure/tune:
         public static final Distance FLYWHEEL_DIAMETER = Inches.of(3.94);
         public static final Distance EXIT_HEIGHT = Inches.of(20.5); // floor to where ball leaves shooter
-        public static final Angle LAUNCH_ANGLE_FROM_HORIZONTAL = Degrees.of(60); // estimated
-        public static final double SLIP_FACTOR = 0.86; // 0 = no group, 1 = perfect
+        public static final Angle LAUNCH_ANGLE_FROM_HORIZONTAL = Degrees.of(62); // estimated
+        public static final double SLIP_FACTOR = 0.834; // 0 = no group, 1 = perfect
         public static final Translation2d LAUNCHER_OFFSET = new Translation2d(Inches.of(7.4), Inches.zero());
         public static final LinearVelocity MAX_VELOCITY_WHILE_SHOOTING = MetersPerSecond.of(1.0);
         public static final Time PHASE_DELAY = Milliseconds.of(100); // vision pipeline latency
