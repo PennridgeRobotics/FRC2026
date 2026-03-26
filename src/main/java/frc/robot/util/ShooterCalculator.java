@@ -15,6 +15,7 @@ import static edu.wpi.first.units.Units.Seconds;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
@@ -121,6 +122,11 @@ public class ShooterCalculator {
         loggedShotVelocity = new LoggedNetworkUnit<>(rootTopicPrefix + "Shot Velocity", RotationsPerSecond.zero());
         loggedShotHeading = new LoggedNetworkUnit<>(rootTopicPrefix + "Shot Heading", Degrees.zero());
         loggedInvertedShotHeading = new LoggedNetworkUnit<>(rootTopicPrefix + "Inverted Shot Heading", Degrees.zero());
+        new LoggedNetworkStruct<Pose2d>(rootTopicPrefix + "Shot Heading Pose", Pose2d.struct, () -> {
+            final var pose = swerveDrive.getPose();
+            final var heading = Rotation2d.fromRadians(loggedShotHeading.get().in(Radians));
+            return new Pose2d(pose.getTranslation(), heading).plus(new Transform2d(-100.0, 0, Rotation2d.kZero));
+        });
         new LoggedNetworkInteger(rootTopicPrefix + "Saved Data Count", savedShooterDistanceVelocityMap::size);
         loggedSavedShooterDistanceVelocityMap =
                 new LoggedNetworkString(topicPrefix + "Saved Shooter Distance Velocity Map", NO_DATA_TEXT);
@@ -289,8 +295,26 @@ public class ShooterCalculator {
                 shotCalc.loadLUTEntry(entry.distanceM(), entry.rpm(), entry.tof());
             }
         }
+        final var tests = Map.of(
+                2.0, 47.0,
+                2.5, 50.0,
+                3.2, 52.8,
+                4.0, 58.0);
+        double totalError = 0.0;
+        for (var entry : tests.entrySet()) {
+            final var distance = entry.getKey();
+            final var velocity = entry.getValue();
+            final var percentError = Math.abs(shotCalc.getBaseRPM(distance) / 60.0 - velocity) / velocity;
+            totalError += percentError;
+            System.out.printf(
+                    "Expected for %.1fm: %.1f; got %.1f (%.1f%% error)\n",
+                    distance, velocity, shotCalc.getBaseRPM(distance) / 60.0, percentError * 100);
+        }
+        System.out.printf("Average error: %.1f%%\n", totalError / tests.size() * 100);
         return shotCalc;
     }
+
+    // 48.1, 56.1, 51.9, 45.8
 
     private void addDistanceVelocityData(Distance distance, AngularVelocity velocity) {
         addRawDistanceVelocityData(distance.in(Meters), velocity.in(RotationsPerSecond));
