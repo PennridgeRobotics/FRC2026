@@ -8,18 +8,25 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 @NullMarked
 public class LoggedNetworkBoolean extends LoggedNetworkInput implements BooleanSupplier, BooleanConsumer {
     private final List<BooleanConsumer> listeners = new ArrayList<>();
     private final BooleanEntry entry;
     protected boolean currentValue;
+    private @Nullable BooleanSupplier supplier;
 
     public LoggedNetworkBoolean(String rawTopicName, boolean defaultValue) {
         super(rawTopicName);
         entry = NetworkTableInstance.getDefault().getBooleanTopic(topicName).getEntry(defaultValue);
         entry.set(defaultValue);
         currentValue = entry.get();
+    }
+
+    public LoggedNetworkBoolean(String rawTopicName, BooleanSupplier supplier) {
+        this(rawTopicName, supplier.getAsBoolean());
+        this.supplier = supplier;
     }
 
     public void set(boolean value) {
@@ -35,7 +42,10 @@ public class LoggedNetworkBoolean extends LoggedNetworkInput implements BooleanS
 
     @Override
     protected void periodic() {
-        if (currentValue == entry.get()) return;
+        if (currentValue == entry.get()) {
+            if (supplier != null) set(supplier.getAsBoolean());
+            return;
+        }
         currentValue = entry.get();
         listeners.forEach(listener -> listener.accept(currentValue));
     }
@@ -56,5 +66,9 @@ public class LoggedNetworkBoolean extends LoggedNetworkInput implements BooleanS
 
     public void addListener(BooleanConsumer callback) {
         listeners.add(callback);
+    }
+
+    public void setSupplier(@Nullable BooleanSupplier supplier) {
+        this.supplier = supplier;
     }
 }

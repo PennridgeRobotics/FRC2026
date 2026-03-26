@@ -8,12 +8,14 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 @NullMarked
 public class LoggedNetworkStruct<T> extends LoggedNetworkInput implements Supplier<T>, Consumer<T> {
     private final List<Consumer<T>> listeners = new ArrayList<>();
     private final StructEntry<T> entry;
     private T currentValue;
+    private @Nullable Supplier<T> supplier;
 
     public LoggedNetworkStruct(String rawTopicName, Struct<T> struct, T defaultValue) {
         super(rawTopicName);
@@ -22,6 +24,11 @@ public class LoggedNetworkStruct<T> extends LoggedNetworkInput implements Suppli
                 .getEntry(defaultValue);
         entry.set(defaultValue);
         currentValue = entry.get();
+    }
+
+    public LoggedNetworkStruct(String rawTopicName, Struct<T> struct, Supplier<T> supplier) {
+        this(rawTopicName, struct, supplier.get());
+        this.supplier = supplier;
     }
 
     public void set(T value) {
@@ -37,7 +44,10 @@ public class LoggedNetworkStruct<T> extends LoggedNetworkInput implements Suppli
 
     @Override
     protected void periodic() {
-        if (currentValue.equals(entry.get())) return;
+        if (currentValue.equals(entry.get())) {
+            if (supplier != null) set(supplier.get());
+            return;
+        }
         currentValue = entry.get();
         listeners.forEach(listener -> listener.accept(currentValue));
     }
@@ -54,5 +64,9 @@ public class LoggedNetworkStruct<T> extends LoggedNetworkInput implements Suppli
 
     public void addListener(Consumer<T> callback) {
         listeners.add(callback);
+    }
+
+    public void setSupplier(@Nullable Supplier<T> supplier) {
+        this.supplier = supplier;
     }
 }
