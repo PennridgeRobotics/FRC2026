@@ -303,7 +303,6 @@ public class AutoManager {
                     final Pose2d pose2 = new Pose2d(x2, y, angle);
                     final Path path = new Path(new Path.Waypoint(pose1), new Path.Waypoint(pose2));
                     path.setPathConstraints(new Path.PathConstraints()
-                            .setMaxVelocityMetersPerSec(1.2)
                             .setEndTranslationToleranceMeters(0.35)
                             .setEndRotationToleranceDeg(30));
                     return getPathCommand(path, stopAfter);
