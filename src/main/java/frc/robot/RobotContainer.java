@@ -188,7 +188,6 @@ public class RobotContainer {
             driverController
                     .b()
                     .whileTrue(fuelSubsystem.launchCommand(true))
-                    .and(shooterCalculator::isUsingSOTM)
                     .whileTrue(swerveSubsystem.faceTowardsHubCommand());
             driverController.leftTrigger().whileTrue(fuelSubsystem.intakeCommand());
         }
@@ -215,12 +214,14 @@ public class RobotContainer {
                     .rightTrigger()
                     .and(operatorController.start().negate())
                     .and(operatorController.leftTrigger().negate())
-                    .whileTrue(fuelSubsystem.requestAsOperator(OperatorFuelRequest.LAUNCH_WINDUP));
+                    .whileTrue(fuelSubsystem.requestAsOperator(OperatorFuelRequest.LAUNCH_WINDUP))
+                    .whileTrue(swerveSubsystem.faceTowardsHubCommand());
             operatorController
                     .rightTrigger()
                     .and(operatorController.start().negate())
                     .and(operatorController.leftTrigger())
-                    .whileTrue(fuelSubsystem.requestAsOperator(OperatorFuelRequest.LAUNCH_NO_WINDUP));
+                    .whileTrue(fuelSubsystem.requestAsOperator(OperatorFuelRequest.LAUNCH_NO_WINDUP))
+                    .whileTrue(swerveSubsystem.faceTowardsHubCommand());
             operatorController.leftBumper().whileTrue(fuelSubsystem.requestAsOperator(OperatorFuelRequest.EJECT));
             operatorController.a().whileTrue(fuelSubsystem.requestAsOperator(OperatorFuelRequest.INTAKE));
             operatorController.b().whileTrue(fuelSubsystem.requestAsOperator(OperatorFuelRequest.UNJAM));
