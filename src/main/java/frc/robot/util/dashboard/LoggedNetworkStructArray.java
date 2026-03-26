@@ -9,12 +9,14 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 @NullMarked
 public class LoggedNetworkStructArray<T> extends LoggedNetworkInput implements Supplier<T[]>, Consumer<T[]> {
     private final List<Consumer<T[]>> listeners = new ArrayList<>();
     private final StructArrayEntry<T> entry;
     private T[] currentValue;
+    private @Nullable Supplier<T[]> supplier;
 
     public LoggedNetworkStructArray(String rawTopicName, Struct<T> struct, T[] defaultValue) {
         super(rawTopicName);
@@ -23,6 +25,11 @@ public class LoggedNetworkStructArray<T> extends LoggedNetworkInput implements S
                 .getEntry(defaultValue);
         entry.set(defaultValue);
         currentValue = entry.get();
+    }
+
+    public LoggedNetworkStructArray(String rawTopicName, Struct<T> struct, Supplier<T[]> supplier) {
+        this(rawTopicName, struct, supplier.get());
+        this.supplier = supplier;
     }
 
     public void set(T[] value) {
@@ -38,7 +45,10 @@ public class LoggedNetworkStructArray<T> extends LoggedNetworkInput implements S
 
     @Override
     protected void periodic() {
-        if (Arrays.equals(currentValue, entry.get())) return;
+        if (Arrays.equals(currentValue, entry.get())) {
+            if (supplier != null) set(supplier.get());
+            return;
+        }
         currentValue = entry.get();
         listeners.forEach(listener -> listener.accept(currentValue));
     }
@@ -55,5 +65,9 @@ public class LoggedNetworkStructArray<T> extends LoggedNetworkInput implements S
 
     public void addListener(Consumer<T[]> callback) {
         listeners.add(callback);
+    }
+
+    public void setSupplier(@Nullable Supplier<T[]> supplier) {
+        this.supplier = supplier;
     }
 }

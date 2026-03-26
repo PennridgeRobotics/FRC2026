@@ -8,18 +8,29 @@ import java.util.function.IntSupplier;
 import java.util.function.LongConsumer;
 import java.util.function.LongSupplier;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 @NullMarked
 public class LoggedNetworkInteger extends LoggedNetworkInput implements LongSupplier, LongConsumer, IntSupplier {
     private final List<LongConsumer> listeners = new ArrayList<>();
     private final IntegerEntry entry;
     private long currentValue;
+    private @Nullable LongSupplier supplier;
 
     public LoggedNetworkInteger(String rawTopicName, long defaultValue) {
         super(rawTopicName);
         entry = NetworkTableInstance.getDefault().getIntegerTopic(topicName).getEntry(defaultValue);
         entry.set(defaultValue);
         currentValue = entry.get();
+    }
+
+    public LoggedNetworkInteger(String rawTopicName, LongSupplier supplier) {
+        this(rawTopicName, supplier.getAsLong());
+        this.supplier = supplier;
+    }
+
+    public LoggedNetworkInteger(String rawTopicName, IntSupplier supplier) {
+        this(rawTopicName, () -> (long) supplier.getAsInt());
     }
 
     public void set(long value) {
@@ -35,7 +46,10 @@ public class LoggedNetworkInteger extends LoggedNetworkInput implements LongSupp
 
     @Override
     protected void periodic() {
-        if (currentValue == entry.get()) return;
+        if (currentValue == entry.get()) {
+            if (supplier != null) set(supplier.getAsLong());
+            return;
+        }
         currentValue = entry.get();
         listeners.forEach(listener -> listener.accept(currentValue));
     }
@@ -59,5 +73,9 @@ public class LoggedNetworkInteger extends LoggedNetworkInput implements LongSupp
 
     public void addListener(LongConsumer callback) {
         listeners.add(callback);
+    }
+
+    public void setSupplier(@Nullable LongSupplier supplier) {
+        this.supplier = supplier;
     }
 }
