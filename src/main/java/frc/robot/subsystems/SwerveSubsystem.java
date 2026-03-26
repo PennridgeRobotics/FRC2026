@@ -710,9 +710,9 @@ public class SwerveSubsystem extends SubsystemBase {
             return;
         }
         visionManager.addCamera(new PhotonCamera(
-                VisionConstants.CAMERA_1_NAME,
-                VisionConstants.CAMERA_1_TRANSLATION,
-                VisionConstants.CAMERA_1_ROTATION));
+                VisionConstants.CAMERA_BACK_NAME,
+                VisionConstants.CAMERA_BACK_TRANSLATION,
+                VisionConstants.CAMERA_BACK_ROTATION));
     }
 
     public CorePigeon2 getPigeon2() {
