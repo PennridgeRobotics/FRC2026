@@ -15,15 +15,14 @@ import static edu.wpi.first.units.Units.Seconds;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
-import edu.wpi.first.networktables.DoublePublisher;
-import edu.wpi.first.networktables.NetworkTableInstance;
-import edu.wpi.first.networktables.StringPublisher;
 import edu.wpi.first.units.AngleUnit;
 import edu.wpi.first.units.AngularVelocityUnit;
+import edu.wpi.first.units.DistanceUnit;
 import edu.wpi.first.units.TimeUnit;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
@@ -94,17 +93,15 @@ public class ShooterCalculator {
     private final LoggedNetworkStruct<Translation3d> loggedSimBallTargetPos;
 
     private final LoggedNetworkBoolean loggedManualMode;
-    private final StringPublisher manualModeTextPublisher;
-    private final DoublePublisher shotDistancePublisher;
-    private final DoublePublisher shotVelocityPublisher;
-    private final DoublePublisher shotHeadingPublisher;
-    private final DoublePublisher invertedShotHeadingPublisher;
-    private final DoublePublisher savedDataCountPublisher;
+    private final LoggedNetworkUnit<DistanceUnit, Distance> loggedShotDistance;
+    private final LoggedNetworkUnit<AngularVelocityUnit, AngularVelocity> loggedShotVelocity;
+    private final LoggedNetworkUnit<AngleUnit, Angle> loggedShotHeading;
+    private final LoggedNetworkUnit<AngleUnit, Angle> loggedInvertedShotHeading;
     private final LoggedNetworkString loggedSavedShooterDistanceVelocityMap;
     private final LoggedNetworkString loggedEquation;
     private final LoggedNetworkUnit<AngularVelocityUnit, AngularVelocity> loggedVelocityOffset;
-    private final DoublePublisher shotConfidencePublisher;
-    private final DoublePublisher driveAngleFFPublisher;
+    private final LoggedNetworkDouble loggedShotConfidence;
+    private final LoggedNetworkUnit<AngularVelocityUnit, AngularVelocity> loggedDriveAngleFF;
     private final LoggedNetworkUnit<AngleUnit, Angle> loggedLaunchAngle;
     private final LoggedNetworkDouble loggedSlipFactor;
     private final LoggedNetworkUnit<TimeUnit, Time> loggedPhaseDelay;
@@ -117,25 +114,20 @@ public class ShooterCalculator {
         this.swerveDrive = swerveDrive;
 
         final var topicPrefix = "Shooter Calculator/";
+        final var rootTopicPrefix = "/" + topicPrefix;
         loggedManualMode = new LoggedNetworkBoolean(topicPrefix + "Manual Mode", false);
-        manualModeTextPublisher = NetworkTableInstance.getDefault()
-                .getStringTopic(topicPrefix + "Manual Mode Text")
-                .publish();
-        shotDistancePublisher = NetworkTableInstance.getDefault()
-                .getDoubleTopic(topicPrefix + "Shot Distance")
-                .publish();
-        shotVelocityPublisher = NetworkTableInstance.getDefault()
-                .getDoubleTopic(topicPrefix + "Shot Velocity")
-                .publish();
-        shotHeadingPublisher = NetworkTableInstance.getDefault()
-                .getDoubleTopic(topicPrefix + "Shot Heading")
-                .publish();
-        invertedShotHeadingPublisher = NetworkTableInstance.getDefault()
-                .getDoubleTopic(topicPrefix + "Inverted Shot Heading")
-                .publish();
-        savedDataCountPublisher = NetworkTableInstance.getDefault()
-                .getDoubleTopic(topicPrefix + "Saved Data Count")
-                .publish();
+        new LoggedNetworkString(
+                rootTopicPrefix + "Manual Mode Text", () -> loggedManualMode.getAsBoolean() ? "Custom" : "Calculator");
+        loggedShotDistance = new LoggedNetworkUnit<>(rootTopicPrefix + "Shot Distance", Meters.zero());
+        loggedShotVelocity = new LoggedNetworkUnit<>(rootTopicPrefix + "Shot Velocity", RotationsPerSecond.zero());
+        loggedShotHeading = new LoggedNetworkUnit<>(rootTopicPrefix + "Shot Heading", Degrees.zero());
+        loggedInvertedShotHeading = new LoggedNetworkUnit<>(rootTopicPrefix + "Inverted Shot Heading", Degrees.zero());
+        new LoggedNetworkStruct<Pose2d>(rootTopicPrefix + "Shot Heading Pose", Pose2d.struct, () -> {
+            final var pose = swerveDrive.getPose();
+            final var heading = Rotation2d.fromRadians(loggedShotHeading.get().in(Radians));
+            return new Pose2d(pose.getTranslation(), heading).plus(new Transform2d(-100.0, 0, Rotation2d.kZero));
+        });
+        new LoggedNetworkInteger(rootTopicPrefix + "Saved Data Count", savedShooterDistanceVelocityMap::size);
         loggedSavedShooterDistanceVelocityMap =
                 new LoggedNetworkString(topicPrefix + "Saved Shooter Distance Velocity Map", NO_DATA_TEXT);
         loggedSavedShooterDistanceVelocityMap.addListener(unused -> importData());
@@ -148,14 +140,8 @@ public class ShooterCalculator {
         loggedEquation.addListener(unused -> compileEquation());
         compileEquation();
         loggedVelocityOffset = new LoggedNetworkUnit<>(topicPrefix + "Velocity Offset", RotationsPerSecond.zero());
-        shotConfidencePublisher = NetworkTableInstance.getDefault()
-                .getDoubleTopic(topicPrefix + "Shot Confidence")
-                .publish();
-        shotConfidencePublisher.set(0.0);
-        driveAngleFFPublisher = NetworkTableInstance.getDefault()
-                .getDoubleTopic(topicPrefix + "Drive Angle FF")
-                .publish();
-        driveAngleFFPublisher.set(0.0);
+        loggedShotConfidence = new LoggedNetworkDouble(rootTopicPrefix + "Shot Confidence", 0.0);
+        loggedDriveAngleFF = new LoggedNetworkUnit<>(rootTopicPrefix + "Drive Angle FF", DegreesPerSecond.zero());
         loggedLaunchAngle = new LoggedNetworkUnit<>(
                 topicPrefix + "Launch Angle", ShootOnTheMoveConstants.LAUNCH_ANGLE_FROM_HORIZONTAL);
         loggedLaunchAngle.addListener(unused -> shotCalculator = createShotCalculator());
@@ -218,8 +204,8 @@ public class ShooterCalculator {
                 swerveDrive.getRoll().getDegrees());
         final var shot = shotCalculator.calculate(shotInputs);
         // System.out.println("\n\nShot: " + shot + "\n\nrpm map: ");
-        shotConfidencePublisher.set(shot.confidence());
-        driveAngleFFPublisher.set(DegreesPerSecond.convertFrom(shot.driveAngularVelocityRadPerSec(), RadiansPerSecond));
+        loggedShotConfidence.set(shot.confidence());
+        loggedDriveAngleFF.set(RadiansPerSecond.of(shot.driveAngularVelocityRadPerSec()));
         lastSOTMLaunchParameters = shot;
         return shot;
     }
@@ -254,10 +240,11 @@ public class ShooterCalculator {
                 ? (sotmData.isValid() && sotmData.confidence() > 50)
                 : (Math.abs(robotPose.getRotation().minus(targetHeading).getDegrees()) < 10);
         final var shot = new ShotData(distance, shooterVelocity, targetHeading, driveAngleFF, isReady);
-        shotDistancePublisher.set(shot.distance().in(Meters));
-        shotVelocityPublisher.set(shot.velocity().in(RotationsPerSecond));
-        shotHeadingPublisher.set(shot.heading().getDegrees());
-        invertedShotHeadingPublisher.set(-(shot.heading.getDegrees() + 180));
+        loggedShotDistance.set(shot.distance());
+        loggedShotVelocity.set(shot.velocity());
+        loggedShotHeading.set(shot.heading().getMeasure());
+        loggedInvertedShotHeading.set(
+                shot.heading().getMeasure().plus(Degrees.of(180)).unaryMinus());
         lastShotData = shot;
         return shot;
     }
@@ -308,8 +295,26 @@ public class ShooterCalculator {
                 shotCalc.loadLUTEntry(entry.distanceM(), entry.rpm(), entry.tof());
             }
         }
+        final var tests = Map.of(
+                2.0, 47.0,
+                2.5, 50.0,
+                3.2, 52.8,
+                4.0, 58.0);
+        double totalError = 0.0;
+        for (var entry : tests.entrySet()) {
+            final var distance = entry.getKey();
+            final var velocity = entry.getValue();
+            final var percentError = Math.abs(shotCalc.getBaseRPM(distance) / 60.0 - velocity) / velocity;
+            totalError += percentError;
+            System.out.printf(
+                    "Expected for %.1fm: %.1f; got %.1f (%.1f%% error)\n",
+                    distance, velocity, shotCalc.getBaseRPM(distance) / 60.0, percentError * 100);
+        }
+        System.out.printf("Average error: %.1f%%\n", totalError / tests.size() * 100);
         return shotCalc;
     }
+
+    // 48.1, 56.1, 51.9, 45.8
 
     private void addDistanceVelocityData(Distance distance, AngularVelocity velocity) {
         addRawDistanceVelocityData(distance.in(Meters), velocity.in(RotationsPerSecond));
@@ -320,7 +325,6 @@ public class ShooterCalculator {
         shooterDistanceVelocityMap.put(distance, velocity);
         savedShooterDistanceVelocityMap.put(distance, velocity);
         loggedSavedShooterDistanceVelocityMap.set(exportData());
-        savedDataCountPublisher.set(savedShooterDistanceVelocityMap.size());
     }
 
     private Translation2d getTarget() {
@@ -467,9 +471,6 @@ public class ShooterCalculator {
     public void prePeriodic() {
         lastShotData = null;
         lastSOTMLaunchParameters = null;
-
-        // NetworkTables
-        manualModeTextPublisher.set(loggedManualMode.getAsBoolean() ? "Custom" : "Calculator");
 
         if (System.currentTimeMillis() - lastUpdateTimestampMillis >= 100L) {
             calculateShotData();

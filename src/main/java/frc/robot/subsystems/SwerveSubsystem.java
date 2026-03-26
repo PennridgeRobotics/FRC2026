@@ -90,7 +90,8 @@ public class SwerveSubsystem extends SubsystemBase {
 
     private final PIDController bLineTranslationPID =
             Robot.isReal() ? new PIDController(5.0, 0, 2.8) : new PIDController(1.9, 0.1, 0.4);
-    private final PIDController bLineRotationPID = new PIDController(5.0, 0, 0.3);
+    private final PIDController bLineRotationPID =
+            Robot.isReal() ? new PIDController(5.0, 0, 0.3) : new PIDController(5.0, 0.2, 0.6);
     private final PIDController bLineCrossTrackPID = new PIDController(2.0, 0, 0);
     private final FollowPath.Builder pathBuilder;
 

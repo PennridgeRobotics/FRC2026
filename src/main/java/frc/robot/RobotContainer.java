@@ -256,6 +256,19 @@ public class RobotContainer {
         new LoggedNetworkSendable<>("/Misc/Motor Info", motorInfo);
         new LoggedNetworkSendable<>("/Misc/Field", field);
         new LoggedNetworkSendable<>("/Pigeon2", new Pigeon2Sendable(swerveSubsystem.getPigeon2()));
+        /*final var emptyPoseArray = new Pose2d[0];
+        new LoggedNetworkStructArray<>("/Misc/BLine Completed Poses", Pose2d.struct, () -> {
+            if (autoManager == null) return emptyPoseArray;
+            final var completedPoses = autoManager.getCompletedPoses();
+            if (completedPoses == null) return emptyPoseArray;
+            return completedPoses.toArray(new Pose2d[0]);
+        });
+        new LoggedNetworkStructArray<>("/Misc/BLine Poses to Complete", Pose2d.struct, () -> {
+            if (autoManager == null) return emptyPoseArray;
+            final var posesToComplete = autoManager.getPosesToComplete();
+            if (posesToComplete == null) return emptyPoseArray;
+            return posesToComplete.toArray(new Pose2d[0]);
+        });*/
     }
 
     private void updateField() {
