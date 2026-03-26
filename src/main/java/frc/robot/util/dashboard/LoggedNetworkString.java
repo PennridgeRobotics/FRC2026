@@ -7,18 +7,25 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 @NullMarked
 public class LoggedNetworkString extends LoggedNetworkInput implements Supplier<String>, Consumer<String> {
     private final List<Consumer<String>> listeners = new ArrayList<>();
     private final StringEntry entry;
     private String currentValue;
+    private @Nullable Supplier<String> supplier;
 
     public LoggedNetworkString(String rawTopicName, String defaultValue) {
         super(rawTopicName);
         entry = NetworkTableInstance.getDefault().getStringTopic(topicName).getEntry(defaultValue);
         entry.set(defaultValue);
         currentValue = entry.get();
+    }
+
+    public LoggedNetworkString(String rawTopicName, Supplier<String> supplier) {
+        this(rawTopicName, supplier.get());
+        this.supplier = supplier;
     }
 
     public void set(String value) {
@@ -34,7 +41,10 @@ public class LoggedNetworkString extends LoggedNetworkInput implements Supplier<
 
     @Override
     protected void periodic() {
-        if (currentValue.equals(entry.get())) return;
+        if (currentValue.equals(entry.get())) {
+            if (supplier != null) set(supplier.get());
+            return;
+        }
         currentValue = entry.get();
         listeners.forEach(listener -> listener.accept(currentValue));
     }
@@ -51,5 +61,9 @@ public class LoggedNetworkString extends LoggedNetworkInput implements Supplier<
 
     public void addListener(Consumer<String> callback) {
         listeners.add(callback);
+    }
+
+    public void setSupplier(@Nullable Supplier<String> supplier) {
+        this.supplier = supplier;
     }
 }

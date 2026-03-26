@@ -8,6 +8,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 @NullMarked
 public class LoggedNetworkDoubleToObject<T> extends LoggedNetworkInput implements Supplier<T>, Consumer<T> {
@@ -17,6 +18,7 @@ public class LoggedNetworkDoubleToObject<T> extends LoggedNetworkInput implement
     private final Function<Double, T> doubleToObject;
     private T currentValue;
     private double currentDoubleValue;
+    private @Nullable Supplier<T> supplier;
 
     public LoggedNetworkDoubleToObject(
             String rawTopicName,
@@ -34,6 +36,15 @@ public class LoggedNetworkDoubleToObject<T> extends LoggedNetworkInput implement
         currentValue = doubleToObject.apply(currentDoubleValue);
     }
 
+    public LoggedNetworkDoubleToObject(
+            String rawTopicName,
+            Supplier<T> supplier,
+            Function<Double, T> doubleToObject,
+            Function<T, Double> objectToDouble) {
+        this(rawTopicName, supplier.get(), doubleToObject, objectToDouble);
+        this.supplier = supplier;
+    }
+
     public void set(T value) {
         set(value, false);
     }
@@ -48,7 +59,10 @@ public class LoggedNetworkDoubleToObject<T> extends LoggedNetworkInput implement
 
     @Override
     protected void periodic() {
-        if (currentDoubleValue == entry.get()) return;
+        if (currentDoubleValue == entry.get()) {
+            if (supplier != null) set(supplier.get());
+            return;
+        }
         currentDoubleValue = entry.get();
         currentValue = doubleToObject.apply(currentDoubleValue);
         listeners.forEach(listener -> listener.accept(currentValue));
@@ -66,5 +80,9 @@ public class LoggedNetworkDoubleToObject<T> extends LoggedNetworkInput implement
 
     public void addListener(Consumer<T> callback) {
         listeners.add(callback);
+    }
+
+    public void setSupplier(@Nullable Supplier<T> supplier) {
+        this.supplier = supplier;
     }
 }
