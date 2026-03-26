@@ -20,6 +20,12 @@ public abstract class Camera {
             .getDoubleTopic("Vision/All Standard Deviations")
             .publish();
 
+    protected final String cameraName;
+
+    protected Camera(String cameraName) {
+        this.cameraName = cameraName;
+    }
+
     public abstract @Nullable PoseEstimate update();
 
     /**
@@ -49,5 +55,9 @@ public abstract class Camera {
 
     protected void publishGlobalStdDev(double stdDev) {
         stdDevsPublisher.set(stdDev);
+    }
+
+    public String getCameraName() {
+        return cameraName;
     }
 }
