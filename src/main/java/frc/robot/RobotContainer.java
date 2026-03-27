@@ -24,7 +24,6 @@ import frc.robot.util.HubTracker;
 import frc.robot.util.ShooterCalculator;
 import frc.robot.util.StringUtils;
 import frc.robot.util.controller.CommandJoystickController;
-import frc.robot.util.dashboard.Field2dElastic;
 import frc.robot.util.dashboard.LoggedNetworkBoolean;
 import frc.robot.util.dashboard.LoggedNetworkInput;
 import frc.robot.util.dashboard.LoggedNetworkSendable;
@@ -37,6 +36,7 @@ import frc.robot.util.enums.Constants.FuelConstants;
 import frc.robot.util.enums.Constants.LightConstants;
 import frc.robot.util.enums.Constants.MiscConstants;
 import frc.robot.util.enums.SpeedMultiplier;
+import frc.robot.vision.VisionManager;
 import java.io.IOException;
 import java.util.List;
 import org.jspecify.annotations.NullMarked;
@@ -53,9 +53,9 @@ public class RobotContainer {
 
     private final ShooterCalculator shooterCalculator;
     private final PowerDistribution powerDistribution;
+    private final VisionManager visionManager;
     private final MultiMotorInfoSendable motorInfo = new MultiMotorInfoSendable();
     private final @Nullable AutoManager autoManager;
-    private final Field2dElastic field = new Field2dElastic();
 
     private final StructPublisher<Pose2d> aheadRobotPose;
     private final StructPublisher<Pose2d> behindRobotPose;
@@ -94,6 +94,7 @@ public class RobotContainer {
                     "Error instantiating Swerve Subsystem: " + ex.getMessage(), finalException.getStackTrace());
             throw finalException;
         }
+        visionManager = swerveSubsystem.getVisionManager();
         shooterCalculator = swerveSubsystem.getShooterCalculator();
         fuelSubsystem = FuelConstants.FUEL_SUBSYSTEM_ENABLED ? new FuelSubsystem(shooterCalculator, motorInfo) : null;
         climberSubsystem = ClimberConstants.CLIMBER_ENABLED ? new ClimberSubsystem(motorInfo) : null;
@@ -226,9 +227,17 @@ public class RobotContainer {
                 PositionCalibrationLocation.FRONT_LEFT_OF_HUB));*/
 
         operatorController
-                .leftTrigger()
+                .rightBumper()
                 .and(operatorController.start())
                 .whileTrue(swerveSubsystem.straightenWheelsCommand());
+        operatorController
+                .leftTrigger()
+                .and(operatorController.start())
+                .onTrue(swerveSubsystem.toggleUseBackCameraInPoseEstimation());
+        operatorController
+                .rightTrigger()
+                .and(operatorController.start())
+                .onTrue(swerveSubsystem.toggleUseFrontCameraInPoseEstimation());
 
         if (autoManager != null) {
             operatorController.leftBumper().and(operatorController.start()).whileTrue(autoManager.testOnePointPath());
@@ -284,7 +293,6 @@ public class RobotContainer {
         new LoggedNetworkSendable<>("/Auto/Start Location Chooser", autoStartLocationChooser);
         new LoggedNetworkSendable<>("/Misc/Power Distribution", powerDistribution);
         new LoggedNetworkSendable<>("/Misc/Motor Info", motorInfo);
-        new LoggedNetworkSendable<>("/Misc/Field", field);
         new LoggedNetworkSendable<>("/Pigeon2", new Pigeon2Sendable(swerveSubsystem.getPigeon2()));
         /*final var emptyPoseArray = new Pose2d[0];
         new LoggedNetworkStructArray<>("/Misc/BLine Completed Poses", Pose2d.struct, () -> {
@@ -302,7 +310,7 @@ public class RobotContainer {
     }
 
     private void updateField() {
-        field.setRobotPose(swerveSubsystem.getRobotPose());
+        final var field = swerveSubsystem.getField2d();
         if (autoManager == null) return;
         final FieldObject2d trajectoryObject = field.getObject("BLine trajectory");
         final List<Pose2d> currentTrajectory = autoManager.getCurrentPoses();

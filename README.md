@@ -25,8 +25,11 @@ X   B
 | Button             | Action                                   |
 |--------------------|------------------------------------------|
 | L Bumper + Start   | Auto test                                |
+| R Bumper + Start   | Straighten wheels                        |
 | L Bumper           | Eject                                    |
 | R Bumper           | Wind up                                  |
+| L Trigger + Start  | Toggle Back Camera                       |
+| R Trigger + Start  | Toggle Front Camera                      |
 | R Trigger          | Wind up & shoot                          |
 | Both Triggers      | Shoot (no wind up)                       |
 | A                  | Intake                                   |

@@ -82,8 +82,12 @@ public class PhotonCamera extends Camera {
      * @param robotToCamTranslation The translation offset (in meters) from the robot origin to the camera lens center.
      * @param robotToCamRotation The rotation offset of the camera relative to the robot frame.
      */
-    public PhotonCamera(String name, Translation3d robotToCamTranslation, Rotation3d robotToCamRotation) {
-        super(name);
+    public PhotonCamera(
+            String name,
+            Translation3d robotToCamTranslation,
+            Rotation3d robotToCamRotation,
+            boolean useInPoseEstimationDefault) {
+        super(name, useInPoseEstimationDefault);
         camera = new org.photonvision.PhotonCamera(name);
         final var topicPrefix = "Vision/" + name + "/";
         posePublisher = NetworkTableInstance.getDefault()

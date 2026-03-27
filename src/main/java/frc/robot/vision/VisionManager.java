@@ -58,7 +58,7 @@ public class VisionManager {
                 limelightCamera.setRobotOrientation(swerveDrive.getOdometryHeading());
             }
             PoseEstimate poseEstimate = camera.update();
-            if (poseEstimate != null) {
+            if (poseEstimate != null && camera.useInPoseEstimation()) {
                 swerveDrive.addVisionMeasurement(
                         poseEstimate.poseEstimate, poseEstimate.timeStamp, poseEstimate.stdDevs);
             }

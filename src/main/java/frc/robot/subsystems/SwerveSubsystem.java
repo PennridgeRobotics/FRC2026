@@ -24,6 +24,7 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj.Notifier;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.util.Color;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -54,6 +55,7 @@ import frc.robot.util.enums.Constants.ShootOnTheMoveConstants;
 import frc.robot.util.enums.Constants.VisionConstants;
 import frc.robot.util.enums.PositionCalibrationLocation;
 import frc.robot.util.enums.SpeedMultiplier;
+import frc.robot.vision.Camera;
 import frc.robot.vision.PhotonCamera;
 import frc.robot.vision.VisionManager;
 import java.io.File;
@@ -65,6 +67,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import swervelib.SwerveDrive;
 import swervelib.SwerveDriveTest;
 import swervelib.math.SwerveMath;
@@ -105,6 +108,8 @@ public class SwerveSubsystem extends SubsystemBase {
     private final LoggedNetworkUnit<AngularVelocityUnit, AngularVelocity> loggedTargetAngularVelocity;
     private final LoggedNetworkBoolean loggedUsingSOTMHubLock;
     private SOTMHubLockType sotmHubLockType = SOTMHubLockType.ANGLE_LOCK_AND_VELOCITY_FF;
+    private @Nullable Camera backCamera;
+    private @Nullable Camera frontCamera;
 
     @SuppressWarnings("StaticAssignmentInConstructor")
     public SwerveSubsystem(final MultiMotorInfoSendable motorInfo) throws IOException {
@@ -712,15 +717,33 @@ public class SwerveSubsystem extends SubsystemBase {
         if (!VisionConstants.VISION_ENABLED) {
             return;
         }
-        visionManager.addCameras(
-                new PhotonCamera(
-                        VisionConstants.CAMERA_BACK_NAME,
-                        VisionConstants.CAMERA_BACK_TRANSLATION,
-                        VisionConstants.CAMERA_BACK_ROTATION),
-                new PhotonCamera(
-                        VisionConstants.CAMERA_FRONT_NAME,
-                        VisionConstants.CAMERA_FRONT_TRANSLATION,
-                        VisionConstants.CAMERA_FRONT_ROTATION));
+        backCamera = new PhotonCamera(
+                VisionConstants.CAMERA_BACK_NAME,
+                VisionConstants.CAMERA_BACK_TRANSLATION,
+                VisionConstants.CAMERA_BACK_ROTATION,
+                VisionConstants.CAMERA_BACK_USE_IN_POSE_ESTIMATION);
+        frontCamera = new PhotonCamera(
+                VisionConstants.CAMERA_FRONT_NAME,
+                VisionConstants.CAMERA_FRONT_TRANSLATION,
+                VisionConstants.CAMERA_FRONT_ROTATION,
+                VisionConstants.CAMERA_FRONT_USE_IN_POSE_ESTIMATION);
+        visionManager.addCameras(backCamera, frontCamera);
+    }
+
+    public Command toggleUseBackCameraInPoseEstimation() {
+        return backCamera != null
+                ? backCamera.toggleUseInPoseEstimation()
+                : Commands.runOnce(() -> DriverStation.reportError(
+                        "Tried to create toggle use back camera in pose estimation command before vision was initialized",
+                        false));
+    }
+
+    public Command toggleUseFrontCameraInPoseEstimation() {
+        return frontCamera != null
+                ? frontCamera.toggleUseInPoseEstimation()
+                : Commands.runOnce(() -> DriverStation.reportError(
+                        "Tried to create toggle use front camera in pose estimation command before vision was initialized",
+                        false));
     }
 
     public CorePigeon2 getPigeon2() {
@@ -742,6 +765,14 @@ public class SwerveSubsystem extends SubsystemBase {
 
     public ShooterCalculator getShooterCalculator() {
         return shooterCalculator;
+    }
+
+    public VisionManager getVisionManager() {
+        return visionManager;
+    }
+
+    public Field2d getField2d() {
+        return swerveDrive.field;
     }
 
     private enum SOTMHubLockType {
