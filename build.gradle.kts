@@ -12,6 +12,7 @@ plugins {
     java
     alias(libs.plugins.error.prone)
     alias(libs.plugins.gradle.rio)
+    alias(libs.plugins.gversion)
     alias(libs.plugins.spotless)
 }
 
@@ -104,6 +105,16 @@ dependencies {
     testRuntimeOnly(libs.junit.platform.launcher)
 }
 
+gversion {
+    srcDir = "src/main/java"
+    classPackage = "frc.robot.util"
+    className = "BuildConstants"
+    timeZone = "America/New_York"
+    language = "java"
+    indent = "    "
+    dateFormat = "yyyy-MM-dd HH:mm:ss z"
+}
+
 tasks {
 
     test {
@@ -126,6 +137,8 @@ tasks {
             check("NullAway", CheckSeverity.ERROR)
             option("NullAway:OnlyNullMarked", "true")
         }
+
+        dependsOn(createVersionFile)
     }
 
     // Setting up my Jar File. In this case, adding all libraries into the main jar ('fat jar')

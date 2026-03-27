@@ -1,9 +1,12 @@
 package frc.robot;
 
+import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.DataLogManager;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import frc.robot.util.BuildConstants;
 import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.NullMarked;
@@ -19,29 +22,52 @@ public class Robot extends TimedRobot {
     @Override
     public void robotInit() {
         if (isReal()) {
-            DataLogManager.start();
-            URCL.start(Map.ofEntries(
-                    Map.entry(1, "Front-Left Drive"),
-                    Map.entry(2, "Front-Left Angle"),
-                    Map.entry(3, "Front-Right Drive"),
-                    Map.entry(4, "Front-Right Angle"),
-                    Map.entry(5, "Back-Right Drive"),
-                    Map.entry(6, "Back-Right Angle"),
-                    Map.entry(7, "Back-Left Drive"),
-                    Map.entry(8, "Back-Left Angle"),
-                    Map.entry(9, "Climber"),
-                    Map.entry(10, "Intake-Launcher Left"),
-                    Map.entry(11, "Intake-Launcher Right"),
-                    Map.entry(12, "Indexer"),
-                    Map.entry(13, "Pigeon2"),
-                    Map.entry(14, "Power Distribution Hub"),
-                    Map.entry(16, "CANdle")));
+            startLogging();
         }
 
         // Instantiate our RobotContainer. This will perform all our button bindings,
         // and put our autonomous chooser on the dashboard.
 
         robotContainer = new RobotContainer();
+    }
+
+    @SuppressWarnings("DataFlowIssue")
+    private void startLogging() {
+        DataLogManager.start();
+        DataLogManager.logConsoleOutput(true);
+        DataLogManager.logNetworkTables(true);
+        DriverStation.startDataLog(DataLogManager.getLog());
+        URCL.start(Map.ofEntries(
+                Map.entry(1, "Front-Left Drive"),
+                Map.entry(2, "Front-Left Angle"),
+                Map.entry(3, "Front-Right Drive"),
+                Map.entry(4, "Front-Right Angle"),
+                Map.entry(5, "Back-Right Drive"),
+                Map.entry(6, "Back-Right Angle"),
+                Map.entry(7, "Back-Left Drive"),
+                Map.entry(8, "Back-Left Angle"),
+                Map.entry(9, "Climber"),
+                Map.entry(10, "Intake-Launcher Left"),
+                Map.entry(11, "Intake-Launcher Right"),
+                Map.entry(12, "Indexer"),
+                Map.entry(13, "Pigeon2"),
+                Map.entry(14, "Power Distribution Hub"),
+                Map.entry(16, "CANdle")));
+
+        final var metadataTable = NetworkTableInstance.getDefault().getTable("Metadata");
+        metadataTable.getEntry("BuildDate").setString(BuildConstants.BUILD_DATE);
+        metadataTable.getEntry("GitBranch").setString(BuildConstants.GIT_BRANCH);
+        metadataTable.getEntry("GitDate").setString(BuildConstants.GIT_DATE);
+        metadataTable
+                .getEntry("GitDirty")
+                .setString(
+                        switch (BuildConstants.DIRTY) {
+                            case 0 -> "All changes committed";
+                            case 1 -> "Uncommitted changes";
+                            default -> "Unknown";
+                        });
+        metadataTable.getEntry("GitSHA").setString(BuildConstants.GIT_SHA);
+        metadataTable.getEntry("GitRevision").setString(String.valueOf(BuildConstants.GIT_REVISION));
     }
 
     /**

@@ -5,6 +5,7 @@ crunch = "2.0.3"
 error-prone = "2.42.0"
 error-prone-plugin = "5.1.0"
 gradle-rio = "2026.2.1"
+gversion = "1.10.3"
 jspecify = "1.0.0"
 junit = "6.0.3"
 null-away = "0.13.1"
@@ -13,6 +14,7 @@ spotless = "8.4.0"
 [plugins]
 error-prone = { id = "net.ltgt.errorprone", version.ref = "error-prone-plugin" }
 gradle-rio = { id = "edu.wpi.first.GradleRIO", version.ref = "gradle-rio" }
+gversion = { id = "com.peterabeles.gversion", version.ref = "gversion" }
 #noinspection UnusedVersionCatalogEntry
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
 

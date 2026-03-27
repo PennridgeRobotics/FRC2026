@@ -1,3 +1,5 @@
+src/main/java/frc/robot/util/BuildConstants.java
+
 # Photonvision stuff idek
 
 photonvision_config/logs

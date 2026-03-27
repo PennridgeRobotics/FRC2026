@@ -321,7 +321,7 @@ public class RobotContainer {
     }
 
     public void postSchedulerUpdate() {
-        NetworkTableInstance.getDefault().flush();
+        // NetworkTableInstance.getDefault().flush();
     }
 
     public void autonomousInit() {
