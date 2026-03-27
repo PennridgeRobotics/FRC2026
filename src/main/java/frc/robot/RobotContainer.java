@@ -23,6 +23,7 @@ import frc.robot.util.AutoManager;
 import frc.robot.util.HubTracker;
 import frc.robot.util.ShooterCalculator;
 import frc.robot.util.StringUtils;
+import frc.robot.util.controller.CommandJoystickController;
 import frc.robot.util.dashboard.Field2dElastic;
 import frc.robot.util.dashboard.LoggedNetworkBoolean;
 import frc.robot.util.dashboard.LoggedNetworkInput;
@@ -64,6 +65,9 @@ public class RobotContainer {
             new CommandXboxController(ControllerConstants.DRIVER_CONTROLLER_PORT);
     private final CommandXboxController operatorController =
             new CommandXboxController(ControllerConstants.OPERATOR_CONTROLLER_PORT);
+    private final @Nullable CommandJoystickController joystickController = ControllerConstants.USING_JOYSTICK
+            ? new CommandJoystickController(ControllerConstants.JOYSTICK_CONTROLLER_PORT)
+            : null;
 
     private final SendableChooser<AutoManager.AutoStartLocation> autoStartLocationChooser;
     private final LoggedNetworkBoolean autoClimb = new LoggedNetworkBoolean("/Auto/Auto Climb", false);
@@ -147,6 +151,31 @@ public class RobotContainer {
                 driverController::getLeftY, () -> -driverController.getLeftX(), () -> -driverController.getRightX()));
 
         driverController.start().onTrue(swerveSubsystem.resetYaw());*/
+
+        if (joystickController != null) {
+            swerveSubsystem.setDefaultCommand(swerveSubsystem.driveFieldOrientedCommand(
+                    () -> -joystickController.getY(),
+                    () -> -joystickController.getX(),
+                    () -> -joystickController.getTwist()));
+            if (fuelSubsystem != null) {
+                joystickController
+                        .trigger(false, false)
+                        .whileTrue(fuelSubsystem.launchCommand(true))
+                        .and(shooterCalculator::isUsingSOTM)
+                        .whileTrue(swerveSubsystem.faceTowardsHubCommand());
+                joystickController
+                        .trigger(false, true)
+                        .whileTrue(fuelSubsystem.windUpCommand())
+                        .and(shooterCalculator::isUsingSOTM)
+                        .whileTrue(swerveSubsystem.faceTowardsHubCommand());
+                joystickController.topHat(false, false).whileTrue(fuelSubsystem.intakeCommand());
+            }
+            if (autoManager != null) {
+                joystickController.a1().whileTrue(autoManager.testAuto());
+                joystickController.a2().whileTrue(autoManager.testOnePointPath());
+            }
+            return;
+        }
 
         // for testing
         final var fieldOriented = true;

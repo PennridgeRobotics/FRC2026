@@ -1,15 +1,36 @@
 package frc.robot.util.enums;
 
-import static edu.wpi.first.units.Units.*;
+import static edu.wpi.first.units.Units.Amps;
+import static edu.wpi.first.units.Units.Degrees;
+import static edu.wpi.first.units.Units.Inches;
+import static edu.wpi.first.units.Units.Kilograms;
+import static edu.wpi.first.units.Units.MetersPerSecond;
+import static edu.wpi.first.units.Units.MetersPerSecondPerSecond;
+import static edu.wpi.first.units.Units.Milliseconds;
+import static edu.wpi.first.units.Units.RPM;
+import static edu.wpi.first.units.Units.RotationsPerSecond;
+import static edu.wpi.first.units.Units.Seconds;
+import static edu.wpi.first.units.Units.Volts;
 
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.VecBuilder;
-import edu.wpi.first.math.geometry.*;
+import edu.wpi.first.math.geometry.Rectangle2d;
+import edu.wpi.first.math.geometry.Rotation3d;
+import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
-import edu.wpi.first.units.measure.*;
+import edu.wpi.first.units.measure.Angle;
+import edu.wpi.first.units.measure.AngularVelocity;
+import edu.wpi.first.units.measure.Current;
+import edu.wpi.first.units.measure.Distance;
+import edu.wpi.first.units.measure.LinearAcceleration;
+import edu.wpi.first.units.measure.LinearVelocity;
+import edu.wpi.first.units.measure.Mass;
+import edu.wpi.first.units.measure.Time;
+import edu.wpi.first.units.measure.Voltage;
 import org.jspecify.annotations.NullMarked;
 import yams.gearing.MechanismGearing;
 import yams.motorcontrollers.SmartMotorControllerConfig.MotorMode;
@@ -83,7 +104,7 @@ public final class Constants {
         // Measure/tune:
         public static final Distance FLYWHEEL_DIAMETER = Inches.of(3.94);
         public static final Distance EXIT_HEIGHT = Inches.of(20.5); // floor to where ball leaves shooter
-        public static final Angle LAUNCH_ANGLE_FROM_HORIZONTAL = Degrees.of(62); // estimated
+        public static final Angle LAUNCH_ANGLE_FROM_HORIZONTAL = Degrees.of(61); // estimated
         public static final double SLIP_FACTOR = 0.834; // 0 = no group, 1 = perfect
         public static final Translation2d LAUNCHER_OFFSET = new Translation2d(Inches.of(7.4), Inches.zero());
         public static final LinearVelocity MAX_VELOCITY_WHILE_SHOOTING = MetersPerSecond.of(1.0);
@@ -102,6 +123,7 @@ public final class Constants {
         public static final AngularVelocity RPM_SEARCH_MAX = RPM.of(4000); // real limit: 3937
         public static final int ITERATIONS = 25;
         public static final Time MAX_SIM_TIME = Seconds.of(5);
+        public static final double MAGNUS_SIGN = 1;
 
         public static final Angle MAXIMUM_TILT =
                 Degrees.of(15); // suppress firing when the chassis tilts past this (bumps/ramps)
@@ -188,9 +210,14 @@ public final class Constants {
     public static final class ControllerConstants {
         public static final int DRIVER_CONTROLLER_PORT = 0;
         public static final int OPERATOR_CONTROLLER_PORT = 1;
+        public static final int JOYSTICK_CONTROLLER_PORT = -1;
+        public static final boolean USING_JOYSTICK = JOYSTICK_CONTROLLER_PORT >= 0;
 
-        public static final double DRIVE_MIN_INPUT = 0.01; // deadband
+        public static final double DRIVE_MIN_INPUT = USING_JOYSTICK ? 0.06 : 0.01; // deadband
         public static final double DRIVE_MAX_INPUT = 0.98;
+
+        public static final double LINEAR_DRIVE_POWER_SCALE = USING_JOYSTICK ? 2 : 3;
+        public static final double ROTATE_DRIVE_POWER_SCALE = USING_JOYSTICK ? 3 : 5;
     }
 
     public static class FieldConstants {
