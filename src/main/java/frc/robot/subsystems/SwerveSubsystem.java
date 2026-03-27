@@ -714,6 +714,10 @@ public class SwerveSubsystem extends SubsystemBase {
                 VisionConstants.CAMERA_BACK_NAME,
                 VisionConstants.CAMERA_BACK_TRANSLATION,
                 VisionConstants.CAMERA_BACK_ROTATION));
+        visionManager.addCamera(new PhotonCamera(
+                VisionConstants.CAMERA_FRONT_NAME,
+                VisionConstants.CAMERA_FRONT_TRANSLATION,
+                VisionConstants.CAMERA_FRONT_ROTATION));
     }
 
     public CorePigeon2 getPigeon2() {
