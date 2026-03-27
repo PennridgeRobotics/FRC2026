@@ -23,6 +23,8 @@ public class Robot extends TimedRobot {
     public void robotInit() {
         if (isReal()) {
             startLogging();
+        } else {
+            publishMetadata();
         }
 
         // Instantiate our RobotContainer. This will perform all our button bindings,
@@ -31,7 +33,6 @@ public class Robot extends TimedRobot {
         robotContainer = new RobotContainer();
     }
 
-    @SuppressWarnings("DataFlowIssue")
     private void startLogging() {
         DataLogManager.start();
         DataLogManager.logConsoleOutput(true);
@@ -54,6 +55,11 @@ public class Robot extends TimedRobot {
                 Map.entry(14, "Power Distribution Hub"),
                 Map.entry(16, "CANdle")));
 
+        publishMetadata();
+    }
+
+    @SuppressWarnings("DataFlowIssue")
+    private void publishMetadata() {
         final var metadataTable = NetworkTableInstance.getDefault().getTable("Metadata");
         metadataTable.getEntry("BuildDate").setString(BuildConstants.BUILD_DATE);
         metadataTable.getEntry("GitBranch").setString(BuildConstants.GIT_BRANCH);
