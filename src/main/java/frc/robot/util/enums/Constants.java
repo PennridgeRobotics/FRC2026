@@ -64,8 +64,8 @@ public final class Constants {
         public static final Rotation3d CAMERA_BACK_ROTATION = new Rotation3d(-0.007874, 0.014070, -3.123649);
         // Front Camera
         public static final String CAMERA_FRONT_NAME = "Arducam_OV9281_Front";
-        public static final Translation3d CAMERA_FRONT_TRANSLATION = new Translation3d(-0.115925, -0.270208, 0.595668);
-        public static final Rotation3d CAMERA_FRONT_ROTATION = new Rotation3d(0.021793, 0.026170, -0.015714);
+        public static final Translation3d CAMERA_FRONT_TRANSLATION = new Translation3d(-0.045748, -0.249129, 0.580242);
+        public static final Rotation3d CAMERA_FRONT_ROTATION = new Rotation3d(0.015923, 0.004286, -0.035962);
     }
 
     public static final class DriveConstants {
