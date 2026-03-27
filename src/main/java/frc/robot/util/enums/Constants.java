@@ -104,7 +104,7 @@ public final class Constants {
         // Measure/tune:
         public static final Distance FLYWHEEL_DIAMETER = Inches.of(3.94);
         public static final Distance EXIT_HEIGHT = Inches.of(20.5); // floor to where ball leaves shooter
-        public static final Angle LAUNCH_ANGLE_FROM_HORIZONTAL = Degrees.of(62); // estimated
+        public static final Angle LAUNCH_ANGLE_FROM_HORIZONTAL = Degrees.of(61); // estimated
         public static final double SLIP_FACTOR = 0.834; // 0 = no group, 1 = perfect
         public static final Translation2d LAUNCHER_OFFSET = new Translation2d(Inches.of(7.4), Inches.zero());
         public static final LinearVelocity MAX_VELOCITY_WHILE_SHOOTING = MetersPerSecond.of(1.0);
@@ -123,6 +123,7 @@ public final class Constants {
         public static final AngularVelocity RPM_SEARCH_MAX = RPM.of(4000); // real limit: 3937
         public static final int ITERATIONS = 25;
         public static final Time MAX_SIM_TIME = Seconds.of(5);
+        public static final double MAGNUS_SIGN = 1;
 
         public static final Angle MAXIMUM_TILT =
                 Degrees.of(15); // suppress firing when the chassis tilts past this (bumps/ramps)
