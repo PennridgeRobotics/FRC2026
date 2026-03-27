@@ -14,12 +14,12 @@
     }
   },
   "kinematic_constraints": {
-    "default_max_velocity_meters_per_sec": 2.2,
-    "default_max_acceleration_meters_per_sec2": 4.0,
+    "default_max_velocity_meters_per_sec": 2.9,
+    "default_max_acceleration_meters_per_sec2": 6.0,
     "default_intermediate_handoff_radius_meters": 0.18,
-    "default_max_velocity_deg_per_sec": 360.0,
+    "default_max_velocity_deg_per_sec": 540.0,
     "default_max_acceleration_deg_per_sec2": 860.0,
-    "default_end_translation_tolerance_meters": 0.03,
+    "default_end_translation_tolerance_meters": 0.05,
     "default_end_rotation_tolerance_deg": 2.0
   }
 }

@@ -303,7 +303,6 @@ public class AutoManager {
                     final Pose2d pose2 = new Pose2d(x2, y, angle);
                     final Path path = new Path(new Path.Waypoint(pose1), new Path.Waypoint(pose2));
                     path.setPathConstraints(new Path.PathConstraints()
-                            .setMaxVelocityMetersPerSec(1.2)
                             .setEndTranslationToleranceMeters(0.35)
                             .setEndRotationToleranceDeg(30));
                     return getPathCommand(path, stopAfter);
@@ -388,34 +387,8 @@ public class AutoManager {
             return null;
         }
         final Pose2d currentPose = swerveDrive.getRobotPose();
-        final Translation2d currentTranslation = currentPose.getTranslation();
-        final FollowPath command = currentPath.getFirst();
         final Path path = currentPath.getSecond();
         final var states = new ArrayList<Pose2d>();
-        /*int translationElementsPassed = command.getCurrentTranslationElementIndex();
-        Translation2d previousTranslation = path.getStartPose().getTranslation();
-        for (var elementWithConstraints : path.getPathElementsWithConstraints()) {
-            final var element = elementWithConstraints.getFirst();
-            final Translation2d translation;
-            if (element instanceof Path.Waypoint waypoint) {
-                translation = waypoint.translationTarget().translation();
-            } else if (element instanceof Path.TranslationTarget translationTarget) {
-                translation = translationTarget.translation();
-            } else continue;
-            System.out.printf("translationElementsPassed: %s, translation: %s, previous: %s\n", translationElementsPassed, translation, previousTranslation);
-            if (translationElementsPassed > 0) {
-                translationElementsPassed--;
-                previousTranslation = translation;
-                continue;
-            }
-            if (states.isEmpty()) {
-                final var progress = calculateSegmentProjectionT(previousTranslation, translation, currentTranslation);
-                final Translation2d newTranslation = previousTranslation.interpolate(translation, progress);
-                System.out.printf("Progress from %s to %s while being at %s: %s (new: %s)\n", previousTranslation, translation, currentTranslation, progress, newTranslation);
-                states.add(new Pose2d(newTranslation, Rotation2d.kZero));
-            }
-            states.add(new Pose2d(translation, Rotation2d.kZero));
-        }*/
         if (pathStart != null) states.add(pathStart);
         Rotation2d rotation = currentPose.getRotation();
         for (var element : path.getPathElements()) {
@@ -432,6 +405,20 @@ public class AutoManager {
         }
         return states;
     }
+
+    /*public @Nullable List<Pose2d> getCompletedPoses() {
+        final var poses = getCurrentPoses();
+        if (poses == null || currentPath == null) return null;
+        final var stage = currentPath.getFirst().getCurrentTranslationElementIndex();
+        return poses.subList(0, Math.min(stage + 1, poses.size()));
+    }
+
+    public @Nullable List<Pose2d> getPosesToComplete() {
+        final var poses = getCurrentPoses();
+        if (poses == null || currentPath == null) return null;
+        final var stage = currentPath.getFirst().getCurrentTranslationElementIndex();
+        return poses.subList(Math.min(stage + 1, poses.size()), poses.size());
+    }*/
 
     /**
      * Calculates the clamped projection ratio of a point onto a segment.

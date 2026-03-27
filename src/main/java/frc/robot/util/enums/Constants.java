@@ -144,7 +144,7 @@ public final class Constants {
                 16; // must be between [1, 64]; default = 32ms
         public static final int INTAKE_LAUNCHER_ENCODER_AVERAGE_DEPTH = 2; // must be 1, 2, 4, or 8; default = 8
 
-        public static final AngularVelocity INTAKE_VELOCITY_INTAKE_LAUNCHER = RotationsPerSecond.of(20);
+        public static final AngularVelocity INTAKE_VELOCITY_INTAKE_LAUNCHER = RotationsPerSecond.of(30);
         public static final AngularVelocity INTAKE_VELOCITY_INDEXER = RotationsPerSecond.of(-16);
         public static final AngularVelocity UNJAM_VELOCITY_INTAKE_LAUNCHER = RotationsPerSecond.of(-10);
         public static final AngularVelocity UNJAM_VELOCITY_INDEXER = RotationsPerSecond.of(-10);

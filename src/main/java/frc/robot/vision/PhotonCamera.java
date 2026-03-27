@@ -83,6 +83,7 @@ public class PhotonCamera extends Camera {
      * @param robotToCamRotation The rotation offset of the camera relative to the robot frame.
      */
     public PhotonCamera(String name, Translation3d robotToCamTranslation, Rotation3d robotToCamRotation) {
+        super(name);
         camera = new org.photonvision.PhotonCamera(name);
         final var topicPrefix = "Vision/" + name + "/";
         posePublisher = NetworkTableInstance.getDefault()
@@ -292,5 +293,9 @@ public class PhotonCamera extends Camera {
                 && !(x > fieldLength + FIELD_MARGIN)
                 && !(y < -FIELD_MARGIN)
                 && !(y > fieldWidth + FIELD_MARGIN);
+    }
+
+    public String getCameraName() {
+        return cameraName;
     }
 }

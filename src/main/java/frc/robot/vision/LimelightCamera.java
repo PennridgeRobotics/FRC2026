@@ -50,9 +50,6 @@ public class LimelightCamera extends Camera {
     /** Publishes the standard deviations being used for pose estimations */
     private final DoublePublisher stdDevsPublisher;
 
-    /** Limelight name as configured on the device and used by {@link LimelightHelpers}. */
-    private final String name;
-
     /** Flag controlling whether MegaTag2 mode is used for pose estimation. */
     private final boolean megaTag2;
 
@@ -63,7 +60,7 @@ public class LimelightCamera extends Camera {
      * @param megaTag2 If {@code true}, MegaTag2 mode is considered enabled for this camera.
      */
     public LimelightCamera(String name, boolean megaTag2) {
-        this.name = name;
+        super(name);
         this.megaTag2 = megaTag2;
         final var topicPrefix = "Vision/" + name + "/";
         posePublisher = NetworkTableInstance.getDefault()
@@ -100,8 +97,8 @@ public class LimelightCamera extends Camera {
         PoseEstimate estimatedPose = null;
         // Note: The 'megaTag2' flag controls the choice of helper here.
         LimelightHelpers.PoseEstimate llPose = megaTag2
-                ? LimelightHelpers.getBotPoseEstimate_wpiBlue(name)
-                : LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(name);
+                ? LimelightHelpers.getBotPoseEstimate_wpiBlue(getCameraName())
+                : LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(getCameraName());
 
         megaTag2Publisher.set(megaTag2);
 
@@ -130,7 +127,7 @@ public class LimelightCamera extends Camera {
      * @param rotation Current robot heading as a {@link Rotation2d}.
      */
     public void setRobotOrientation(Rotation2d rotation) {
-        LimelightHelpers.SetRobotOrientation(name, rotation.getDegrees(), 0, 0, 0, 0, 0);
+        LimelightHelpers.SetRobotOrientation(getCameraName(), rotation.getDegrees(), 0, 0, 0, 0, 0);
     }
 
     /**

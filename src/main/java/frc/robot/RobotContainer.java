@@ -213,7 +213,6 @@ public class RobotContainer {
             driverController
                     .b()
                     .whileTrue(fuelSubsystem.launchCommand(true))
-                    .and(shooterCalculator::isUsingSOTM)
                     .whileTrue(swerveSubsystem.faceTowardsHubCommand());
             driverController.leftTrigger().whileTrue(fuelSubsystem.intakeCommand());
         }
@@ -240,12 +239,14 @@ public class RobotContainer {
                     .rightTrigger()
                     .and(operatorController.start().negate())
                     .and(operatorController.leftTrigger().negate())
-                    .whileTrue(fuelSubsystem.requestAsOperator(OperatorFuelRequest.LAUNCH_WINDUP));
+                    .whileTrue(fuelSubsystem.requestAsOperator(OperatorFuelRequest.LAUNCH_WINDUP))
+                    .whileTrue(swerveSubsystem.faceTowardsHubCommand());
             operatorController
                     .rightTrigger()
                     .and(operatorController.start().negate())
                     .and(operatorController.leftTrigger())
-                    .whileTrue(fuelSubsystem.requestAsOperator(OperatorFuelRequest.LAUNCH_NO_WINDUP));
+                    .whileTrue(fuelSubsystem.requestAsOperator(OperatorFuelRequest.LAUNCH_NO_WINDUP))
+                    .whileTrue(swerveSubsystem.faceTowardsHubCommand());
             operatorController.leftBumper().whileTrue(fuelSubsystem.requestAsOperator(OperatorFuelRequest.EJECT));
             operatorController.a().whileTrue(fuelSubsystem.requestAsOperator(OperatorFuelRequest.INTAKE));
             operatorController.b().whileTrue(fuelSubsystem.requestAsOperator(OperatorFuelRequest.UNJAM));
@@ -281,6 +282,19 @@ public class RobotContainer {
         new LoggedNetworkSendable<>("/Misc/Motor Info", motorInfo);
         new LoggedNetworkSendable<>("/Misc/Field", field);
         new LoggedNetworkSendable<>("/Pigeon2", new Pigeon2Sendable(swerveSubsystem.getPigeon2()));
+        /*final var emptyPoseArray = new Pose2d[0];
+        new LoggedNetworkStructArray<>("/Misc/BLine Completed Poses", Pose2d.struct, () -> {
+            if (autoManager == null) return emptyPoseArray;
+            final var completedPoses = autoManager.getCompletedPoses();
+            if (completedPoses == null) return emptyPoseArray;
+            return completedPoses.toArray(new Pose2d[0]);
+        });
+        new LoggedNetworkStructArray<>("/Misc/BLine Poses to Complete", Pose2d.struct, () -> {
+            if (autoManager == null) return emptyPoseArray;
+            final var posesToComplete = autoManager.getPosesToComplete();
+            if (posesToComplete == null) return emptyPoseArray;
+            return posesToComplete.toArray(new Pose2d[0]);
+        });*/
     }
 
     private void updateField() {

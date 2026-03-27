@@ -401,6 +401,8 @@ public class ShooterCalculator {
     }
 
     public void simulationPeriodic() {
+        if (true) return;
+
         fuelPhysicsSim.tick();
 
         loggedSimBallTargetPos.set(new Translation3d(
