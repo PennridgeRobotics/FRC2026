@@ -231,7 +231,7 @@ public class ShooterCalculator {
         final double targetVelocity = calculateAngularVelocity(distanceToTarget);
         final var sotmData = isUsingSOTM() ? calculateSOTM() : null;
         final Rotation2d targetHeading = (sotmData != null
-                ? sotmData.driveAngle().rotateBy(Rotation2d.k180deg)
+                ? sotmData.driveAngle()
                 : target.minus(robotTranslation).getAngle());
         final var distance = Meters.of(distanceToTarget);
         final var shooterVelocity = RotationsPerSecond.of(targetVelocity);
