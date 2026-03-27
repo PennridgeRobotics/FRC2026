@@ -22,6 +22,7 @@ package frc.robot.util.lib.frcfirecontrol;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.jspecify.annotations.NullMarked;
 
 /**
  * Simulates a ball flying through the air with drag and Magnus lift. Uses RK4 integration in the vertical plane (x, z).
@@ -58,6 +59,7 @@ import java.util.List;
  *   }
  * </pre>
  */
+@NullMarked
 public class ProjectileSimulator {
 
     // Your robot's physical measurements, from CAD and the game manual
@@ -99,6 +101,10 @@ public class ProjectileSimulator {
     private final double kDrag;
     private final double kMagnus;
 
+    // +1 for topspin (upward lift, the default), -1 for backspin (downward push).
+    // Depends on how the flywheel contacts the ball.
+    private double magnusSign = 1.0;
+
     public ProjectileSimulator(SimParameters params) {
         this.params = params;
         double area = Math.PI * (params.ballDiameterM() / 2.0) * (params.ballDiameterM() / 2.0);
@@ -106,15 +112,32 @@ public class ProjectileSimulator {
         this.kMagnus = (params.airDensity() * params.magnusCoeff() * area) / (2.0 * params.ballMassKg());
     }
 
-    /** RPM to ball exit speed (m/s). Accounts for slip between the wheel surface and ball. */
+    /**
+     * @param magnusSign +1.0 for topspin (lift), -1.0 for backspin (downward push). Most top-contact flywheels impart
+     *     topspin. Drum shooters that contact the bottom often impart backspin.
+     */
+    public ProjectileSimulator(SimParameters params, double magnusSign) {
+        this(params);
+        this.magnusSign = magnusSign;
+    }
+
+    public void setMagnusSign(double sign) {
+        this.magnusSign = sign;
+    }
+
+    /** RPM to ball exit speed. slipFactor (0-1) = how much surface speed transfers to ball. Calibrate on robot. */
     public double exitVelocity(double rpm) {
         return (params.slipFactor() * rpm * Math.PI * params.wheelDiameterM() / 60.0) / 2.0;
     }
 
-    /** Simulate a ball launched at the given RPM and see where it is when it reaches the target distance. */
     public TrajectoryResult simulate(double rpm, double targetDistanceM) {
+        return simulate(rpm, targetDistanceM, params.fixedLaunchAngleDeg());
+    }
+
+    /** Simulate with a specific launch angle (degrees from horizontal). */
+    public TrajectoryResult simulate(double rpm, double targetDistanceM, double launchAngleDeg) {
         double v0 = exitVelocity(rpm);
-        double launchRad = Math.toRadians(params.fixedLaunchAngleDeg());
+        double launchRad = Math.toRadians(launchAngleDeg);
         double vx = v0 * Math.cos(launchRad);
         double vz = v0 * Math.sin(launchRad);
 
@@ -128,7 +151,7 @@ public class ProjectileSimulator {
         double maxTime = params.maxSimTime();
 
         while (t < maxTime) {
-            // store previous x, z, vz
+            // Save pre-step state for accurate interpolation
             double prevX = x;
             double prevZ = z;
             double prevVz = vz;
@@ -156,9 +179,7 @@ public class ProjectileSimulator {
 
             // Check if we've passed or reached the target distance
             if (x >= targetDistanceM) {
-                // Linear interpolation to find z at exact target x
-                /*double prevX = x - vx * dt; // approximate previous x
-                double prevZ = z - vz * dt; // approximate previous z*/
+                // Linear interpolation using saved pre-step state
                 double frac = (targetDistanceM - prevX) / (x - prevX);
                 double zAtTarget = prevZ + frac * (z - prevZ);
                 double tofAtTarget = t - dt + frac * dt;
@@ -185,7 +206,7 @@ public class ProjectileSimulator {
         double speed = Math.hypot(svx, svz);
 
         double ax = -kDrag * speed * svx;
-        double az = -9.81 - kDrag * speed * svz + kMagnus * speed * speed;
+        double az = -9.81 - kDrag * speed * svz + magnusSign * kMagnus * speed * speed;
 
         return new double[] {svx, svz, ax, az};
     }
@@ -199,24 +220,25 @@ public class ProjectileSimulator {
         };
     }
 
-    /**
-     * Binary search for the RPM that puts the ball at the target height. Returns reachable=false if max RPM can't
-     * reach.
-     */
-    public LUTEntry findRPMForDistance(double distanceCenterM) {
+    public LUTEntry findRPMForDistance(double distanceM) {
+        return findRPMForDistance(distanceM, params.fixedLaunchAngleDeg());
+    }
+
+    /** Binary search for the RPM at a specific launch angle that puts the ball at the target height. */
+    public LUTEntry findRPMForDistance(double distanceM, double launchAngleDeg) {
         double heightTolerance = 0.02; // 2cm
         double lo = params.rpmMin();
         double hi = params.rpmMax();
 
         // Quick feasibility check: can max RPM even reach this distance?
-        TrajectoryResult maxCheck = simulate(hi, distanceCenterM);
+        TrajectoryResult maxCheck = simulate(hi, distanceM, launchAngleDeg);
         if (!maxCheck.reachedTarget()) {
-            return new LUTEntry(distanceCenterM, 0, 0, false);
+            return new LUTEntry(distanceM, 0, 0, false);
         }
 
         // Quick feasibility check 2: can max RPM reach the target height?
         if (maxCheck.zAtTarget() < params.targetHeightM()) {
-            return new LUTEntry(distanceCenterM, 0, 0, false);
+            return new LUTEntry(distanceM, 0, 0, false);
         }
 
         double bestRpm = hi;
@@ -226,7 +248,7 @@ public class ProjectileSimulator {
 
         for (int i = 0; i < params.binarySearchIters(); i++) {
             double mid = (lo + hi) / 2.0;
-            TrajectoryResult result = simulate(mid, distanceCenterM);
+            TrajectoryResult result = simulate(mid, distanceM, launchAngleDeg);
 
             if (!result.reachedTarget()) {
                 // Too slow, need more RPM
@@ -247,7 +269,7 @@ public class ProjectileSimulator {
             if (absError < heightTolerance) {
                 // check if ball is falling into hub from above
                 boolean isFalling = result.vzAtTarget() < 0;
-                return new LUTEntry(distanceCenterM, mid, result.tof(), isFalling);
+                return new LUTEntry(distanceM, mid, result.tof(), isFalling);
             }
 
             if (error > 0) {
@@ -260,20 +282,22 @@ public class ProjectileSimulator {
         }
 
         // Return best found even if not perfectly converged (0.004 RPM precision after 25 iters)
-        return new LUTEntry(distanceCenterM, bestRpm, bestTof, (bestError < 0.10) && bestIsFalling);
+        return new LUTEntry(distanceM, bestRpm, bestTof, bestError < 0.10);
     }
 
     /** Generate the full lookup table: 0.50m to 5.00m in 5cm steps (91 entries). Takes ~200ms. */
     public GeneratedLUT generateLUT() {
+        return generateLUT(0.50, 5.00, 0.05);
+    }
+
+    public GeneratedLUT generateLUT(double minDistM, double maxDistM, double stepM) {
         long startMs = System.currentTimeMillis();
         List<LUTEntry> entries = new ArrayList<>();
         int reachable = 0;
         int unreachable = 0;
         double maxRange = 0;
 
-        // 0.50 to 5.00 at 0.05m steps = 91 entries
-        for (int i = 0; i <= 90; i++) {
-            double distance = 0.50 + i * 0.05;
+        for (double distance = minDistM; distance <= maxDistM + stepM * 0.01; distance += stepM) {
             // Round to avoid floating-point drift
             distance = Math.round(distance * 100.0) / 100.0;
 
@@ -290,6 +314,63 @@ public class ProjectileSimulator {
 
         long elapsed = System.currentTimeMillis() - startMs;
         return new GeneratedLUT(entries, params, reachable, unreachable, maxRange, elapsed);
+    }
+
+    /** Same as generateLUT() but returns a ShotLUT with the fixed angle baked into each entry. */
+    public ShotLUT generateShotLUT() {
+        GeneratedLUT gen = generateLUT();
+        ShotLUT lut = new ShotLUT();
+        for (LUTEntry entry : gen.entries()) {
+            if (entry.reachable()) {
+                lut.put(entry.distanceM(), new ShotParameters(entry.rpm(), params.fixedLaunchAngleDeg(), entry.tof()));
+            }
+        }
+        return lut;
+    }
+
+    /**
+     * Sweep both launch angle and RPM at each distance, picking the angle that needs the lowest RPM (fastest flywheel
+     * recovery between shots). For adjustable hood mechanisms.
+     *
+     * <p>Slower than generateLUT() since it searches across the angle range at every distance. Still runs in a few
+     * seconds for typical ranges.
+     */
+    public ShotLUT generateVariableAngleShotLUT(double minAngleDeg, double maxAngleDeg, double angleStepDeg) {
+        ShotLUT lut = new ShotLUT();
+
+        for (double distance = 0.50; distance <= 5.00 + 0.001; distance += 0.05) {
+            distance = Math.round(distance * 100.0) / 100.0;
+
+            double bestRPM = Double.MAX_VALUE;
+            double bestAngle = 0;
+            double bestTOF = 0;
+            boolean found = false;
+
+            for (double angle = minAngleDeg; angle <= maxAngleDeg + 0.001; angle += angleStepDeg) {
+                LUTEntry entry = findRPMForDistance(distance, angle);
+                if (entry.reachable() && entry.rpm() < bestRPM) {
+                    bestRPM = entry.rpm();
+                    bestAngle = angle;
+                    bestTOF = entry.tof();
+                    found = true;
+                }
+            }
+
+            if (found) {
+                lut.put(distance, new ShotParameters(bestRPM, bestAngle, bestTOF));
+            }
+        }
+        return lut;
+    }
+
+    /** RPM to ball exit speed without needing a ProjectileSimulator instance. */
+    public static double rpmToExitVelocity(double rpm, double wheelDiameterM, double slipFactor) {
+        return slipFactor * rpm * Math.PI * wheelDiameterM / 60.0;
+    }
+
+    /** Ball exit speed to RPM. Inverse of rpmToExitVelocity. */
+    public static double exitVelocityToRPM(double exitVelMps, double wheelDiameterM, double slipFactor) {
+        return exitVelMps * 60.0 / (slipFactor * Math.PI * wheelDiameterM);
     }
 
     // Package-private for testing

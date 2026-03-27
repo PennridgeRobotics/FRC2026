@@ -272,7 +272,7 @@ public class ShooterCalculator {
                 ShootOnTheMoveConstants.RPM_SEARCH_MAX.in(RPM),
                 ShootOnTheMoveConstants.ITERATIONS,
                 ShootOnTheMoveConstants.MAX_SIM_TIME.in(Seconds));
-        return new ProjectileSimulator(sotmParams);
+        return new ProjectileSimulator(sotmParams, ShootOnTheMoveConstants.MAGNUS_SIGN);
     }
 
     private ShotCalculator createShotCalculator() {
