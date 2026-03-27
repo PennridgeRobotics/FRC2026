@@ -76,8 +76,8 @@ public final class Constants {
         public static final Matrix<N3, N1> LIMELIGHT_SINGLE_TAG_STD_DEVS = VecBuilder.fill(0.8, 0.8, 999999);
         public static final Matrix<N3, N1> LIMELIGHT_MULTI_TAG_STD_DEVS = VecBuilder.fill(0.4, 0.4, 999999);
         // Result std dev = base * (1 + (distance ^ exponent) * multiplier)
-        public static final double STD_DEV_DISTANCE_EXPONENT = 2.0;
-        public static final double STD_DEV_DISTANCE_MULTIPLIER = 1.0 / 30;
+        public static final double STD_DEV_DISTANCE_EXPONENT = 3.0;
+        public static final double STD_DEV_DISTANCE_MULTIPLIER = 1.0 / 80;
 
         // Back Camera
         public static final String CAMERA_BACK_NAME = "Arducam_OV9281_Back";
