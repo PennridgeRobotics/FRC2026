@@ -116,7 +116,7 @@ public class RobotContainer {
             autoStartLocationChooser.addOption(StringUtils.capitalizeFully(location.name()), location);
         }
 
-        autoManager = ((fuelSubsystem != null) && (climberSubsystem != null))
+        autoManager = (fuelSubsystem != null)
                 ? new AutoManager(swerveSubsystem, swerveSubsystem.getPathBuilder(), fuelSubsystem, climberSubsystem)
                 : null;
 

@@ -37,7 +37,7 @@ public class AutoManager {
     private final SwerveSubsystem swerveDrive;
     private final FollowPath.Builder pathBuilder;
     private final FuelSubsystem fuelSubsystem;
-    private final ClimberSubsystem climberSubsystem;
+    private final @Nullable ClimberSubsystem climberSubsystem;
 
     // Built-in paths
     private final Path startLeftHubShootPath = new Path("start_left_hub_shoot");
@@ -65,7 +65,7 @@ public class AutoManager {
             SwerveSubsystem swerveDrive,
             FollowPath.Builder pathBuilder,
             FuelSubsystem fuelSubsystem,
-            ClimberSubsystem climberSubsystem) {
+            @Nullable ClimberSubsystem climberSubsystem) {
         this.swerveDrive = swerveDrive;
         this.fuelSubsystem = fuelSubsystem;
         this.pathBuilder = pathBuilder;
@@ -121,7 +121,7 @@ public class AutoManager {
         if (autoOptions.outpost()) {
             autoCommand = autoCommand.andThen(outpostAndShootAutoCommand());
         }
-        if (autoOptions.climb()) {
+        if (autoOptions.climb() && climberSubsystem != null) {
             autoCommand = climberSubsystem
                     .armCommand(() -> true, () -> true)
                     .withDeadline(autoCommand.andThen(climbAutoCommand()));
@@ -130,6 +130,7 @@ public class AutoManager {
     }
 
     private Command climbAutoCommand() {
+        if (climberSubsystem == null) return Commands.none();
         return climberSubsystem
                 .armCommand(() -> true, () -> true)
                 .withDeadline(getPathCommand(alignClimbPath, false)
