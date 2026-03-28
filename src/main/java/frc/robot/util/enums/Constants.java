@@ -140,6 +140,7 @@ public final class Constants {
     }
 
     public static final class PassingConstants {
+        public static final LinearVelocity MAX_VELOCITY_WHILE_PASSING = DriveConstants.MAX_LINEAR_SPEED;
         public static final Distance MAXIMUM_DISTANCE_PASSING = Meters.of(7);
         public static final double HEADING_SPEED_SCALAR_PASSING = 0.0;
         public static final double HEADING_REFERENCE_DISTANCE_PASSING = 2.5;

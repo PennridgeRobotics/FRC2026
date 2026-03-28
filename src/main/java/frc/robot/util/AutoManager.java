@@ -87,6 +87,7 @@ public class AutoManager {
 
     public Command getPathCommand(Path path, boolean stopAfter) {
         final var builtPath = pathBuilder.build(path);
+        new RuntimeException("Getting path command").printStackTrace();
         pathBuilder.withPoseReset(unused -> {});
         final var pathPair = Pair.of(builtPath, path);
         return Commands.sequence(

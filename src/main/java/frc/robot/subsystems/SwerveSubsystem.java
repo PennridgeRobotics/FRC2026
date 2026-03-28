@@ -38,15 +38,9 @@ import frc.robot.lib.BLine.Path;
 import frc.robot.util.BumpManager;
 import frc.robot.util.ShooterCalculator;
 import frc.robot.util.SlewRateLimiter2d;
-import frc.robot.util.dashboard.LoggedNetworkBoolean;
-import frc.robot.util.dashboard.LoggedNetworkDouble;
-import frc.robot.util.dashboard.LoggedNetworkSendable;
-import frc.robot.util.dashboard.LoggedNetworkStruct;
-import frc.robot.util.dashboard.LoggedNetworkUnit;
-import frc.robot.util.dashboard.MultiMotorInfoSendable;
-import frc.robot.util.dashboard.PIDSendable;
+import frc.robot.util.dashboard.*;
 import frc.robot.util.dashboard.PIDSendable.PIDValues;
-import frc.robot.util.dashboard.SplitButtonChooser;
+import frc.robot.util.enums.Constants;
 import frc.robot.util.enums.Constants.ControllerConstants;
 import frc.robot.util.enums.Constants.DriveConstants;
 import frc.robot.util.enums.Constants.FieldConstants;
@@ -102,6 +96,7 @@ public class SwerveSubsystem extends SubsystemBase {
             new SlewRateLimiter2d(DriveConstants.MAX_LINEAR_ACCELERATION.in(MetersPerSecondPerSecond));
 
     private final LoggedNetworkUnit<LinearVelocityUnit, LinearVelocity> loggedMaxVelocityWhileShooting;
+    private final LoggedNetworkUnit<LinearVelocityUnit, LinearVelocity> loggedMaxVelocityWhilePassing;
     private final LoggedNetworkStruct<Pose2d> loggedRobotPose;
     private final LoggedNetworkUnit<LinearVelocityUnit, LinearVelocity> loggedTargetLinearVelocity;
     private final LoggedNetworkStruct<Translation2d> loggedTargetTranslation;
@@ -142,6 +137,8 @@ public class SwerveSubsystem extends SubsystemBase {
 
         loggedMaxVelocityWhileShooting = new LoggedNetworkUnit<>(
                 "Shooter Calculator/Max Velocity While Shooting", ShootOnTheMoveConstants.MAX_VELOCITY_WHILE_SHOOTING);
+        loggedMaxVelocityWhilePassing = new LoggedNetworkUnit<>(
+                "Shooter Calculator/Max Velocity While Passing", Constants.PassingConstants.MAX_VELOCITY_WHILE_PASSING);
         loggedRobotPose = new LoggedNetworkStruct<>("Robot Pose Struct", Pose2d.struct, swerveDrive.getPose());
         loggedRobotPose.addListener(this::resetPose);
         loggedTargetLinearVelocity = new LoggedNetworkUnit<>("/Swerve/Target Linear Velocity", MetersPerSecond.zero());
@@ -705,6 +702,7 @@ public class SwerveSubsystem extends SubsystemBase {
     }
 
     public void resetPose(Pose2d pose) {
+        new RuntimeException("Reset pose to " + pose).printStackTrace();
         swerveDrive.resetOdometry(pose);
         swerveDrive.swerveDrivePoseEstimator.resetRotation(pose.getRotation());
     }
