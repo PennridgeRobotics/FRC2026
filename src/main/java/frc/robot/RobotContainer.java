@@ -101,6 +101,11 @@ public class RobotContainer {
                 ? new LightsSubsystem(swerveSubsystem, fuelSubsystem, climberSubsystem)
                 : null;
 
+        if (fuelSubsystem != null) {
+            swerveSubsystem.setIsShootingTrigger(
+                    fuelSubsystem.isWindingUpTrigger().or(fuelSubsystem.isLaunchingTrigger()));
+        }
+
         // autoChooser = AutoBuilder.buildAutoChooser("Epic Auto");
         autoStartLocationChooser = new SendableChooser<>();
         for (final var location : AutoManager.AutoStartLocation.values()) {
@@ -173,6 +178,8 @@ public class RobotContainer {
             if (autoManager != null) {
                 joystickController.a1().whileTrue(autoManager.testAuto());
                 joystickController.a2().whileTrue(autoManager.testOnePointPath());
+
+                joystickController.b1().whileTrue(swerveSubsystem.lockPoseCommand());
             }
             return;
         }
@@ -321,7 +328,7 @@ public class RobotContainer {
     }
 
     public void postSchedulerUpdate() {
-        NetworkTableInstance.getDefault().flush();
+        // NetworkTableInstance.getDefault().flush();
     }
 
     public void autonomousInit() {
