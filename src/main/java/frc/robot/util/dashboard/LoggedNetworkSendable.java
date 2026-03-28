@@ -4,6 +4,7 @@ import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.util.sendable.Sendable;
 import edu.wpi.first.util.sendable.SendableRegistry;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SendableBuilderImpl;
 import org.jspecify.annotations.NullMarked;
 
@@ -24,6 +25,10 @@ public class LoggedNetworkSendable<T extends Sendable> extends LoggedNetworkInpu
 
     @Override
     protected void periodic() {
-        SendableRegistry.update(sendable);
+        try {
+            SendableRegistry.update(sendable);
+        } catch (Exception e) {
+            DriverStation.reportError("Error updating LoggedNetworkSendable (" + topicName + ")", e.getStackTrace());
+        }
     }
 }
