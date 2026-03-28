@@ -90,6 +90,7 @@ public class SwerveSubsystem extends SubsystemBase {
     private final DoubleSupplier headingCorrectionDeadband;
 
     private final Trigger forceNormalDriveModeTrigger = new Trigger(() -> forceNormalDriveMode);
+    private @Nullable Trigger isShootingTrigger;
 
     private final PIDController bLineTranslationPID =
             Robot.isReal() ? new PIDController(5.0, 0, 1.3) : new PIDController(1.9, 0.1, 0.4);
@@ -107,6 +108,8 @@ public class SwerveSubsystem extends SubsystemBase {
     private final LoggedNetworkStruct<Translation2d> loggedTargetTranslation;
     private final LoggedNetworkUnit<AngularVelocityUnit, AngularVelocity> loggedTargetAngularVelocity;
     private final LoggedNetworkBoolean loggedUsingSOTMHubLock;
+    private final LoggedNetworkBoolean loggedLockPoseWhenShooting;
+
     private SOTMHubLockType sotmHubLockType = SOTMHubLockType.ANGLE_LOCK_AND_VELOCITY_FF;
     private @Nullable Camera backCamera;
     private @Nullable Camera frontCamera;
@@ -153,6 +156,9 @@ public class SwerveSubsystem extends SubsystemBase {
                         sotmHubLockType,
                         SOTMHubLockType::fromDashboardName,
                         SOTMHubLockType::getDashboardName));
+        loggedLockPoseWhenShooting = new LoggedNetworkBoolean("Swerve/Lock Pose when Shooting", true);
+
+        SwerveDriveTelemetry.verbosity = SwerveDriveTelemetry.TelemetryVerbosity.INFO;
 
         setupVisionManager();
         pathBuilder = setupBLine();
@@ -427,6 +433,16 @@ public class SwerveSubsystem extends SubsystemBase {
 
         shooterCalculator.setLastAngularVelocityInput(
                 !forceNormalDriveMode && faceTowardsHub ? DegreesPerSecond.zero() : determinedAngularVelocity);
+
+        if (loggedLockPoseWhenShooting.getAsBoolean()
+                && isShootingTrigger != null
+                && isShootingTrigger.getAsBoolean()) {
+            if (limitedLinearVelocity.getNorm() < 0.001 && finalAngularVelocity.lt(DegreesPerSecond.of(0.01))) {
+                swerveDrive.lockPose();
+                return;
+            }
+        }
+
         swerveDrive.driveFieldOriented(new ChassisSpeeds(
                 limitedLinearVelocity.getX(), limitedLinearVelocity.getY(), finalAngularVelocity.in(RadiansPerSecond)));
     }
@@ -773,6 +789,10 @@ public class SwerveSubsystem extends SubsystemBase {
 
     public Field2d getField2d() {
         return swerveDrive.field;
+    }
+
+    public void setIsShootingTrigger(@Nullable Trigger isShootingTrigger) {
+        this.isShootingTrigger = isShootingTrigger;
     }
 
     private enum SOTMHubLockType {

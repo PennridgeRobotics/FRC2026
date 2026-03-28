@@ -56,19 +56,19 @@
         "intermediate_handoff_radius_meters": 0.3
       },
       "rotation_target": {
-        "rotation_radians": 4.1887902047863905,
+        "rotation_radians": 4.39822971502571,
         "profiled_rotation": false
       }
     },
     {
       "type": "waypoint",
       "translation_target": {
-        "x_meters": 6.35,
-        "y_meters": 2.374,
+        "x_meters": 6.598,
+        "y_meters": 2.264,
         "intermediate_handoff_radius_meters": 0.2
       },
       "rotation_target": {
-        "rotation_radians": 4.1887902047863905,
+        "rotation_radians": 4.39822971502571,
         "profiled_rotation": false
       }
     }

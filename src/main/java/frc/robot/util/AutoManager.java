@@ -301,7 +301,7 @@ public class AutoManager {
                     final Rotation2d angle = Rotation2d.fromDegrees(150 + (intoCenter == !isRed ? 180 : 0));
                     final Pose2d pose1 = new Pose2d(x1, y, angle);
                     final Pose2d pose2 = new Pose2d(x2, y, angle);
-                    final Path path = new Path(new Path.Waypoint(pose1), new Path.Waypoint(pose2));
+                    final Path path = new Path(new Path.Waypoint(pose1, 0.5), new Path.Waypoint(pose2));
                     path.setPathConstraints(new Path.PathConstraints()
                             .setEndTranslationToleranceMeters(0.35)
                             .setEndRotationToleranceDeg(30));
