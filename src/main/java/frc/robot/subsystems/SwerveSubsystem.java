@@ -107,7 +107,7 @@ public class SwerveSubsystem extends SubsystemBase {
 
     private SOTMHubLockType sotmHubLockType = SOTMHubLockType.ANGLE_LOCK_AND_VELOCITY_FF;
     private @Nullable Camera backCamera;
-    private @Nullable Camera frontCamera;
+    // private @Nullable Camera frontCamera;
 
     @SuppressWarnings("StaticAssignmentInConstructor")
     public SwerveSubsystem(final MultiMotorInfoSendable motorInfo) throws IOException {
@@ -743,12 +743,12 @@ public class SwerveSubsystem extends SubsystemBase {
                 VisionConstants.CAMERA_BACK_TRANSLATION,
                 VisionConstants.CAMERA_BACK_ROTATION,
                 VisionConstants.CAMERA_BACK_USE_IN_POSE_ESTIMATION);
-        frontCamera = new PhotonCamera(
-                VisionConstants.CAMERA_FRONT_NAME,
-                VisionConstants.CAMERA_FRONT_TRANSLATION,
-                VisionConstants.CAMERA_FRONT_ROTATION,
-                VisionConstants.CAMERA_FRONT_USE_IN_POSE_ESTIMATION);
-        visionManager.addCameras(backCamera, frontCamera);
+        /*frontCamera = new PhotonCamera(
+        VisionConstants.CAMERA_FRONT_NAME,
+        VisionConstants.CAMERA_FRONT_TRANSLATION,
+        VisionConstants.CAMERA_FRONT_ROTATION,
+        VisionConstants.CAMERA_FRONT_USE_IN_POSE_ESTIMATION);*/
+        visionManager.addCameras(backCamera);
     }
 
     public Command toggleUseBackCameraInPoseEstimation() {
@@ -760,11 +760,12 @@ public class SwerveSubsystem extends SubsystemBase {
     }
 
     public Command toggleUseFrontCameraInPoseEstimation() {
-        return frontCamera != null
-                ? frontCamera.toggleUseInPoseEstimation()
-                : Commands.runOnce(() -> DriverStation.reportError(
-                        "Tried to create toggle use front camera in pose estimation command before vision was initialized",
-                        false));
+        /*return frontCamera != null
+        ? frontCamera.toggleUseInPoseEstimation()
+        : Commands.runOnce(() -> DriverStation.reportError(
+                "Tried to create toggle use front camera in pose estimation command before vision was initialized",
+                false));*/
+        return Commands.none();
     }
 
     public CorePigeon2 getPigeon2() {

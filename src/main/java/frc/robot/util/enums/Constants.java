@@ -81,7 +81,7 @@ public final class Constants {
         public static final double STD_DEV_DISTANCE_MULTIPLIER = 1.0 / 80;
 
         // Back Camera
-        public static final String CAMERA_BACK_NAME = "Arducam_OV9281_Back";
+        public static final String CAMERA_BACK_NAME = "Arducam_OV9281_Front";
         public static final Translation3d CAMERA_BACK_TRANSLATION = new Translation3d(0.162087, -0.250706, 0.674197);
         public static final Rotation3d CAMERA_BACK_ROTATION = new Rotation3d(-0.007874, 0.014070, -3.123649);
         public static final boolean CAMERA_BACK_USE_IN_POSE_ESTIMATION = true;
