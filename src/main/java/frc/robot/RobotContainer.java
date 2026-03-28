@@ -246,6 +246,8 @@ public class RobotContainer {
                 .and(operatorController.start())
                 .onTrue(swerveSubsystem.toggleUseFrontCameraInPoseEstimation());
 
+        operatorController.rightStick().onTrue(swerveSubsystem.toggleForceNormalDriveMode());
+
         if (autoManager != null) {
             operatorController.leftBumper().and(operatorController.start()).whileTrue(autoManager.testOnePointPath());
         }

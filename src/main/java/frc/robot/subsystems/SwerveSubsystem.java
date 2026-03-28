@@ -82,14 +82,13 @@ public class SwerveSubsystem extends SubsystemBase {
     private final ShooterCalculator shooterCalculator;
     private final MultiMotorInfoSendable motorInfo;
 
-    private boolean forceNormalDriveMode = false;
     private boolean lockYawTowardsVelocity = false;
     private boolean faceTowardsHub = false;
     private SpeedMultiplier speedMultiplier = SpeedMultiplier.NORMAL;
     private final BooleanSupplier headingCorrectionSupplier;
     private final DoubleSupplier headingCorrectionDeadband;
 
-    private final Trigger forceNormalDriveModeTrigger = new Trigger(() -> forceNormalDriveMode);
+    private final Trigger forceNormalDriveModeTrigger;
     private @Nullable Trigger isShootingTrigger;
 
     private final PIDController bLineTranslationPID =
@@ -109,6 +108,7 @@ public class SwerveSubsystem extends SubsystemBase {
     private final LoggedNetworkUnit<AngularVelocityUnit, AngularVelocity> loggedTargetAngularVelocity;
     private final LoggedNetworkBoolean loggedUsingSOTMHubLock;
     private final LoggedNetworkBoolean loggedLockPoseWhenShooting;
+    private final LoggedNetworkBoolean loggedForceNormalDriveMode;
 
     private SOTMHubLockType sotmHubLockType = SOTMHubLockType.ANGLE_LOCK_AND_VELOCITY_FF;
     private @Nullable Camera backCamera;
@@ -132,6 +132,9 @@ public class SwerveSubsystem extends SubsystemBase {
         // swerveDrive.useExternalFeedbackSensor();
         swerveDrive.setModuleEncoderAutoSynchronize(false, 1); // can set to true, but I want to test
         // swerveDrive.setMotorIdleMode(true);
+
+        loggedForceNormalDriveMode = new LoggedNetworkBoolean("Swerve/Force Normal Drive Mode", false);
+        forceNormalDriveModeTrigger = new Trigger(loggedForceNormalDriveMode);
 
         bumpManager = new BumpManager(
                 getPigeon2(), swerveDrive::getGyroRotation3d, this::getRobotPose, forceNormalDriveModeTrigger);
@@ -181,10 +184,6 @@ public class SwerveSubsystem extends SubsystemBase {
                         return Color.kYellow.toHexString(); // in bump area, but not on the bump itself
                     },
                     null);
-            builder.addBooleanProperty(
-                    "Driver Overrides/Force Normal Drive Mode",
-                    () -> forceNormalDriveMode,
-                    v -> forceNormalDriveMode = v);
             builder.addBooleanProperty(
                     "Driver Overrides/Lock Yaw Towards Velocity",
                     () -> lockYawTowardsVelocity,
@@ -374,7 +373,7 @@ public class SwerveSubsystem extends SubsystemBase {
             return;
         }
         var linearVelocity = new Translation2d(xVelocity.in(MetersPerSecond), yVelocity.in(MetersPerSecond));
-        if (!forceNormalDriveMode
+        if (!loggedForceNormalDriveMode.getAsBoolean()
                 && faceTowardsHub
                 && getShooterCalculator().isUsingSOTM()
                 && linearVelocity.getNorm()
@@ -389,7 +388,7 @@ public class SwerveSubsystem extends SubsystemBase {
         final Translation2d limitedLinearVelocity = linearDriveLimiter.calculate(linearVelocity);
         final AngularVelocity determinedAngularVelocity;
         boolean usingSOTMHubLock = false;
-        if (forceNormalDriveMode) {
+        if (loggedForceNormalDriveMode.getAsBoolean()) {
             determinedAngularVelocity = angularVelocity;
         } else if (faceTowardsHub) {
             if (getShooterCalculator().isUsingSOTM()) {
@@ -432,9 +431,11 @@ public class SwerveSubsystem extends SubsystemBase {
         loggedTargetAngularVelocity.set(finalAngularVelocity);
 
         shooterCalculator.setLastAngularVelocityInput(
-                !forceNormalDriveMode && faceTowardsHub ? DegreesPerSecond.zero() : determinedAngularVelocity);
+                !loggedForceNormalDriveMode.getAsBoolean() && faceTowardsHub
+                        ? DegreesPerSecond.zero()
+                        : determinedAngularVelocity);
 
-        if (!forceNormalDriveMode
+        if (!loggedForceNormalDriveMode.getAsBoolean()
                 && loggedLockPoseWhenShooting.getAsBoolean()
                 && isShootingTrigger != null
                 && isShootingTrigger.getAsBoolean()) {
@@ -506,7 +507,11 @@ public class SwerveSubsystem extends SubsystemBase {
     }
 
     public Command forceNormalDriveMode(boolean force) {
-        return runOnce(() -> forceNormalDriveMode = force);
+        return runOnce(() -> loggedForceNormalDriveMode.set(force));
+    }
+
+    public Command toggleForceNormalDriveMode() {
+        return runOnce(() -> loggedForceNormalDriveMode.set(!loggedForceNormalDriveMode.getAsBoolean()));
     }
 
     public void zeroGyroWithAlliance() {

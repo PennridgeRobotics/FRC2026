@@ -39,6 +39,7 @@ X   B
 | L Stick Left/Right | Increase/decrease manual launch velocity |
 | L Stick Pressed    | Enable manual launch                     |
 | R Stick Left/Right | Increase/decrease calculator velocity    |
+| R Stick Pressed    | Toggle force normal drive mode           |
 | Y                  | Climb                                    |
 | Y + Start          | Climb (ignore limit)                     |
 | Y + Back           | Climb (fast)                             |
