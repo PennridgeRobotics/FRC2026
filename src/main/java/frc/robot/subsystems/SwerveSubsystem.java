@@ -434,7 +434,8 @@ public class SwerveSubsystem extends SubsystemBase {
         shooterCalculator.setLastAngularVelocityInput(
                 !forceNormalDriveMode && faceTowardsHub ? DegreesPerSecond.zero() : determinedAngularVelocity);
 
-        if (loggedLockPoseWhenShooting.getAsBoolean()
+        if (!forceNormalDriveMode
+                && loggedLockPoseWhenShooting.getAsBoolean()
                 && isShootingTrigger != null
                 && isShootingTrigger.getAsBoolean()) {
             if (limitedLinearVelocity.getNorm() < 0.001 && finalAngularVelocity.lt(DegreesPerSecond.of(0.01))) {
