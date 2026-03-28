@@ -201,7 +201,7 @@ public final class Constants {
     }
 
     public static final class ClimberConstants {
-        public static boolean CLIMBER_ENABLED = true;
+        public static boolean CLIMBER_ENABLED = false;
 
         public static final int CLIMBER_MOTOR_ID = 9;
         public static final boolean CLIMBER_INVERTED = true;
