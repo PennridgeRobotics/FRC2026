@@ -176,6 +176,7 @@ spotless {
     java {
         palantirJavaFormat().formatJavadoc(true)
         formatAnnotations()
+        targetExclude("src/main/java/frc/robot/util/BuildConstants.java")
     }
 }
 
