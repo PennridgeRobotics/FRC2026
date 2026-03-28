@@ -160,6 +160,7 @@ public class SwerveSubsystem extends SubsystemBase {
                         SOTMHubLockType::fromDashboardName,
                         SOTMHubLockType::getDashboardName));
         loggedLockPoseWhenShooting = new LoggedNetworkBoolean("Swerve/Lock Pose when Shooting", true);
+        new LoggedNetworkStructArray<>("/Swerve/Module States", SwerveModuleState.struct, swerveDrive::getStates);
 
         SwerveDriveTelemetry.verbosity = SwerveDriveTelemetry.TelemetryVerbosity.INFO;
 
