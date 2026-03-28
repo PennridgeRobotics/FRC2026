@@ -8,6 +8,9 @@ import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.units.measure.Distance;
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
+import frc.robot.util.dashboard.LoggedNetworkBoolean;
 import frc.robot.util.enums.Constants.VisionConstants;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -19,14 +22,25 @@ public abstract class Camera {
     private static final DoublePublisher stdDevsPublisher = NetworkTableInstance.getDefault()
             .getDoubleTopic("Vision/All Standard Deviations")
             .publish();
+    private final LoggedNetworkBoolean loggedUseInPoseEstimation;
 
     protected final String cameraName;
 
-    protected Camera(String cameraName) {
+    protected Camera(String cameraName, boolean useInPoseEstimationDefault) {
         this.cameraName = cameraName;
+        loggedUseInPoseEstimation = new LoggedNetworkBoolean(
+                "/Vision/" + cameraName + "/Use in Pose Estimation", useInPoseEstimationDefault);
     }
 
     public abstract @Nullable PoseEstimate update();
+
+    public boolean useInPoseEstimation() {
+        return loggedUseInPoseEstimation.getAsBoolean();
+    }
+
+    public Command toggleUseInPoseEstimation() {
+        return Commands.runOnce(() -> loggedUseInPoseEstimation.set(!loggedUseInPoseEstimation.getAsBoolean()));
+    }
 
     /**
      * Computes standard deviation estimates based on the number of visible tags and their distance.

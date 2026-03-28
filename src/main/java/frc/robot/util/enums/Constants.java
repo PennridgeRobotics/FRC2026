@@ -76,17 +76,19 @@ public final class Constants {
         public static final Matrix<N3, N1> LIMELIGHT_SINGLE_TAG_STD_DEVS = VecBuilder.fill(0.8, 0.8, 999999);
         public static final Matrix<N3, N1> LIMELIGHT_MULTI_TAG_STD_DEVS = VecBuilder.fill(0.4, 0.4, 999999);
         // Result std dev = base * (1 + (distance ^ exponent) * multiplier)
-        public static final double STD_DEV_DISTANCE_EXPONENT = 2.0;
-        public static final double STD_DEV_DISTANCE_MULTIPLIER = 1.0 / 30;
+        public static final double STD_DEV_DISTANCE_EXPONENT = 3.0;
+        public static final double STD_DEV_DISTANCE_MULTIPLIER = 1.0 / 80;
 
         // Back Camera
         public static final String CAMERA_BACK_NAME = "Arducam_OV9281_Back";
         public static final Translation3d CAMERA_BACK_TRANSLATION = new Translation3d(0.162087, -0.250706, 0.674197);
         public static final Rotation3d CAMERA_BACK_ROTATION = new Rotation3d(-0.007874, 0.014070, -3.123649);
+        public static final boolean CAMERA_BACK_USE_IN_POSE_ESTIMATION = true;
         // Front Camera
         public static final String CAMERA_FRONT_NAME = "Arducam_OV9281_Front";
         public static final Translation3d CAMERA_FRONT_TRANSLATION = new Translation3d(-0.045748, -0.249129, 0.580242);
         public static final Rotation3d CAMERA_FRONT_ROTATION = new Rotation3d(0.015923, 0.004286, -0.035962);
+        public static final boolean CAMERA_FRONT_USE_IN_POSE_ESTIMATION = false;
     }
 
     public static final class DriveConstants {
@@ -105,7 +107,7 @@ public final class Constants {
         public static final Distance FLYWHEEL_DIAMETER = Inches.of(3.94);
         public static final Distance EXIT_HEIGHT = Inches.of(20.5); // floor to where ball leaves shooter
         public static final Angle LAUNCH_ANGLE_FROM_HORIZONTAL = Degrees.of(61); // estimated
-        public static final double SLIP_FACTOR = 0.834; // 0 = no group, 1 = perfect
+        public static final double SLIP_FACTOR = 0.851; // 0 = no group, 1 = perfect
         public static final Translation2d LAUNCHER_OFFSET = new Translation2d(Inches.of(7.4), Inches.zero());
         public static final LinearVelocity MAX_VELOCITY_WHILE_SHOOTING = MetersPerSecond.of(1.0);
         public static final Time PHASE_DELAY = Milliseconds.of(100); // vision pipeline latency

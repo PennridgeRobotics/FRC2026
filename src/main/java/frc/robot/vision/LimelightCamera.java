@@ -59,8 +59,8 @@ public class LimelightCamera extends Camera {
      * @param name The Limelight name (must match Limelight device configuration).
      * @param megaTag2 If {@code true}, MegaTag2 mode is considered enabled for this camera.
      */
-    public LimelightCamera(String name, boolean megaTag2) {
-        super(name);
+    public LimelightCamera(String name, boolean megaTag2, boolean useInPoseEstimationDefault) {
+        super(name, useInPoseEstimationDefault);
         this.megaTag2 = megaTag2;
         final var topicPrefix = "Vision/" + name + "/";
         posePublisher = NetworkTableInstance.getDefault()
