@@ -193,8 +193,14 @@ public class FuelSubsystem extends SubsystemBase {
                         .getMechanismVelocity()
                         .gte(getShooterVelocity().plus(FuelConstants.LAUNCH_VELOCITY_TOLERANCE)))
                 .debounce(0.2, DebounceType.kFalling)
-                .and(() -> !shooterCalculator.isUsingSOTM()
-                        || shooterCalculator.calculateShotData().isReady())
+                .and(() -> {
+                    if (shooterCalculator.isManualModeEnabled()) return true;
+                    if (shooterCalculator.shouldBePassing()) {
+                        return shooterCalculator.calculateShotData().isReady();
+                    } else
+                        return !shooterCalculator.isUsingSOTM()
+                                || shooterCalculator.calculateShotData().isReady();
+                })
                 .debounce(0.1, DebounceType.kRising);
 
         motorInfo.addMotor(intakeLauncherLeftSparkMax, "Intake-Launcher Left");
