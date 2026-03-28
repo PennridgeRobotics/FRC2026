@@ -167,12 +167,10 @@ public class RobotContainer {
                 joystickController
                         .trigger(false, false)
                         .whileTrue(fuelSubsystem.launchCommand(true))
-                        .and(shooterCalculator::isUsingSOTM)
                         .whileTrue(swerveSubsystem.faceTowardsHubCommand());
                 joystickController
                         .trigger(false, true)
                         .whileTrue(fuelSubsystem.windUpCommand())
-                        .and(shooterCalculator::isUsingSOTM)
                         .whileTrue(swerveSubsystem.faceTowardsHubCommand());
                 joystickController.topHat(false, false).whileTrue(fuelSubsystem.intakeCommand());
             }

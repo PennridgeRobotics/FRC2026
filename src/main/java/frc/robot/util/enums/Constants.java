@@ -4,6 +4,7 @@ import static edu.wpi.first.units.Units.Amps;
 import static edu.wpi.first.units.Units.Degrees;
 import static edu.wpi.first.units.Units.Inches;
 import static edu.wpi.first.units.Units.Kilograms;
+import static edu.wpi.first.units.Units.Meters;
 import static edu.wpi.first.units.Units.MetersPerSecond;
 import static edu.wpi.first.units.Units.MetersPerSecondPerSecond;
 import static edu.wpi.first.units.Units.Milliseconds;
@@ -136,9 +137,27 @@ public final class Constants {
         // Closer = tighter because small angle errors matter more up close.
         // scaledMaxError *= referenceDistance / distance, clamped [0.5, 2.0].
         public static final double HEADING_REFERENCE_DISTANCE = 2.5;
+    }
+
+    public static final class PassingConstants {
+        public static final Distance MAXIMUM_DISTANCE_PASSING = Meters.of(7);
+        public static final double HEADING_SPEED_SCALAR_PASSING = 0.0;
+        public static final double HEADING_REFERENCE_DISTANCE_PASSING = 2.5;
 
         public static final Translation2d BLUE_HUB_FORWARD_VECTOR = new Translation2d(1, 0);
         public static final Translation2d RED_HUB_FORWARD_VECTOR = new Translation2d(-1, 0);
+
+        public static final Translation2d PASSING_SPOT_LEFT_BLUE =
+                new Translation2d(Inches.of(75), FieldConstants.FIELD_WIDTH_Y.minus(Inches.of(75)));
+        public static final Translation2d PASSING_SPOT_RIGHT_BLUE = new Translation2d(
+                PASSING_SPOT_LEFT_BLUE.getMeasureX(),
+                FieldConstants.FIELD_WIDTH_Y.minus(PASSING_SPOT_LEFT_BLUE.getMeasureY()));
+        public static final Translation2d PASSING_SPOT_LEFT_RED = new Translation2d(
+                FieldConstants.FIELD_LENGTH_X.minus(PASSING_SPOT_RIGHT_BLUE.getMeasureX()),
+                PASSING_SPOT_RIGHT_BLUE.getMeasureY());
+        public static final Translation2d PASSING_SPOT_RIGHT_RED = new Translation2d(
+                FieldConstants.FIELD_LENGTH_X.minus(PASSING_SPOT_LEFT_BLUE.getMeasureX()),
+                PASSING_SPOT_LEFT_BLUE.getMeasureY());
     }
 
     public static final class FuelConstants {

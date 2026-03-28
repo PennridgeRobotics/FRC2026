@@ -42,6 +42,7 @@ import frc.robot.util.dashboard.LoggedNetworkStruct;
 import frc.robot.util.dashboard.LoggedNetworkUnit;
 import frc.robot.util.dashboard.SplitButtonChooser;
 import frc.robot.util.enums.Constants.FieldConstants;
+import frc.robot.util.enums.Constants.PassingConstants;
 import frc.robot.util.enums.Constants.PhysicalConstants;
 import frc.robot.util.enums.Constants.ShootOnTheMoveConstants;
 import frc.robot.util.lib.frcfirecontrol.FuelPhysicsSim;
@@ -71,13 +72,17 @@ public class ShooterCalculator {
     private final Map<Double, Double> savedShooterDistanceVelocityMap =
             new TreeMap<>(); // because InterpolatingDoubleTreeMap won't let us extract its values
     private @Nullable ShotData lastShotData;
+    private @Nullable ShotData lastPassingData;
     private CalculationMode calculationMode = CalculationMode.SOTM;
     private final String defaultExpression = "-45.66 * x^(-2.622) + 56.778";
     private CompiledExpression compiledExpression = Crunch.compileExpression("0");
     private long lastUpdateTimestampMillis;
     private ShotCalculator shotCalculator;
     private ProjectileSimulator sotmSimulator;
+    private ShotCalculator passingCalculator;
+    private ProjectileSimulator passingSimulator;
     private ShotCalculator.@Nullable LaunchParameters lastSOTMLaunchParameters;
+    private ShotCalculator.@Nullable LaunchParameters lastPassingLaunchParameters;
     private @Nullable AngularVelocity lastAngularVelocityInput;
 
     // Sim
@@ -93,6 +98,8 @@ public class ShooterCalculator {
     private final LoggedNetworkStruct<Translation3d> loggedSimBallTargetPos;
 
     private final LoggedNetworkBoolean loggedManualMode;
+    private final LoggedNetworkBoolean passingAllowed;
+    private final LoggedNetworkBoolean currentlyPassing;
     private final LoggedNetworkUnit<DistanceUnit, Distance> loggedShotDistance;
     private final LoggedNetworkUnit<AngularVelocityUnit, AngularVelocity> loggedShotVelocity;
     private final LoggedNetworkUnit<AngleUnit, Angle> loggedShotHeading;
@@ -118,6 +125,8 @@ public class ShooterCalculator {
         loggedManualMode = new LoggedNetworkBoolean(topicPrefix + "Manual Mode", false);
         new LoggedNetworkString(
                 rootTopicPrefix + "Manual Mode Text", () -> loggedManualMode.getAsBoolean() ? "Custom" : "Calculator");
+        passingAllowed = new LoggedNetworkBoolean(rootTopicPrefix + "Passing Allowed", true);
+        currentlyPassing = new LoggedNetworkBoolean(rootTopicPrefix + "Passing", this::shouldBePassing);
         loggedShotDistance = new LoggedNetworkUnit<>(rootTopicPrefix + "Shot Distance", Meters.zero());
         loggedShotVelocity = new LoggedNetworkUnit<>(rootTopicPrefix + "Shot Velocity", RotationsPerSecond.zero());
         loggedShotHeading = new LoggedNetworkUnit<>(rootTopicPrefix + "Shot Heading", Degrees.zero());
@@ -144,14 +153,26 @@ public class ShooterCalculator {
         loggedDriveAngleFF = new LoggedNetworkUnit<>(rootTopicPrefix + "Drive Angle FF", DegreesPerSecond.zero());
         loggedLaunchAngle = new LoggedNetworkUnit<>(
                 topicPrefix + "Launch Angle", ShootOnTheMoveConstants.LAUNCH_ANGLE_FROM_HORIZONTAL);
-        loggedLaunchAngle.addListener(unused -> shotCalculator = createShotCalculator());
+        loggedLaunchAngle.addListener(unused -> {
+            shotCalculator = createSOTMShotCalculator();
+            passingCalculator = createPassingShotCalculator();
+        });
         loggedSlipFactor = new LoggedNetworkDouble(topicPrefix + "Slip Factor", ShootOnTheMoveConstants.SLIP_FACTOR);
-        loggedSlipFactor.addListener(unused -> shotCalculator = createShotCalculator());
+        loggedSlipFactor.addListener(unused -> {
+            shotCalculator = createSOTMShotCalculator();
+            passingCalculator = createPassingShotCalculator();
+        });
         loggedPhaseDelay = new LoggedNetworkUnit<>(topicPrefix + "Phase Delay", ShootOnTheMoveConstants.PHASE_DELAY);
-        loggedPhaseDelay.addListener(unused -> shotCalculator = createShotCalculator());
+        loggedPhaseDelay.addListener(unused -> {
+            shotCalculator = createSOTMShotCalculator();
+            passingCalculator = createPassingShotCalculator();
+        });
         loggedMechanismDelay =
                 new LoggedNetworkUnit<>(topicPrefix + "Mechanism Delay", ShootOnTheMoveConstants.MECHANISM_LATENCY);
-        loggedMechanismDelay.addListener(unused -> shotCalculator = createShotCalculator());
+        loggedMechanismDelay.addListener(unused -> {
+            shotCalculator = createSOTMShotCalculator();
+            passingCalculator = createPassingShotCalculator();
+        });
         loggedManualLaunchVelocity =
                 new LoggedNetworkUnit<>(topicPrefix + "Manual Launch Velocity", RotationsPerSecond.of(47));
         new LoggedNetworkSendable<>(
@@ -173,8 +194,11 @@ public class ShooterCalculator {
         loggedSimBallTargetPos =
                 new LoggedNetworkStruct<>("/Sim Ball Target Pos", Translation3d.struct, new Translation3d());
 
-        sotmSimulator = createProjectileSimulator();
-        shotCalculator = createShotCalculator();
+        sotmSimulator = createProjectileSimulator(ShootOnTheMoveConstants.HUB_HEIGHT);
+        shotCalculator = createSOTMShotCalculator();
+
+        passingSimulator = createProjectileSimulator(Inches.zero());
+        passingCalculator = createPassingShotCalculator();
 
         addPreviouslySavedData();
     }
@@ -188,21 +212,25 @@ public class ShooterCalculator {
         return !isManualModeEnabled() && calculationMode == CalculationMode.SOTM;
     }
 
-    private ShotCalculator.LaunchParameters calculateSOTM() {
-        if (lastSOTMLaunchParameters != null) {
-            return lastSOTMLaunchParameters;
+    private ShotCalculator.LaunchParameters calculateSOTM(boolean passing) {
+        if (!passing) {
+            if (lastSOTMLaunchParameters != null) {
+                return lastSOTMLaunchParameters;
+            }
+        } else if (lastPassingLaunchParameters != null) {
+            return lastPassingLaunchParameters;
         }
         lastUpdateTimestampMillis = System.currentTimeMillis();
         final var shotInputs = new ShotCalculator.ShotInputs(
                 swerveDrive.getPose(),
                 withInputAngularVelocity(swerveDrive.getFieldVelocity()),
                 withInputAngularVelocity(swerveDrive.getRobotVelocity()),
-                getTarget(),
-                getTargetForwardVector(),
+                passing ? getPassingTarget() : getHubTranslation(),
+                passing ? getPassingForwardVector() : getHubForwardVector(),
                 0.9, // vision confidence, from 0 to 1
                 swerveDrive.getPitch().getDegrees(),
                 swerveDrive.getRoll().getDegrees());
-        final var shot = shotCalculator.calculate(shotInputs);
+        final var shot = (passing ? passingCalculator : shotCalculator).calculate(shotInputs);
         // System.out.println("\n\nShot: " + shot + "\n\nrpm map: ");
         loggedShotConfidence.set(shot.confidence());
         loggedDriveAngleFF.set(RadiansPerSecond.of(shot.driveAngularVelocityRadPerSec()));
@@ -219,25 +247,33 @@ public class ShooterCalculator {
     }
 
     public ShotData calculateShotData() {
-        if (lastShotData != null) {
-            return lastShotData;
+        return calculateShotData(shouldBePassing());
+    }
+
+    public ShotData calculateShotData(boolean passing) {
+        if (!passing) {
+            if (lastShotData != null) {
+                return lastShotData;
+            }
+        } else if (lastPassingData != null) {
+            return lastPassingData;
         }
         lastUpdateTimestampMillis = System.currentTimeMillis();
         final Pose2d robotPose = swerveDrive.getPose();
         final Translation2d robotTranslation = robotPose.getTranslation();
-        final Translation2d target = getTarget();
+        final Translation2d target = passing ? getPassingTarget() : getHubTranslation();
         final double distanceToTarget = target.getDistance(robotTranslation);
 
-        final double targetVelocity = calculateAngularVelocity(distanceToTarget);
-        final var sotmData = isUsingSOTM() ? calculateSOTM() : null;
+        final double targetVelocity = calculateAngularVelocity(distanceToTarget, passing);
+        final var sotmData = isUsingSOTM() ? calculateSOTM(passing) : null;
         final Rotation2d targetHeading = (sotmData != null
                 ? sotmData.driveAngle()
-                : target.minus(robotTranslation).getAngle());
+                : target.minus(robotTranslation).getAngle().rotateBy(Rotation2d.k180deg));
         final var distance = Meters.of(distanceToTarget);
         final var shooterVelocity = RotationsPerSecond.of(targetVelocity);
         final var driveAngleFF = RadiansPerSecond.of(sotmData != null ? sotmData.driveAngularVelocityRadPerSec() : 0);
         final var isReady = sotmData != null
-                ? (sotmData.isValid() && sotmData.confidence() > 50)
+                ? (sotmData.isValid() && sotmData.confidence() > (passing ? 35 : 50))
                 : (Math.abs(robotPose.getRotation().minus(targetHeading).getDegrees()) < 10);
         final var shot = new ShotData(distance, shooterVelocity, targetHeading, driveAngleFF, isReady);
         loggedShotDistance.set(shot.distance());
@@ -251,11 +287,12 @@ public class ShooterCalculator {
 
     public void addCurrentDataToMap(AngularVelocity shooterVelocity) {
         final Pose2d robotPose = swerveDrive.getPose();
-        final double distanceToTarget = Math.round(getTarget().getDistance(robotPose.getTranslation()) * 100) / 100.0;
+        final double distanceToTarget =
+                Math.round(getHubTranslation().getDistance(robotPose.getTranslation()) * 100) / 100.0;
         addRawDistanceVelocityData(distanceToTarget, shooterVelocity.in(RotationsPerSecond));
     }
 
-    private ProjectileSimulator createProjectileSimulator() {
+    private ProjectileSimulator createProjectileSimulator(Distance targetHeight) {
         final var sotmParams = new ProjectileSimulator.SimParameters(
                 ShootOnTheMoveConstants.BALL_MASS.in(Kilograms),
                 ShootOnTheMoveConstants.BALL_DIAMETER.in(Meters),
@@ -264,7 +301,7 @@ public class ShooterCalculator {
                 ShootOnTheMoveConstants.AIR_DENSITY, // kg/m³
                 ShootOnTheMoveConstants.EXIT_HEIGHT.in(Meters),
                 ShootOnTheMoveConstants.FLYWHEEL_DIAMETER.in(Meters),
-                ShootOnTheMoveConstants.HUB_HEIGHT.in(Meters),
+                targetHeight.in(Meters),
                 loggedSlipFactor.getAsDouble(),
                 loggedLaunchAngle.get().in(Degrees),
                 ShootOnTheMoveConstants.SIM_TIMESTEP.in(Seconds),
@@ -275,26 +312,12 @@ public class ShooterCalculator {
         return new ProjectileSimulator(sotmParams, ShootOnTheMoveConstants.MAGNUS_SIGN);
     }
 
-    private ShotCalculator createShotCalculator() {
-        sotmSimulator = createProjectileSimulator();
-        final var lut = sotmSimulator.generateLUT();
-        final var shotCalcConfig = new ShotCalculator.Config();
-        shotCalcConfig.launcherOffsetX = ShootOnTheMoveConstants.LAUNCHER_OFFSET.getX();
-        shotCalcConfig.launcherOffsetY = ShootOnTheMoveConstants.LAUNCHER_OFFSET.getY();
-        shotCalcConfig.phaseDelayMs =
-                RobotBase.isReal() ? loggedPhaseDelay.get().in(Milliseconds) : 0;
-        shotCalcConfig.mechLatencyMs =
-                RobotBase.isReal() ? loggedMechanismDelay.get().in(Milliseconds) : 0;
-        shotCalcConfig.maxTiltDeg = ShootOnTheMoveConstants.MAXIMUM_TILT.in(Degrees);
-        shotCalcConfig.headingSpeedScalar = ShootOnTheMoveConstants.HEADING_SPEED_SCALAR;
-        shotCalcConfig.headingReferenceDistance = ShootOnTheMoveConstants.HEADING_REFERENCE_DISTANCE;
-        shotCalcConfig.shooterAngleOffsetRad = Math.PI;
-        final var shotCalc = new ShotCalculator(shotCalcConfig);
-        for (var entry : lut.entries()) {
-            if (entry.reachable()) {
-                shotCalc.loadLUTEntry(entry.distanceM(), entry.rpm(), entry.tof());
-            }
-        }
+    private ShotCalculator createSOTMShotCalculator() {
+        sotmSimulator = createProjectileSimulator(ShootOnTheMoveConstants.HUB_HEIGHT);
+        final var calculator = createShotCalculator(
+                sotmSimulator,
+                ShootOnTheMoveConstants.HEADING_SPEED_SCALAR,
+                ShootOnTheMoveConstants.HEADING_REFERENCE_DISTANCE);
         final var tests = Map.of(
                 2.0, 47.0,
                 2.5, 50.0,
@@ -304,17 +327,47 @@ public class ShooterCalculator {
         for (var entry : tests.entrySet()) {
             final var distance = entry.getKey();
             final var velocity = entry.getValue();
-            final var percentError = Math.abs(shotCalc.getBaseRPM(distance) / 60.0 - velocity) / velocity;
+            final var percentError = Math.abs(calculator.getBaseRPM(distance) / 60.0 - velocity) / velocity;
             totalError += percentError;
             System.out.printf(
                     "Expected for %.1fm: %.1f; got %.1f (%.1f%% error)\n",
-                    distance, velocity, shotCalc.getBaseRPM(distance) / 60.0, percentError * 100);
+                    distance, velocity, calculator.getBaseRPM(distance) / 60.0, percentError * 100);
         }
         System.out.printf("Average error: %.1f%%\n", totalError / tests.size() * 100);
+        return calculator;
+    }
+
+    private ShotCalculator createShotCalculator(
+            ProjectileSimulator projectileSimulator, double headingSpeedScalar, double headingReferenceDistance) {
+        final var lut = projectileSimulator.generateLUT();
+        final var shotCalcConfig = new ShotCalculator.Config();
+        shotCalcConfig.launcherOffsetX = ShootOnTheMoveConstants.LAUNCHER_OFFSET.getX();
+        shotCalcConfig.launcherOffsetY = ShootOnTheMoveConstants.LAUNCHER_OFFSET.getY();
+        shotCalcConfig.phaseDelayMs =
+                RobotBase.isReal() ? loggedPhaseDelay.get().in(Milliseconds) : 0;
+        shotCalcConfig.mechLatencyMs =
+                RobotBase.isReal() ? loggedMechanismDelay.get().in(Milliseconds) : 0;
+        shotCalcConfig.maxTiltDeg = ShootOnTheMoveConstants.MAXIMUM_TILT.in(Degrees);
+        shotCalcConfig.headingSpeedScalar = headingSpeedScalar;
+        shotCalcConfig.headingReferenceDistance = headingReferenceDistance;
+        shotCalcConfig.shooterAngleOffsetRad = Math.PI;
+        shotCalcConfig.maxScoringDistance = PassingConstants.MAXIMUM_DISTANCE_PASSING.in(Meters);
+        final var shotCalc = new ShotCalculator(shotCalcConfig);
+        for (var entry : lut.entries()) {
+            if (entry.reachable()) {
+                shotCalc.loadLUTEntry(entry.distanceM(), entry.rpm(), entry.tof());
+            }
+        }
         return shotCalc;
     }
 
-    // 48.1, 56.1, 51.9, 45.8
+    private ShotCalculator createPassingShotCalculator() {
+        passingSimulator = createProjectileSimulator(Inches.zero());
+        return createShotCalculator(
+                sotmSimulator,
+                PassingConstants.HEADING_SPEED_SCALAR_PASSING,
+                PassingConstants.HEADING_REFERENCE_DISTANCE_PASSING);
+    }
 
     private void addDistanceVelocityData(Distance distance, AngularVelocity velocity) {
         addRawDistanceVelocityData(distance.in(Meters), velocity.in(RotationsPerSecond));
@@ -327,21 +380,25 @@ public class ShooterCalculator {
         loggedSavedShooterDistanceVelocityMap.set(exportData());
     }
 
-    private Translation2d getTarget() {
+    private Translation2d getHubTranslation() {
         if (DriverStation.getAlliance().orElse(null) == DriverStation.Alliance.Red) {
             return FieldConstants.HUB_RED;
         }
         return FieldConstants.HUB_BLUE;
     }
 
-    private Translation2d getTargetForwardVector() {
+    private Translation2d getHubForwardVector() {
         if (DriverStation.getAlliance().orElse(null) == DriverStation.Alliance.Red) {
-            return ShootOnTheMoveConstants.RED_HUB_FORWARD_VECTOR;
+            return PassingConstants.RED_HUB_FORWARD_VECTOR;
         }
-        return ShootOnTheMoveConstants.BLUE_HUB_FORWARD_VECTOR;
+        return PassingConstants.BLUE_HUB_FORWARD_VECTOR;
     }
 
-    private double calculateAngularVelocity(double distanceToTarget) {
+    private Translation2d getPassingForwardVector() {
+        return getHubForwardVector().times(-1);
+    }
+
+    private double calculateAngularVelocity(double distanceToTarget, boolean passing) {
         if (loggedManualMode.getAsBoolean()) {
             return loggedManualLaunchVelocity.get().in(RotationsPerSecond);
         }
@@ -349,7 +406,8 @@ public class ShooterCalculator {
                     case INTERPOLATION ->
                         Objects.requireNonNullElse(shooterDistanceVelocityMap.get(distanceToTarget), 0.0);
                     case EQUATION -> compiledExpression.evaluate(distanceToTarget);
-                    case SOTM -> RotationsPerSecond.convertFrom(calculateSOTM().rpm(), RPM);
+                    case SOTM ->
+                        RotationsPerSecond.convertFrom(calculateSOTM(passing).rpm(), RPM);
                 }
                 + loggedVelocityOffset.get().in(RotationsPerSecond);
     }
@@ -401,8 +459,6 @@ public class ShooterCalculator {
     }
 
     public void simulationPeriodic() {
-        if (true) return;
-
         fuelPhysicsSim.tick();
 
         loggedSimBallTargetPos.set(new Translation3d(
@@ -433,7 +489,7 @@ public class ShooterCalculator {
                                                 .get()
                                                 .in(Milliseconds))));
         loggedSimBallsInHopper.set(loggedSimBallsInHopper.getAsInt() - 1);
-        final var shotData = calculateShotData();
+        final var shotData = calculateShotData(false);
         final var rpm = shotData.velocity().in(RPM);
         final var ballSpeed = sotmSimulator.exitVelocity(rpm);
 
@@ -473,9 +529,11 @@ public class ShooterCalculator {
     public void prePeriodic() {
         lastShotData = null;
         lastSOTMLaunchParameters = null;
+        lastPassingLaunchParameters = null;
 
         if (System.currentTimeMillis() - lastUpdateTimestampMillis >= 100L) {
-            calculateShotData();
+            calculateShotData(false);
+            calculateShotData(true);
         }
     }
 
@@ -491,6 +549,29 @@ public class ShooterCalculator {
             compiled = Crunch.compileExpression("0");
         }
         this.compiledExpression = compiled;
+    }
+
+    public boolean shouldBePassing() {
+        if (!passingAllowed.getAsBoolean()) return false;
+        final var isRed = DriverStation.getAlliance().orElse(null) == DriverStation.Alliance.Red;
+        final var currentX = swerveDrive.getPose().getMeasureX();
+        final var neededX = getHubTranslation().getMeasureX();
+        return isRed ? currentX.lt(neededX) : currentX.gt(neededX);
+    }
+
+    public Translation2d getPassingTarget() {
+        final var isRed = DriverStation.getAlliance().orElse(null) == DriverStation.Alliance.Red;
+        final var isOnLeftSide = isRed == swerveDrive.getPose().getMeasureY().lt(FieldConstants.FIELD_WIDTH_Y.div(2));
+        final Translation2d target;
+        if (isOnLeftSide) {
+            target = isRed ? PassingConstants.PASSING_SPOT_LEFT_RED : PassingConstants.PASSING_SPOT_LEFT_BLUE;
+        } else {
+            target = isRed ? PassingConstants.PASSING_SPOT_RIGHT_RED : PassingConstants.PASSING_SPOT_RIGHT_BLUE;
+        }
+        if (isManualModeEnabled()) {
+            return new Translation2d(target.getMeasureX(), swerveDrive.getPose().getMeasureY());
+        }
+        return target;
     }
 
     public Command increaseVelocityOffset() {
