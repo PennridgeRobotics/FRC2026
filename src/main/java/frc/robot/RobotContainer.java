@@ -227,9 +227,13 @@ public class RobotContainer {
         if (fuelSubsystem != null) {
             driverController
                     .b()
+                    .and(operatorController.leftTrigger().negate()) // let operator override
                     .whileTrue(fuelSubsystem.launchCommand(true))
                     .whileTrue(swerveSubsystem.faceTowardsHubCommand());
-            driverController.leftTrigger().whileTrue(fuelSubsystem.intakeCommand());
+            driverController
+                    .leftTrigger()
+                    .and(operatorController.leftTrigger().negate()) // let operator override
+                    .whileTrue(fuelSubsystem.intakeCommand());
         }
         /*driverController
         .a()

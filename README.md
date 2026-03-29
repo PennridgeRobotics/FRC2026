@@ -24,6 +24,7 @@ X   B
 ### Operator
 | Button             | Action                                   |
 |--------------------|------------------------------------------|
+| L Trigger          | Disable driver fuel controls             |
 | L Bumper + Start   | Auto test                                |
 | R Bumper + Start   | Straighten wheels                        |
 | L Bumper           | Eject                                    |
