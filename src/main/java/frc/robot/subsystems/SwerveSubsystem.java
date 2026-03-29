@@ -371,14 +371,21 @@ public class SwerveSubsystem extends SubsystemBase {
             return;
         }
         var linearVelocity = new Translation2d(xVelocity.in(MetersPerSecond), yVelocity.in(MetersPerSecond));
-        if (!loggedForceNormalDriveMode.getAsBoolean()
-                && faceTowardsHub
-                && getShooterCalculator().isUsingSOTM()
-                && linearVelocity.getNorm()
-                        > loggedMaxVelocityWhileShooting.get().in(MetersPerSecond)) {
-            linearVelocity = linearVelocity
-                    .div(linearVelocity.getNorm())
-                    .times(loggedMaxVelocityWhileShooting.get().in(MetersPerSecond));
+        if (!loggedForceNormalDriveMode.getAsBoolean() && faceTowardsHub) {
+            if (getShooterCalculator().shouldBePassing()) {
+                if (linearVelocity.getNorm()
+                        > loggedMaxVelocityWhilePassing.get().in(MetersPerSecond)) {
+                    linearVelocity = linearVelocity
+                            .div(linearVelocity.getNorm())
+                            .times(loggedMaxVelocityWhilePassing.get().in(MetersPerSecond));
+                }
+            } else if (getShooterCalculator().isUsingSOTM()
+                    && linearVelocity.getNorm()
+                            > loggedMaxVelocityWhileShooting.get().in(MetersPerSecond)) {
+                linearVelocity = linearVelocity
+                        .div(linearVelocity.getNorm())
+                        .times(loggedMaxVelocityWhileShooting.get().in(MetersPerSecond));
+            }
         }
         if (DriverStation.getAlliance().orElse(null) == DriverStation.Alliance.Red) { // flip if red
             linearVelocity = linearVelocity.unaryMinus();
