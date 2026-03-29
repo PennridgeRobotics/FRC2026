@@ -526,7 +526,7 @@ public class SwerveSubsystem extends SubsystemBase {
     }
 
     public void zeroGyroWithAlliance() {
-        swerveDrive.zeroGyro();
+        swerveDrive.zeroGyro(); // applies gyro offset to zero and resets odometry to zero
         if (Alliance.Red.equals(DriverStation.getAlliance().orElse(null))) {
             swerveDrive.resetOdometry(new Pose2d(getRobotPose().getTranslation(), Rotation2d.k180deg));
         }
@@ -709,7 +709,7 @@ public class SwerveSubsystem extends SubsystemBase {
                         chassisSpeeds -> {
                             loggedBLineRobotRelativeChassisSpeeds.set(chassisSpeeds);
                             loggedBLineFieldRelativeChassisSpeeds.set(
-                                    ChassisSpeeds.fromRobotRelativeSpeeds(chassisSpeeds, swerveDrive.getYaw()));
+                                    ChassisSpeeds.fromRobotRelativeSpeeds(chassisSpeeds, getHeading()));
                             driveRobotOriented(chassisSpeeds);
                         },
                         bLineTranslationPID,
@@ -787,7 +787,7 @@ public class SwerveSubsystem extends SubsystemBase {
     }
 
     public Rotation2d getRobotRelativeYaw() {
-        final var fieldRelative = swerveDrive.getYaw();
+        final var fieldRelative = getHeading();
         final Rotation2d robotRelativeYaw;
         if (DriverStation.getAlliance().orElse(null) != Alliance.Red) {
             robotRelativeYaw = fieldRelative;
@@ -797,6 +797,10 @@ public class SwerveSubsystem extends SubsystemBase {
         }
         loggedRobotRelativeYaw.set(robotRelativeYaw);
         return robotRelativeYaw;
+    }
+
+    public Rotation2d getHeading() {
+        return swerveDrive.getOdometryHeading();
     }
 
     public CorePigeon2 getPigeon2() {
