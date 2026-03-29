@@ -1,10 +1,6 @@
 package frc.robot.subsystems;
 
-import static edu.wpi.first.units.Units.DegreesPerSecond;
-import static edu.wpi.first.units.Units.Meter;
-import static edu.wpi.first.units.Units.MetersPerSecond;
-import static edu.wpi.first.units.Units.MetersPerSecondPerSecond;
-import static edu.wpi.first.units.Units.RadiansPerSecond;
+import static edu.wpi.first.units.Units.*;
 
 import com.ctre.phoenix6.hardware.core.CorePigeon2;
 import com.revrobotics.spark.SparkMax;
@@ -106,6 +102,7 @@ public class SwerveSubsystem extends SubsystemBase {
     private final LoggedNetworkBoolean loggedUsingSOTMHubLock;
     private final LoggedNetworkBoolean loggedLockPoseWhenShooting;
     private final LoggedNetworkBoolean loggedForceNormalDriveMode;
+    private final LoggedNetworkStruct<Rotation2d> loggedRobotRelativeYaw;
 
     private SOTMHubLockType sotmHubLockType = SOTMHubLockType.ANGLE_LOCK_AND_VELOCITY_FF;
     private @Nullable Camera backCamera;
@@ -160,6 +157,8 @@ public class SwerveSubsystem extends SubsystemBase {
                         SOTMHubLockType::getDashboardName));
         loggedLockPoseWhenShooting = new LoggedNetworkBoolean("Swerve/Lock Pose when Shooting", true);
         new LoggedNetworkStructArray<>("/Swerve/Module States", SwerveModuleState.struct, swerveDrive::getStates);
+        loggedRobotRelativeYaw =
+                new LoggedNetworkStruct<>("/Swerve/Robot Relative Yaw", Rotation2d.struct, Rotation2d.kZero);
 
         loggedBLineRobotRelativeChassisSpeeds = new LoggedNetworkStruct<>(
                 "/Misc/BLine/Robot Relative Chassis Speeds", ChassisSpeeds.struct, new ChassisSpeeds());
@@ -789,10 +788,15 @@ public class SwerveSubsystem extends SubsystemBase {
 
     public Rotation2d getRobotRelativeYaw() {
         final var fieldRelative = swerveDrive.getYaw();
+        final Rotation2d robotRelativeYaw;
         if (DriverStation.getAlliance().orElse(null) != Alliance.Red) {
-            return fieldRelative;
+            robotRelativeYaw = fieldRelative;
+        } else {
+            robotRelativeYaw = fieldRelative;
+            fieldRelative.plus(Rotation2d.k180deg);
         }
-        return fieldRelative.plus(Rotation2d.k180deg);
+        loggedRobotRelativeYaw.set(robotRelativeYaw);
+        return robotRelativeYaw;
     }
 
     public CorePigeon2 getPigeon2() {
