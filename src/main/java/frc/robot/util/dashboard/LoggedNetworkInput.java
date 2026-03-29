@@ -1,5 +1,6 @@
 package frc.robot.util.dashboard;
 
+import frc.robot.util.Stopwatch;
 import java.util.ArrayList;
 import java.util.List;
 import org.jspecify.annotations.NullMarked;
@@ -23,8 +24,10 @@ public abstract class LoggedNetworkInput {
     }
 
     public static void runAllPeriodic() {
+        final var stopwatch = new Stopwatch("LoggedNetworkInput.runAllPeriodic()");
         for (final var input : inputs) {
             input.periodic();
+            stopwatch.logTime(input.topicName);
         }
     }
 }

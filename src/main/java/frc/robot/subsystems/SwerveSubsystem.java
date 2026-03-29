@@ -86,7 +86,7 @@ public class SwerveSubsystem extends SubsystemBase {
     private @Nullable Trigger isShootingTrigger;
 
     private final PIDController bLineTranslationPID =
-            Robot.isReal() ? new PIDController(5.0, 0, 1.3) : new PIDController(1.9, 0.1, 0.4);
+            Robot.isReal() ? new PIDController(5.0, 0, 1.4) : new PIDController(1.9, 0.1, 0.4);
     private final PIDController bLineRotationPID =
             Robot.isReal() ? new PIDController(5.0, 0, 0.85) : new PIDController(5.0, 0.2, 0.6);
     private final PIDController bLineCrossTrackPID = new PIDController(2.0, 0, 0);
