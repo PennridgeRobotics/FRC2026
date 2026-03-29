@@ -91,6 +91,8 @@ public class SwerveSubsystem extends SubsystemBase {
             Robot.isReal() ? new PIDController(5.0, 0, 0.85) : new PIDController(5.0, 0.2, 0.6);
     private final PIDController bLineCrossTrackPID = new PIDController(2.0, 0, 0);
     private final FollowPath.Builder pathBuilder;
+    private final LoggedNetworkStruct<ChassisSpeeds> loggedBLineRobotRelativeChassisSpeeds;
+    private final LoggedNetworkStruct<ChassisSpeeds> loggedBLineFieldRelativeChassisSpeeds;
 
     private final SlewRateLimiter2d linearDriveLimiter =
             new SlewRateLimiter2d(DriveConstants.MAX_LINEAR_ACCELERATION.in(MetersPerSecondPerSecond));
@@ -158,6 +160,11 @@ public class SwerveSubsystem extends SubsystemBase {
                         SOTMHubLockType::getDashboardName));
         loggedLockPoseWhenShooting = new LoggedNetworkBoolean("Swerve/Lock Pose when Shooting", true);
         new LoggedNetworkStructArray<>("/Swerve/Module States", SwerveModuleState.struct, swerveDrive::getStates);
+
+        loggedBLineRobotRelativeChassisSpeeds = new LoggedNetworkStruct<>(
+                "/Misc/BLine/Robot Relative Chassis Speeds", ChassisSpeeds.struct, new ChassisSpeeds());
+        loggedBLineFieldRelativeChassisSpeeds = new LoggedNetworkStruct<>(
+                "/Misc/BLine/Field Relative Chassis Speeds", ChassisSpeeds.struct, new ChassisSpeeds());
 
         SwerveDriveTelemetry.verbosity = SwerveDriveTelemetry.TelemetryVerbosity.INFO;
 
@@ -455,7 +462,7 @@ public class SwerveSubsystem extends SubsystemBase {
     }
 
     public void driveRobotOriented(final ChassisSpeeds chassisSpeeds) {
-        final var fieldRelative = ChassisSpeeds.fromRobotRelativeSpeeds(chassisSpeeds, swerveDrive.getYaw());
+        final var fieldRelative = ChassisSpeeds.fromRobotRelativeSpeeds(chassisSpeeds, getRobotRelativeYaw());
         driveFieldOriented(
                 MetersPerSecond.of(fieldRelative.vxMetersPerSecond),
                 MetersPerSecond.of(fieldRelative.vyMetersPerSecond),
@@ -700,7 +707,12 @@ public class SwerveSubsystem extends SubsystemBase {
                         this,
                         this::getRobotPose,
                         swerveDrive::getRobotVelocity,
-                        this::driveRobotOriented,
+                        chassisSpeeds -> {
+                            loggedBLineRobotRelativeChassisSpeeds.set(chassisSpeeds);
+                            loggedBLineFieldRelativeChassisSpeeds.set(
+                                    ChassisSpeeds.fromRobotRelativeSpeeds(chassisSpeeds, swerveDrive.getYaw()));
+                            driveRobotOriented(chassisSpeeds);
+                        },
                         bLineTranslationPID,
                         bLineRotationPID,
                         bLineCrossTrackPID)
@@ -773,6 +785,14 @@ public class SwerveSubsystem extends SubsystemBase {
                 "Tried to create toggle use front camera in pose estimation command before vision was initialized",
                 false));*/
         return Commands.none();
+    }
+
+    public Rotation2d getRobotRelativeYaw() {
+        final var fieldRelative = swerveDrive.getYaw();
+        if (DriverStation.getAlliance().orElse(null) != Alliance.Red) {
+            return fieldRelative;
+        }
+        return fieldRelative.plus(Rotation2d.k180deg);
     }
 
     public CorePigeon2 getPigeon2() {

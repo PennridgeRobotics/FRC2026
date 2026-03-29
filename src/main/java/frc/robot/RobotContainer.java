@@ -71,10 +71,11 @@ public class RobotContainer {
             : null;
 
     private final SendableChooser<AutoManager.AutoStartLocation> autoStartLocationChooser;
-    private final LoggedNetworkBoolean autoClimb = new LoggedNetworkBoolean("/Auto/Auto Climb", false);
-    private final LoggedNetworkBoolean autoDepot = new LoggedNetworkBoolean("/Auto/Auto Depot", false);
-    private final LoggedNetworkBoolean autoOutpost = new LoggedNetworkBoolean("/Auto/Auto Outpost", false);
-    private final LoggedNetworkBoolean autoCollectFromMid = new LoggedNetworkBoolean("/Auto/Collect From Mid", false);
+    private final LoggedNetworkBoolean autoShootAtStart = new LoggedNetworkBoolean("/Auto/1. Shoot at Start", true);
+    private final LoggedNetworkBoolean autoCollectFromMid = new LoggedNetworkBoolean("/Auto/2. Collect From Mid", true);
+    private final LoggedNetworkBoolean autoDepot = new LoggedNetworkBoolean("/Auto/3. Auto Depot", false);
+    private final LoggedNetworkBoolean autoOutpost = new LoggedNetworkBoolean("/Auto/4. Auto Outpost", false);
+    private final LoggedNetworkBoolean autoClimb = new LoggedNetworkBoolean("/Auto/5. Auto Climb", false);
 
     private final LoggedNetworkBoolean useOdometry = new LoggedNetworkBoolean("/Misc/Use Odometry", true);
     private final Trigger useOdometryTrigger = new Trigger(useOdometry);
@@ -138,6 +139,7 @@ public class RobotContainer {
         return autoManager != null
                 ? autoManager.getAutoCommand(new AutoManager.AutoOptions(
                         autoStartLocationChooser.getSelected(),
+                        autoShootAtStart.getAsBoolean(),
                         autoDepot.getAsBoolean(),
                         autoOutpost.getAsBoolean(),
                         autoClimb.getAsBoolean(),
