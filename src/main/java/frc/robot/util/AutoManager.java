@@ -11,6 +11,7 @@ import edu.wpi.first.units.AngleUnit;
 import edu.wpi.first.units.DistanceUnit;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.Distance;
+import edu.wpi.first.units.measure.Time;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -160,7 +161,7 @@ public class AutoManager {
         var autoCommand = Commands.none();
         var startAutoLoc = autoOptions.startLocation();
         if (autoOptions.shootAtStart()) {
-            autoCommand = shootFromStartAutoCommand(autoOptions.startLocation(), true);
+            autoCommand = shootAutoCommand(autoOptions.startLocation(), Seconds.of(4), true);
             startAutoLoc = null;
         }
         if (autoOptions.collectFromMid()) {
@@ -212,25 +213,6 @@ public class AutoManager {
                 .intakeCommand()
                 .withDeadline(getPathCommand(depotPath, false, true, resetToLoc))
                 .andThen(pathInFrontOfHubAndShoot(null));
-    }
-
-    private Command shootFromStartAutoCommand(AutoStartLocation startLocation, boolean isStart) {
-        return Commands.sequence(
-                fuelSubsystem
-                        .windUpCommand()
-                        .withDeadline(getPathCommand(
-                                switch (startLocation) {
-                                    case LEFT_INNER_BUMP -> startLeftInnerBumpShootPath;
-                                    case LEFT_HUB -> startLeftHubShootPath;
-                                    case RIGHT_INNER_BUMP -> startRightInnerBumpShootPath;
-                                },
-                                true,
-                                true,
-                                isStart ? startLocation : null)),
-                fuelSubsystem
-                        .launchCommand(true)
-                        .withDeadline(Commands.waitUntil(fuelSubsystem.isReadyToLaunchTrigger())
-                                .andThen(Commands.waitTime(Seconds.of(4)))));
     }
 
     private Command pathInFrontOfHubAndShoot(@Nullable AutoStartLocation resetToLoc) {
@@ -320,31 +302,43 @@ public class AutoManager {
                                                 true,
                                                 null),
                                         goOverBump(leftSide, false, false, null))),
-                        Commands.sequence(fuelSubsystem
-                                .windUpCommand()
-                                .withDeadline(Commands.defer(
-                                        () -> {
-                                            final var originalPath = leftSide
-                                                    ? startLeftInnerBumpShootPath
-                                                    : startRightInnerBumpShootPath;
-                                            final Pair<Path.PathElement, Path.PathElementConstraint>
-                                                    lastPathWithConstraint = getLastPathWithConstraint(originalPath);
-                                            final var path = new Path(lastPathWithConstraint
-                                                    .getFirst()
-                                                    .copy());
-                                            final var constraints =
-                                                    (Path.WaypointConstraint) lastPathWithConstraint.getSecond();
-                                            path.setPathConstraints(
-                                                    copyConstraintsFrom(new Path.PathConstraints(), constraints, 0, 0)
-                                                            .setEndTranslationToleranceMeters(
-                                                                    originalPath.getEndTranslationToleranceMeters())
-                                                            .setEndRotationToleranceDeg(
-                                                                    originalPath.getEndRotationToleranceDeg()));
-                                            return getPathCommand(path, true, true, null);
-                                        },
-                                        Set.of(swerveDrive)))),
-                        fuelSubsystem.launchCommand(true).withTimeout(Seconds.of(15))),
+                        shootAutoCommand(
+                                leftSide ? AutoStartLocation.LEFT_INNER_BUMP : AutoStartLocation.RIGHT_INNER_BUMP,
+                                Seconds.of(15),
+                                false)),
                 Set.of(swerveDrive, fuelSubsystem));
+    }
+
+    public Command shootAutoCommand(AutoStartLocation location, Time launchDuration, boolean isStart) {
+        return Commands.sequence(
+                fuelSubsystem
+                        .windUpCommand()
+                        .withDeadline(Commands.defer(
+                                () -> {
+                                    final Path originalPath =
+                                            switch (location) {
+                                                case LEFT_INNER_BUMP -> startLeftInnerBumpShootPath;
+                                                case LEFT_HUB -> startLeftHubShootPath;
+                                                case RIGHT_INNER_BUMP -> startRightInnerBumpShootPath;
+                                            };
+                                    final Pair<Path.PathElement, Path.PathElementConstraint> lastPathWithConstraint =
+                                            getLastPathWithConstraint(originalPath);
+                                    final var path = new Path(
+                                            lastPathWithConstraint.getFirst().copy());
+                                    final var constraints =
+                                            (Path.WaypointConstraint) lastPathWithConstraint.getSecond();
+                                    path.setPathConstraints(copyConstraintsFrom(
+                                                    new Path.PathConstraints(), constraints, 0, 0)
+                                            .setEndTranslationToleranceMeters(
+                                                    originalPath.getEndTranslationToleranceMeters())
+                                            .setEndRotationToleranceDeg(originalPath.getEndRotationToleranceDeg()));
+                                    return getPathCommand(path, true, true, isStart ? location : null);
+                                },
+                                Set.of(swerveDrive))),
+                fuelSubsystem
+                        .launchCommand(true)
+                        .withDeadline(Commands.waitUntil(fuelSubsystem.isReadyToLaunchTrigger())
+                                .andThen(Commands.waitTime(launchDuration))));
     }
 
     public Command goOverBump(
