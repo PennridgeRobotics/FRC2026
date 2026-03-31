@@ -202,7 +202,7 @@ public final class Constants {
     }
 
     public static final class ClimberConstants {
-        public static boolean CLIMBER_ENABLED = false;
+        public static boolean CLIMBER_ENABLED = true;
 
         public static final int CLIMBER_MOTOR_ID = 9;
         public static final boolean CLIMBER_INVERTED = true;
@@ -214,10 +214,10 @@ public final class Constants {
         public static final Voltage VOLTAGE_COMPENSATION = Volts.of(12.0);
 
         // open loop
-        public static final double CLIMB_VALUE = 0.2;
-        public static final double CLIMB_FAST_VALUE = 0.6;
-        public static final double LOWER_VALUE = -0.2;
-        public static final double LOWER_FAST_VALUE = -0.6;
+        public static final double CLIMB_VALUE = 0.5;
+        public static final double CLIMB_FAST_VALUE = 1.0;
+        public static final double LOWER_VALUE = -0.5;
+        public static final double LOWER_FAST_VALUE = -1.0;
 
         public static final Angle MINIMUM_ANGLE = Degrees.of(-53.5);
         public static final Angle MAXIMUM_ANGLE = Degrees.of(110.0);
