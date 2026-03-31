@@ -11,6 +11,7 @@ import edu.wpi.first.units.AngleUnit;
 import edu.wpi.first.units.DistanceUnit;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.Distance;
+import edu.wpi.first.units.measure.Time;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -22,10 +23,14 @@ import frc.robot.lib.BLine.Path;
 import frc.robot.subsystems.ClimberSubsystem;
 import frc.robot.subsystems.FuelSubsystem;
 import frc.robot.subsystems.SwerveSubsystem;
+import frc.robot.util.dashboard.LoggedNetworkStruct;
+import frc.robot.util.dashboard.LoggedNetworkStructArray;
 import frc.robot.util.dashboard.LoggedNetworkUnit;
 import frc.robot.util.enums.Constants.FieldConstants;
 import frc.robot.util.enums.Constants.PhysicalConstants;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -37,7 +42,7 @@ public class AutoManager {
     private final SwerveSubsystem swerveDrive;
     private final FollowPath.Builder pathBuilder;
     private final FuelSubsystem fuelSubsystem;
-    private final ClimberSubsystem climberSubsystem;
+    private final @Nullable ClimberSubsystem climberSubsystem;
 
     // Built-in paths
     private final Path startLeftHubShootPath = new Path("start_left_hub_shoot");
@@ -61,18 +66,45 @@ public class AutoManager {
     private final LoggedNetworkUnit<AngleUnit, Angle> testAutoAngle =
             new LoggedNetworkUnit<>("Auto/Test Angle", Degrees.of(0));
 
+    private final @Nullable Field pathField;
+
     public AutoManager(
             SwerveSubsystem swerveDrive,
             FollowPath.Builder pathBuilder,
             FuelSubsystem fuelSubsystem,
-            ClimberSubsystem climberSubsystem) {
+            @Nullable ClimberSubsystem climberSubsystem) {
         this.swerveDrive = swerveDrive;
         this.fuelSubsystem = fuelSubsystem;
         this.pathBuilder = pathBuilder;
         this.climberSubsystem = climberSubsystem;
 
+        final var translationLogMap = new HashMap<String, LoggedNetworkStructArray<Translation2d>>();
+        final var poseLogMap = new HashMap<String, LoggedNetworkStruct<Pose2d>>();
+
         FollowPath.setDoubleLoggingConsumer(pair -> SmartDashboard.putNumber(pair.getFirst(), pair.getSecond()));
         FollowPath.setBooleanLoggingConsumer(pair -> SmartDashboard.putBoolean(pair.getFirst(), pair.getSecond()));
+        FollowPath.setTranslationListLoggingConsumer(pair -> {
+            final var logger = translationLogMap.computeIfAbsent(
+                    "/SmartDashboard/" + pair.getFirst(),
+                    key -> new LoggedNetworkStructArray<>(key, Translation2d.struct, new Translation2d[0]));
+            logger.set(pair.getSecond());
+        });
+        FollowPath.setPoseLoggingConsumer(pair -> {
+            final var logger = poseLogMap.computeIfAbsent(
+                    "/SmartDashboard/" + pair.getFirst(),
+                    key -> new LoggedNetworkStruct<>(key, Pose2d.struct, new Pose2d()));
+            logger.set(pair.getSecond());
+        });
+
+        Field reflectionPathFieldAttempt;
+        try {
+            reflectionPathFieldAttempt = FollowPath.class.getDeclaredField("path");
+            reflectionPathFieldAttempt.setAccessible(true);
+        } catch (NoSuchFieldException e) {
+            DriverStation.reportError("Could not find field 'path' in FollowPath", e.getStackTrace());
+            reflectionPathFieldAttempt = null;
+        }
+        pathField = reflectionPathFieldAttempt;
     }
 
     public void autonomousInit() {
@@ -85,14 +117,30 @@ public class AutoManager {
         pathBuilder.withPoseReset(pose -> {});
     }
 
-    public Command getPathCommand(Path path, boolean stopAfter) {
-        final var builtPath = pathBuilder.build(path);
+    public Command getPathCommand(
+            Path path, boolean stopAfter, boolean isFromGUI, @Nullable AutoStartLocation resetToLoc) {
+        if (isFromGUI) {
+            pathBuilder.withDefaultShouldFlip();
+        } else {
+            pathBuilder.withShouldFlip(() -> false);
+        }
         pathBuilder.withPoseReset(unused -> {});
-        final var pathPair = Pair.of(builtPath, path);
+        final var builtPath = pathBuilder.build(path.copy());
+        Path newPath = null;
+        try {
+            newPath = (Path) (pathField != null ? pathField.get(builtPath) : null);
+        } catch (ClassCastException | IllegalAccessException e) {
+            DriverStation.reportError("Could not get Path from field", e.getStackTrace());
+        }
+        if (newPath == null) newPath = path.copy();
+        final var pathPair = Pair.of(builtPath, newPath);
         return Commands.sequence(
                         Commands.runOnce(() -> {
                             System.out.println("Started path");
                             currentPath = pathPair;
+                            if (resetToLoc != null) {
+                                swerveDrive.resetPose(resetToLoc.getFlippedPose());
+                            }
                             pathStart = swerveDrive.getRobotPose();
                         }),
                         builtPath,
@@ -110,29 +158,39 @@ public class AutoManager {
         System.out.println("USING AUTO: " + autoOptions);
         System.out.println("USING AUTO: " + autoOptions);
 
-        var autoCommand = shootFromStartAutoCommand(autoOptions.startLocation);
+        var autoCommand = Commands.none();
+        var startAutoLoc = autoOptions.startLocation();
+        if (autoOptions.shootAtStart()) {
+            autoCommand = shootAutoCommand(autoOptions.startLocation(), Seconds.of(4), true);
+            startAutoLoc = null;
+        }
         if (autoOptions.collectFromMid()) {
             autoCommand = autoCommand.andThen(
-                    collectFromMidAndShoot(autoOptions.startLocation().isLeftSide()));
+                    collectFromMidAndShoot(autoOptions.startLocation().isLeftSide(), startAutoLoc));
+            startAutoLoc = null;
         }
         if (autoOptions.depot()) {
-            autoCommand = autoCommand.andThen(depotIntakeAndShootAutoCommand());
+            autoCommand = autoCommand.andThen(depotIntakeAndShootAutoCommand(startAutoLoc));
+            startAutoLoc = null;
         }
         if (autoOptions.outpost()) {
-            autoCommand = autoCommand.andThen(outpostAndShootAutoCommand());
+            autoCommand = autoCommand.andThen(outpostAndShootAutoCommand(startAutoLoc));
+            startAutoLoc = null;
         }
-        if (autoOptions.climb()) {
+        if (autoOptions.climb() && climberSubsystem != null) {
             autoCommand = climberSubsystem
                     .armCommand(() -> true, () -> true)
-                    .withDeadline(autoCommand.andThen(climbAutoCommand()));
+                    .withDeadline(autoCommand.andThen(climbAutoCommand(startAutoLoc)));
+            startAutoLoc = null;
         }
         return autoCommand;
     }
 
-    private Command climbAutoCommand() {
+    private Command climbAutoCommand(@Nullable AutoStartLocation resetToLoc) {
+        if (climberSubsystem == null) return Commands.none();
         return climberSubsystem
                 .armCommand(() -> true, () -> true)
-                .withDeadline(getPathCommand(alignClimbPath, false)
+                .withDeadline(getPathCommand(alignClimbPath, false, true, resetToLoc)
                         .andThen(swerveDrive
                                 .driveFieldOrientedCommand(
                                         () -> MetersPerSecond.of(0.2 * (shouldFlip() ? -1 : 1)),
@@ -142,38 +200,22 @@ public class AutoManager {
                 .andThen(climberSubsystem.climbCommand(() -> true, () -> false));
     }
 
-    private Command outpostAndShootAutoCommand() {
+    private Command outpostAndShootAutoCommand(@Nullable AutoStartLocation resetToLoc) {
         return fuelSubsystem
                 .idleCommand()
-                .withDeadline(getPathCommand(toOutpostPath, true).andThen(Commands.waitTime(Seconds.of(3))))
-                .andThen(pathInFrontOfHubAndShoot());
+                .withDeadline(
+                        getPathCommand(toOutpostPath, true, true, resetToLoc).andThen(Commands.waitTime(Seconds.of(3))))
+                .andThen(pathInFrontOfHubAndShoot(null));
     }
 
-    private Command depotIntakeAndShootAutoCommand() {
+    private Command depotIntakeAndShootAutoCommand(@Nullable AutoStartLocation resetToLoc) {
         return fuelSubsystem
                 .intakeCommand()
-                .withDeadline(getPathCommand(depotPath, false))
-                .andThen(pathInFrontOfHubAndShoot());
+                .withDeadline(getPathCommand(depotPath, false, true, resetToLoc))
+                .andThen(pathInFrontOfHubAndShoot(null));
     }
 
-    private Command shootFromStartAutoCommand(AutoStartLocation startLocation) {
-        return Commands.sequence(
-                fuelSubsystem
-                        .windUpCommand()
-                        .withDeadline(getPathCommand(
-                                switch (startLocation) {
-                                    case LEFT_INNER_BUMP -> startLeftInnerBumpShootPath;
-                                    case LEFT_HUB -> startLeftHubShootPath;
-                                    case RIGHT_INNER_BUMP -> startRightInnerBumpShootPath;
-                                },
-                                true)),
-                fuelSubsystem
-                        .launchCommand(true)
-                        .withDeadline(Commands.waitUntil(fuelSubsystem.isReadyToLaunchTrigger())
-                                .andThen(Commands.waitTime(Seconds.of(4)))));
-    }
-
-    private Command pathInFrontOfHubAndShoot() {
+    private Command pathInFrontOfHubAndShoot(@Nullable AutoStartLocation resetToLoc) {
         return Commands.defer(
                 () -> {
                     final var pose = new Pose2d(
@@ -184,13 +226,13 @@ public class AutoManager {
                     path.setPathConstraints(new Path.PathConstraints().setMaxVelocityMetersPerSec(1.2));
                     return fuelSubsystem
                             .windUpCommand()
-                            .withDeadline(getPathCommand(path, true))
+                            .withDeadline(getPathCommand(path, true, false, resetToLoc))
                             .andThen(fuelSubsystem.launchCommand(true));
                 },
                 Set.of(swerveDrive, fuelSubsystem));
     }
 
-    private Command shootFromStartAutoWIP(Distance yPos) {
+    private Command shootFromStartAutoWIP(Distance yPos, @Nullable AutoStartLocation resetToLoc) {
         return Commands.defer(
                 () -> {
                     final var startPose = new Pose2d(
@@ -217,13 +259,13 @@ public class AutoManager {
                     path.setPathConstraints(new Path.PathConstraints().setMaxVelocityMetersPerSec(0.4));
                     return fuelSubsystem
                             .windUpCommand()
-                            .withDeadline(getPathCommand(path, true))
+                            .withDeadline(getPathCommand(path, true, false, resetToLoc))
                             .andThen(fuelSubsystem.launchCommand(true));
                 },
                 Set.of(swerveDrive, fuelSubsystem));
     }
 
-    public Command moveFromHubAndShoot() {
+    public Command moveFromHubAndShoot(@Nullable AutoStartLocation resetToLoc) {
         return Commands.defer(
                 () -> {
                     final var dashboardDistance = distanceSupplier.get();
@@ -241,50 +283,66 @@ public class AutoManager {
                             .setMaxAccelerationMetersPerSec2(4));
                     return fuelSubsystem
                             .windUpCommand()
-                            .withDeadline(getPathCommand(path, true))
+                            .withDeadline(getPathCommand(path, true, false, resetToLoc))
                             .andThen(fuelSubsystem.launchCommand(true));
                 },
                 Set.of(swerveDrive, fuelSubsystem));
     }
 
-    public Command collectFromMidAndShoot(boolean leftSide) {
+    public Command collectFromMidAndShoot(boolean leftSide, @Nullable AutoStartLocation resetToLoc) {
         return Commands.defer(
                 () -> Commands.sequence(
                         fuelSubsystem
                                 .intakeCommand()
                                 .withDeadline(Commands.sequence(
-                                        goOverBump(leftSide, true, false),
+                                        goOverBump(leftSide, true, false, resetToLoc),
                                         getPathCommand(
-                                                leftSide ? collectMidFromLeftPath : collectMidFromRightPath, false),
-                                        goOverBump(leftSide, false, false))),
-                        Commands.sequence(fuelSubsystem
-                                .windUpCommand()
-                                .withDeadline(Commands.defer(
-                                        () -> {
-                                            final var originalPath = leftSide
-                                                    ? startLeftInnerBumpShootPath
-                                                    : startRightInnerBumpShootPath;
-                                            final Pair<Path.PathElement, Path.PathElementConstraint>
-                                                    lastPathWithConstraint = getLastPathWithConstraint(originalPath);
-                                            final var path = new Path(lastPathWithConstraint
-                                                    .getFirst()
-                                                    .copy());
-                                            final var constraints =
-                                                    (Path.WaypointConstraint) lastPathWithConstraint.getSecond();
-                                            path.setPathConstraints(
-                                                    copyConstraintsFrom(new Path.PathConstraints(), constraints, 0, 0)
-                                                            .setEndTranslationToleranceMeters(
-                                                                    originalPath.getEndTranslationToleranceMeters())
-                                                            .setEndRotationToleranceDeg(
-                                                                    originalPath.getEndRotationToleranceDeg()));
-                                            return getPathCommand(path, true);
-                                        },
-                                        Set.of(swerveDrive)))),
-                        fuelSubsystem.launchCommand(true).withTimeout(Seconds.of(15))),
+                                                leftSide ? collectMidFromLeftPath : collectMidFromRightPath,
+                                                false,
+                                                true,
+                                                null),
+                                        goOverBump(leftSide, false, false, null))),
+                        shootAutoCommand(
+                                leftSide ? AutoStartLocation.LEFT_INNER_BUMP : AutoStartLocation.RIGHT_INNER_BUMP,
+                                Seconds.of(15),
+                                false)),
                 Set.of(swerveDrive, fuelSubsystem));
     }
 
-    public Command goOverBump(boolean leftSide, boolean intoCenter, boolean stopAfter) {
+    public Command shootAutoCommand(AutoStartLocation location, Time launchDuration, boolean isStart) {
+        return Commands.sequence(
+                fuelSubsystem
+                        .windUpCommand()
+                        .withDeadline(Commands.defer(
+                                () -> {
+                                    final Path originalPath =
+                                            switch (location) {
+                                                case LEFT_INNER_BUMP -> startLeftInnerBumpShootPath;
+                                                case LEFT_HUB -> startLeftHubShootPath;
+                                                case RIGHT_INNER_BUMP -> startRightInnerBumpShootPath;
+                                            };
+                                    final Pair<Path.PathElement, Path.PathElementConstraint> lastPathWithConstraint =
+                                            getLastPathWithConstraint(originalPath);
+                                    final var path = new Path(
+                                            lastPathWithConstraint.getFirst().copy());
+                                    final var constraints =
+                                            (Path.WaypointConstraint) lastPathWithConstraint.getSecond();
+                                    path.setPathConstraints(copyConstraintsFrom(
+                                                    new Path.PathConstraints(), constraints, 0, 0)
+                                            .setEndTranslationToleranceMeters(
+                                                    originalPath.getEndTranslationToleranceMeters())
+                                            .setEndRotationToleranceDeg(originalPath.getEndRotationToleranceDeg()));
+                                    return getPathCommand(path, true, true, isStart ? location : null);
+                                },
+                                Set.of(swerveDrive))),
+                fuelSubsystem
+                        .launchCommand(true)
+                        .withDeadline(Commands.waitUntil(fuelSubsystem.isReadyToLaunchTrigger())
+                                .andThen(Commands.waitTime(launchDuration))));
+    }
+
+    public Command goOverBump(
+            boolean leftSide, boolean intoCenter, boolean stopAfter, @Nullable AutoStartLocation resetToLoc) {
         return Commands.defer(
                 () -> {
                     final var isRed = DriverStation.getAlliance().orElse(null) == Alliance.Red;
@@ -303,9 +361,9 @@ public class AutoManager {
                     final Pose2d pose2 = new Pose2d(x2, y, angle);
                     final Path path = new Path(new Path.Waypoint(pose1, 0.5), new Path.Waypoint(pose2));
                     path.setPathConstraints(new Path.PathConstraints()
-                            .setEndTranslationToleranceMeters(0.35)
+                            .setEndTranslationToleranceMeters(0.5)
                             .setEndRotationToleranceDeg(30));
-                    return getPathCommand(path, stopAfter);
+                    return getPathCommand(path, stopAfter, false, resetToLoc);
                 },
                 Set.of(swerveDrive));
     }
@@ -323,7 +381,7 @@ public class AutoManager {
                     if (constraints != null) {
                         path.setPathConstraints(constraints);
                     }
-                    return getPathCommand(path, true);
+                    return getPathCommand(path, true, false, null);
                 },
                 Set.of(swerveDrive));
     }
@@ -353,7 +411,7 @@ public class AutoManager {
                         waypoints.add(waypoint);
                     }
                     final Path path = new Path(waypoints);
-                    return getPathCommand(path, true);
+                    return getPathCommand(path, true, false, null);
                 },
                 Set.of(swerveDrive));
     }
@@ -368,7 +426,7 @@ public class AutoManager {
                             pose.getRotation()
                                     .plus(Rotation2d.fromDegrees(
                                             testAutoAngle.get().in(Degrees))))));
-                    return getPathCommand(path, true);
+                    return getPathCommand(path, true, false, null);
                 },
                 Set.of(swerveDrive));
     }
@@ -477,15 +535,28 @@ public class AutoManager {
     }
 
     public enum AutoStartLocation {
-        LEFT_INNER_BUMP(true),
-        LEFT_HUB(true),
-        RIGHT_INNER_BUMP(false),
+        LEFT_INNER_BUMP(new Pose2d(Meters.of(3.563), Meters.of(5.111), Rotation2d.k180deg)),
+        LEFT_HUB(new Pose2d(Meters.of(3.708), Meters.of(4.157), Rotation2d.k180deg)),
+        RIGHT_INNER_BUMP(new Pose2d(Meters.of(3.563), Meters.of(2.958), Rotation2d.k180deg)),
         ;
 
+        private final Pose2d pose;
         private final boolean isLeftSide;
 
-        AutoStartLocation(boolean isLeftSide) {
-            this.isLeftSide = isLeftSide;
+        AutoStartLocation(Pose2d pose) {
+            this.pose = pose;
+            isLeftSide = pose.getMeasureY().gt(FieldConstants.FIELD_WIDTH_Y.div(2));
+        }
+
+        public Pose2d getPose() {
+            return pose;
+        }
+
+        public Pose2d getFlippedPose() {
+            if (DriverStation.getAlliance().orElse(null) == Alliance.Red) {
+                return FlippingUtil.flipFieldPose(pose);
+            }
+            return pose;
         }
 
         public boolean isLeftSide() {
@@ -494,5 +565,10 @@ public class AutoManager {
     }
 
     public record AutoOptions(
-            AutoStartLocation startLocation, boolean depot, boolean outpost, boolean climb, boolean collectFromMid) {}
+            AutoStartLocation startLocation,
+            boolean shootAtStart,
+            boolean depot,
+            boolean outpost,
+            boolean climb,
+            boolean collectFromMid) {}
 }

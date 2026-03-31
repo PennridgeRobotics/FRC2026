@@ -81,7 +81,7 @@ public final class Constants {
         public static final double STD_DEV_DISTANCE_MULTIPLIER = 1.0 / 80;
 
         // Back Camera
-        public static final String CAMERA_BACK_NAME = "Arducam_OV9281_Back";
+        public static final String CAMERA_BACK_NAME = "Arducam_OV9281_Front";
         public static final Translation3d CAMERA_BACK_TRANSLATION = new Translation3d(0.162087, -0.250706, 0.674197);
         public static final Rotation3d CAMERA_BACK_ROTATION = new Rotation3d(-0.007874, 0.014070, -3.123649);
         public static final boolean CAMERA_BACK_USE_IN_POSE_ESTIMATION = true;
@@ -140,6 +140,7 @@ public final class Constants {
     }
 
     public static final class PassingConstants {
+        public static final LinearVelocity MAX_VELOCITY_WHILE_PASSING = DriveConstants.MAX_LINEAR_SPEED;
         public static final Distance MAXIMUM_DISTANCE_PASSING = Meters.of(7);
         public static final double HEADING_SPEED_SCALAR_PASSING = 0.0;
         public static final double HEADING_REFERENCE_DISTANCE_PASSING = 2.5;
@@ -187,7 +188,7 @@ public final class Constants {
                 16; // must be between [1, 64]; default = 32ms
         public static final int INTAKE_LAUNCHER_ENCODER_AVERAGE_DEPTH = 2; // must be 1, 2, 4, or 8; default = 8
 
-        public static final AngularVelocity INTAKE_VELOCITY_INTAKE_LAUNCHER = RotationsPerSecond.of(30);
+        public static final AngularVelocity INTAKE_VELOCITY_INTAKE_LAUNCHER = RotationsPerSecond.of(20);
         public static final AngularVelocity INTAKE_VELOCITY_INDEXER = RotationsPerSecond.of(-16);
         public static final AngularVelocity UNJAM_VELOCITY_INTAKE_LAUNCHER = RotationsPerSecond.of(-10);
         public static final AngularVelocity UNJAM_VELOCITY_INDEXER = RotationsPerSecond.of(-10);
@@ -201,7 +202,7 @@ public final class Constants {
     }
 
     public static final class ClimberConstants {
-        public static boolean CLIMBER_ENABLED = true;
+        public static boolean CLIMBER_ENABLED = false;
 
         public static final int CLIMBER_MOTOR_ID = 9;
         public static final boolean CLIMBER_INVERTED = true;

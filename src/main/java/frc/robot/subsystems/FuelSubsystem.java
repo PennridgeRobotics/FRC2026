@@ -8,7 +8,6 @@ import static edu.wpi.first.units.Units.KilogramSquareMeters;
 import static edu.wpi.first.units.Units.Meters;
 import static edu.wpi.first.units.Units.MetersPerSecond;
 import static edu.wpi.first.units.Units.RotationsPerSecond;
-import static edu.wpi.first.units.Units.Seconds;
 
 import com.revrobotics.PersistMode;
 import com.revrobotics.ResetMode;
@@ -193,8 +192,14 @@ public class FuelSubsystem extends SubsystemBase {
                         .getMechanismVelocity()
                         .gte(getShooterVelocity().plus(FuelConstants.LAUNCH_VELOCITY_TOLERANCE)))
                 .debounce(0.2, DebounceType.kFalling)
-                .and(() -> !shooterCalculator.isUsingSOTM()
-                        || shooterCalculator.calculateShotData().isReady())
+                .and(() -> {
+                    if (shooterCalculator.isManualModeEnabled()) return true;
+                    if (shooterCalculator.shouldBePassing()) {
+                        return shooterCalculator.calculateShotData().isReady();
+                    } else
+                        return !shooterCalculator.isUsingSOTM()
+                                || shooterCalculator.calculateShotData().isReady();
+                })
                 .debounce(0.1, DebounceType.kRising);
 
         motorInfo.addMotor(intakeLauncherLeftSparkMax, "Intake-Launcher Left");
@@ -239,22 +244,17 @@ public class FuelSubsystem extends SubsystemBase {
                 "Indexer PID", new PIDSendable(indexerController, PIDSendable.Type.PID | PIDSendable.Type.BASE_FF));
         SmartDashboard.putData("Fuel Subsystem", (builder) -> {
             builder.addStringProperty("Current State", () -> currentState.toString(), null);
+            final var intakeLauncherStallAlertTrigger = getStallAlertTrigger(
+                    intakeLauncherController::getStatorCurrent, FuelConstants.INTAKE_LAUNCHER_CURRENT_LIMIT);
+            final var indexerStallAlertTrigger =
+                    getStallAlertTrigger(indexerController::getStatorCurrent, FuelConstants.INDEXER_CURRENT_LIMIT);
             builder.addStringProperty(
                     "Intake-Launcher Stall Alert",
-                    new FlashingColorSupplier(
-                            getStallAlertTrigger(
-                                    intakeLauncherController::getStatorCurrent,
-                                    FuelConstants.INTAKE_LAUNCHER_CURRENT_LIMIT),
-                            Color.kRed,
-                            Seconds.of(0.3)),
+                    () -> (intakeLauncherStallAlertTrigger.getAsBoolean() ? Color.kRed : Color.kBlack).toHexString(),
                     null);
             builder.addStringProperty(
                     "Indexer Stall Alert",
-                    new FlashingColorSupplier(
-                            getStallAlertTrigger(
-                                    indexerController::getStatorCurrent, FuelConstants.INDEXER_CURRENT_LIMIT),
-                            Color.kRed,
-                            Seconds.of(0.3)),
+                    () -> (indexerStallAlertTrigger.getAsBoolean() ? Color.kRed : Color.kBlack).toHexString(),
                     null);
             builder.addStringProperty(
                     "Ready to Launch?",

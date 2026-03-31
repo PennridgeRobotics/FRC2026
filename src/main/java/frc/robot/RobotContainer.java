@@ -8,6 +8,7 @@ import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StructPublisher;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.PowerDistribution;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.FieldObject2d;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -70,13 +71,16 @@ public class RobotContainer {
             : null;
 
     private final SendableChooser<AutoManager.AutoStartLocation> autoStartLocationChooser;
-    private final LoggedNetworkBoolean autoClimb = new LoggedNetworkBoolean("/Auto/Auto Climb", false);
-    private final LoggedNetworkBoolean autoDepot = new LoggedNetworkBoolean("/Auto/Auto Depot", false);
-    private final LoggedNetworkBoolean autoOutpost = new LoggedNetworkBoolean("/Auto/Auto Outpost", false);
-    private final LoggedNetworkBoolean autoCollectFromMid = new LoggedNetworkBoolean("/Auto/Collect From Mid", false);
+    private final LoggedNetworkBoolean autoShootAtStart = new LoggedNetworkBoolean("/Auto/1. Shoot at Start", true);
+    private final LoggedNetworkBoolean autoCollectFromMid = new LoggedNetworkBoolean("/Auto/2. Collect From Mid", true);
+    private final LoggedNetworkBoolean autoDepot = new LoggedNetworkBoolean("/Auto/3. Auto Depot", false);
+    private final LoggedNetworkBoolean autoOutpost = new LoggedNetworkBoolean("/Auto/4. Auto Outpost", false);
+    private final LoggedNetworkBoolean autoClimb = new LoggedNetworkBoolean("/Auto/5. Auto Climb", false);
 
     private final LoggedNetworkBoolean useOdometry = new LoggedNetworkBoolean("/Misc/Use Odometry", true);
     private final Trigger useOdometryTrigger = new Trigger(useOdometry);
+    private final Field2d field2d = new Field2d();
+    private final LoggedNetworkSendable<Field2d> loggedField = new LoggedNetworkSendable<>("/Misc/Field", field2d);
 
     private final LoggedNetworkStructArray<Pose2d> loggedBLineTrajectory =
             new LoggedNetworkStructArray<>("/Misc/BLine Trajectory", Pose2d.struct, new Pose2d[0]);
@@ -113,7 +117,7 @@ public class RobotContainer {
             autoStartLocationChooser.addOption(StringUtils.capitalizeFully(location.name()), location);
         }
 
-        autoManager = ((fuelSubsystem != null) && (climberSubsystem != null))
+        autoManager = (fuelSubsystem != null)
                 ? new AutoManager(swerveSubsystem, swerveSubsystem.getPathBuilder(), fuelSubsystem, climberSubsystem)
                 : null;
 
@@ -135,6 +139,7 @@ public class RobotContainer {
         return autoManager != null
                 ? autoManager.getAutoCommand(new AutoManager.AutoOptions(
                         autoStartLocationChooser.getSelected(),
+                        autoShootAtStart.getAsBoolean(),
                         autoDepot.getAsBoolean(),
                         autoOutpost.getAsBoolean(),
                         autoClimb.getAsBoolean(),
@@ -222,9 +227,13 @@ public class RobotContainer {
         if (fuelSubsystem != null) {
             driverController
                     .b()
+                    .and(operatorController.leftTrigger().negate()) // let operator override
                     .whileTrue(fuelSubsystem.launchCommand(true))
                     .whileTrue(swerveSubsystem.faceTowardsHubCommand());
-            driverController.leftTrigger().whileTrue(fuelSubsystem.intakeCommand());
+            driverController
+                    .leftTrigger()
+                    .and(operatorController.leftTrigger().negate()) // let operator override
+                    .whileTrue(fuelSubsystem.intakeCommand());
         }
         /*driverController
         .a()
@@ -317,9 +326,9 @@ public class RobotContainer {
     }
 
     private void updateField() {
-        final var field = swerveSubsystem.getField2d();
         if (autoManager == null) return;
-        final FieldObject2d trajectoryObject = field.getObject("BLine trajectory");
+        field2d.setRobotPose(swerveSubsystem.getRobotPose());
+        final FieldObject2d trajectoryObject = field2d.getObject("BLine trajectory");
         final List<Pose2d> currentTrajectory = autoManager.getCurrentPoses();
         if (currentTrajectory == null) {
             trajectoryObject.setPoses();
