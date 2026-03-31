@@ -50,7 +50,7 @@ public class AutoManager {
     private final Path startRightInnerBumpShootPath = new Path("start_right_inner_bump_shoot");
     private final Path toOutpostPath = new Path("to_outpost");
     private final Path alignClimbPath = new Path("align_climb");
-    private final Path depotPath = new Path("depot");
+    private final Path depotPath = new Path("depot4");
     private final Path collectMidFromLeftPath = new Path("collect_mid_from_left");
     private final Path collectMidFromRightPath = new Path("collect_mid_from_right");
     private final Supplier<Distance> distanceSupplier =
@@ -160,24 +160,28 @@ public class AutoManager {
 
         var autoCommand = Commands.none();
         var startAutoLoc = autoOptions.startLocation();
-        if (autoOptions.shootAtStart()) {
+        var isLeftSide = autoOptions.startLocation().isLeftSide();
+        if (autoOptions.shootAtStart1()) {
             autoCommand = shootAutoCommand(autoOptions.startLocation(), Seconds.of(4), true);
             startAutoLoc = null;
         }
-        if (autoOptions.collectFromMid()) {
-            autoCommand = autoCommand.andThen(
-                    collectFromMidAndShoot(autoOptions.startLocation().isLeftSide(), startAutoLoc));
+        if (autoOptions.collectFromMid2()) {
+            autoCommand = autoCommand.andThen(collectFromMidAndShoot(isLeftSide, startAutoLoc));
             startAutoLoc = null;
         }
-        if (autoOptions.depot()) {
+        if (autoOptions.collectFromMid3()) {
+            autoCommand = autoCommand.andThen(collectFromMidAndShoot(isLeftSide, startAutoLoc));
+            startAutoLoc = null;
+        }
+        if (autoOptions.depot4()) {
             autoCommand = autoCommand.andThen(depotIntakeAndShootAutoCommand(startAutoLoc));
             startAutoLoc = null;
         }
-        if (autoOptions.outpost()) {
+        if (autoOptions.outpost5()) {
             autoCommand = autoCommand.andThen(outpostAndShootAutoCommand(startAutoLoc));
             startAutoLoc = null;
         }
-        if (autoOptions.climb() && climberSubsystem != null) {
+        if (autoOptions.climb6() && climberSubsystem != null) {
             autoCommand = climberSubsystem
                     .armCommand(() -> true, () -> true)
                     .withDeadline(autoCommand.andThen(climbAutoCommand(startAutoLoc)));
@@ -566,9 +570,10 @@ public class AutoManager {
 
     public record AutoOptions(
             AutoStartLocation startLocation,
-            boolean shootAtStart,
-            boolean depot,
-            boolean outpost,
-            boolean climb,
-            boolean collectFromMid) {}
+            boolean shootAtStart1,
+            boolean collectFromMid2,
+            boolean collectFromMid3,
+            boolean depot4,
+            boolean outpost5,
+            boolean climb6) {}
 }

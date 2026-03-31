@@ -71,11 +71,14 @@ public class RobotContainer {
             : null;
 
     private final SendableChooser<AutoManager.AutoStartLocation> autoStartLocationChooser;
-    private final LoggedNetworkBoolean autoShootAtStart = new LoggedNetworkBoolean("/Auto/1. Shoot at Start", true);
-    private final LoggedNetworkBoolean autoCollectFromMid = new LoggedNetworkBoolean("/Auto/2. Collect From Mid", true);
-    private final LoggedNetworkBoolean autoDepot = new LoggedNetworkBoolean("/Auto/3. Auto Depot", false);
-    private final LoggedNetworkBoolean autoOutpost = new LoggedNetworkBoolean("/Auto/4. Auto Outpost", false);
-    private final LoggedNetworkBoolean autoClimb = new LoggedNetworkBoolean("/Auto/5. Auto Climb", false);
+    private final LoggedNetworkBoolean autoShootAtStart1 = new LoggedNetworkBoolean("/Auto/1. Shoot at Start", true);
+    private final LoggedNetworkBoolean autoCollectFromMid2 =
+            new LoggedNetworkBoolean("/Auto/2. Collect From Mid", true);
+    private final LoggedNetworkBoolean autoCollectFromMid3 =
+            new LoggedNetworkBoolean("/Auto/3. Collect From Mid", true);
+    private final LoggedNetworkBoolean autoDepot4 = new LoggedNetworkBoolean("/Auto/4. Auto Depot", false);
+    private final LoggedNetworkBoolean autoOutpost5 = new LoggedNetworkBoolean("/Auto/5. Auto Outpost", false);
+    private final LoggedNetworkBoolean autoClimb6 = new LoggedNetworkBoolean("/Auto/6. Auto Climb", false);
 
     private final LoggedNetworkBoolean useOdometry = new LoggedNetworkBoolean("/Misc/Use Odometry", true);
     private final Trigger useOdometryTrigger = new Trigger(useOdometry);
@@ -139,11 +142,12 @@ public class RobotContainer {
         return autoManager != null
                 ? autoManager.getAutoCommand(new AutoManager.AutoOptions(
                         autoStartLocationChooser.getSelected(),
-                        autoShootAtStart.getAsBoolean(),
-                        autoDepot.getAsBoolean(),
-                        autoOutpost.getAsBoolean(),
-                        autoClimb.getAsBoolean(),
-                        autoCollectFromMid.getAsBoolean()))
+                        autoShootAtStart1.getAsBoolean(),
+                        autoCollectFromMid2.getAsBoolean(),
+                        autoCollectFromMid3.getAsBoolean(),
+                        autoDepot4.getAsBoolean(),
+                        autoOutpost5.getAsBoolean(),
+                        autoClimb6.getAsBoolean()))
                 : null;
     }
 
