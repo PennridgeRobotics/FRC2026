@@ -17,6 +17,7 @@ import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StructArrayPublisher;
 import edu.wpi.first.networktables.StructPublisher;
 import edu.wpi.first.wpilibj.Timer;
+import frc.robot.util.dashboard.LoggedNetworkBoolean;
 import frc.robot.util.enums.Constants.FieldConstants;
 import java.util.Optional;
 import java.util.function.BooleanSupplier;
@@ -51,7 +52,7 @@ import org.photonvision.targeting.PhotonTrackedTarget;
  */
 // Credits to https://gitlab.com/ironclad_code/ironclad-2026/
 @NullMarked
-public class PhotonCamera extends Camera {
+public class PhotonCamera extends Camera implements AutoCloseable {
 
     /** Physical PhotonVision camera instance. */
     private final org.photonvision.PhotonCamera camera;
@@ -74,6 +75,8 @@ public class PhotonCamera extends Camera {
     private final StructArrayPublisher<Translation2d> trackedCornersPublisher;
     private final DoublePublisher stdDevsPublisher;
     private final DoublePublisher confidencePublisher;
+    private final LoggedNetworkBoolean loggedPermanentlyDisabled;
+    private boolean closed;
 
     /**
      * Constructs a {@code PhotonCamera} with full configuration
@@ -105,6 +108,11 @@ public class PhotonCamera extends Camera {
         confidencePublisher = NetworkTableInstance.getDefault()
                 .getDoubleTopic(topicPrefix + "Confidence")
                 .publish();
+        loggedPermanentlyDisabled = new LoggedNetworkBoolean("/" + topicPrefix + "Permanently Disable", closed);
+        loggedPermanentlyDisabled.addListener(v -> {
+            if (v && !closed) close();
+            loggedPermanentlyDisabled.set(true);
+        });
 
         // Simulation configuration
         simProperties = new SimCameraProperties();
@@ -301,5 +309,11 @@ public class PhotonCamera extends Camera {
 
     public String getCameraName() {
         return cameraName;
+    }
+
+    @Override
+    public void close() {
+        closed = true;
+        camera.close();
     }
 }
