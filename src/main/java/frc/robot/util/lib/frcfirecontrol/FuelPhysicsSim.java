@@ -942,9 +942,9 @@ public class FuelPhysicsSim {
         int depotCols = 4; // 4 * 5.91in = 23.6in fits inside 27.0in depth
         int depotRows = 6; // 6 * 5.91in = 35.5in fits inside 42.0in width
 
-        // Blue-side depot
+        // Blue-side depot4
         fillBallGrid(FIELD_LENGTH - 0.37, 2.10, depotCols, depotRows);
-        // Red-side depot
+        // Red-side depot4
         fillBallGrid(0.37, FIELD_WIDTH - 2.10, depotCols, depotRows);
     }
 
