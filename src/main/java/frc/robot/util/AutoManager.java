@@ -50,7 +50,7 @@ public class AutoManager {
     private final Path startRightInnerBumpShootPath = new Path("start_right_inner_bump_shoot");
     private final Path toOutpostPath = new Path("to_outpost");
     private final Path alignClimbPath = new Path("align_climb");
-    private final Path depotPath = new Path("depot4");
+    private final Path depotPath = new Path("depot");
     private final Path collectMidFromLeftPath = new Path("collect_mid_from_left");
     private final Path collectMidFromRightPath = new Path("collect_mid_from_right");
     private final Supplier<Distance> distanceSupplier =
