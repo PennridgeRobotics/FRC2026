@@ -2,6 +2,7 @@ package frc.robot.util;
 
 import static edu.wpi.first.units.Units.*;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -9,8 +10,10 @@ import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.units.AngleUnit;
 import edu.wpi.first.units.DistanceUnit;
+import edu.wpi.first.units.LinearVelocityUnit;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.Distance;
+import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.units.measure.Time;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
@@ -65,6 +68,8 @@ public class AutoManager {
             new LoggedNetworkUnit<>("Auto/Test Y", Meters.of(0));
     private final LoggedNetworkUnit<AngleUnit, Angle> testAutoAngle =
             new LoggedNetworkUnit<>("Auto/Test Angle", Degrees.of(0));
+    private final LoggedNetworkUnit<LinearVelocityUnit, LinearVelocity> testAutoLeadInVelocity =
+            new LoggedNetworkUnit<>("Auto/Test Lead in Velocity", MetersPerSecond.of(1));
 
     private final @Nullable Field pathField;
 
@@ -115,6 +120,18 @@ public class AutoManager {
     public void teleopInit() {
         pathBuilder.withShouldFlip(() -> false);
         pathBuilder.withPoseReset(pose -> {});
+    }
+
+    public Command getPathCommandWithLeadIn(
+            Path path,
+            boolean stopAfter,
+            boolean isFromGUI,
+            @Nullable AutoStartLocation resetToLoc,
+            @Nullable LinearVelocity leadInMaxVelocity) {
+        if (leadInMaxVelocity == null) return getPathCommand(path, stopAfter, isFromGUI, resetToLoc);
+        return Commands.sequence(
+                autoLeadIn(leadInMaxVelocity, path.getStartPose(), resetToLoc),
+                getPathCommand(path, stopAfter, isFromGUI, null));
     }
 
     public Command getPathCommand(
@@ -190,6 +207,35 @@ public class AutoManager {
         return autoCommand;
     }
 
+    private Command autoLeadIn(LinearVelocity maxVelocity, Pose2d leadInTo, @Nullable AutoStartLocation resetToLoc) {
+        return Commands.defer(
+                () -> {
+                    final var currentPose = swerveDrive.getRobotPose();
+                    final var leadInDistance = Meters.of(0.5);
+                    final var leadInMeters = leadInDistance.in(Meters);
+                    final var currentDiff = leadInTo.getTranslation().minus(currentPose.getTranslation());
+                    if (MathUtil.isNear(0.0, currentDiff.getNorm(), 0.6)) {
+                        return Commands.none();
+                    }
+                    final var clampedDiff = new Translation2d(
+                            MathUtil.clamp(currentDiff.getX(), -leadInMeters, leadInMeters),
+                            MathUtil.clamp(currentDiff.getY(), -leadInMeters, leadInMeters));
+                    final var newPose = new Pose2d(
+                            leadInTo.getX() - clampedDiff.getX(),
+                            leadInTo.getY() - clampedDiff.getY(),
+                            leadInTo.getRotation());
+                    final var path = new Path(
+                            new Path.PathConstraints()
+                                    .setMaxVelocityMetersPerSec(
+                                            new Path.RangedConstraint(maxVelocity.in(MetersPerSecond), 1, 2))
+                                    .setEndTranslationToleranceMeters(0.4),
+                            new Path.Waypoint(newPose, 0.3),
+                            new Path.Waypoint(leadInTo, 0.4));
+                    return getPathCommand(path, false, false, resetToLoc);
+                },
+                Set.of(swerveDrive));
+    }
+
     private Command climbAutoCommand(@Nullable AutoStartLocation resetToLoc) {
         if (climberSubsystem == null) return Commands.none();
         return climberSubsystem
@@ -215,8 +261,8 @@ public class AutoManager {
     private Command depotIntakeAndShootAutoCommand(@Nullable AutoStartLocation resetToLoc) {
         return fuelSubsystem
                 .intakeCommand()
-                .withDeadline(getPathCommand(depotPath, false, true, resetToLoc))
-                .andThen(pathInFrontOfHubAndShoot(null));
+                .withDeadline(getPathCommandWithLeadIn(depotPath, false, true, resetToLoc, MetersPerSecond.of(1.6)))
+                .andThen(shootAutoCommand(AutoStartLocation.LEFT_INNER_BUMP, Seconds.of(4), false));
     }
 
     private Command pathInFrontOfHubAndShoot(@Nullable AutoStartLocation resetToLoc) {
@@ -360,7 +406,7 @@ public class AutoManager {
                             hub.getMeasureX().plus(increasingX ? distanceXFromHub.unaryMinus() : distanceXFromHub);
                     final Distance x2 =
                             hub.getMeasureX().plus(increasingX ? distanceXFromHub : distanceXFromHub.unaryMinus());
-                    final Rotation2d angle = Rotation2d.fromDegrees(150 + (intoCenter == !isRed ? 180 : 0));
+                    final Rotation2d angle = Rotation2d.fromDegrees(30 + 150 + (intoCenter == !isRed ? 180 : 0));
                     final Pose2d pose1 = new Pose2d(x1, y, angle);
                     final Pose2d pose2 = new Pose2d(x2, y, angle);
                     final Path path = new Path(new Path.Waypoint(pose1, 0.5), new Path.Waypoint(pose2));
@@ -430,7 +476,8 @@ public class AutoManager {
                             pose.getRotation()
                                     .plus(Rotation2d.fromDegrees(
                                             testAutoAngle.get().in(Degrees))))));
-                    return getPathCommand(path, true, false, null);
+                    path.setPathConstraints(new Path.PathConstraints().setEndTranslationToleranceMeters(0.04));
+                    return getPathCommandWithLeadIn(path, true, false, null, testAutoLeadInVelocity.get());
                 },
                 Set.of(swerveDrive));
     }
