@@ -235,7 +235,7 @@ public final class Constants {
         public static final int JOYSTICK_CONTROLLER_PORT = -1;
         public static final boolean USING_JOYSTICK = JOYSTICK_CONTROLLER_PORT >= 0;
 
-        public static final double DRIVE_MIN_INPUT = USING_JOYSTICK ? 0.06 : 0.01; // deadband
+        public static final double DRIVE_MIN_INPUT = 0.06; // deadband
         public static final double DRIVE_MAX_INPUT = 0.98;
 
         public static final double LINEAR_DRIVE_POWER_SCALE = USING_JOYSTICK ? 2 : 3;

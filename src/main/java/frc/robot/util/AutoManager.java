@@ -228,8 +228,9 @@ public class AutoManager {
                             new Path.PathConstraints()
                                     .setMaxVelocityMetersPerSec(
                                             new Path.RangedConstraint(maxVelocity.in(MetersPerSecond), 1, 2))
-                                    .setEndTranslationToleranceMeters(0.4),
-                            new Path.Waypoint(newPose, 0.3),
+                                    .setEndTranslationToleranceMeters(0.4)
+                                    .setEndRotationToleranceDeg(60.0),
+                            // new Path.Waypoint(newPose, 0.3),
                             new Path.Waypoint(leadInTo, 0.4));
                     return getPathCommand(path, false, false, resetToLoc);
                 },
