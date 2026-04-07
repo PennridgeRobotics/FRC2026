@@ -58,6 +58,9 @@ public class FuelSubsystem extends SubsystemBase {
     private final Trigger rawReadyToLaunchTrigger;
     private final Trigger readyToLaunchTrigger;
 
+    final Trigger intakeLauncherStallAlertTrigger;
+    final Trigger indexerStallAlertTrigger;
+
     private final SmartMotorController intakeLauncherController;
     private final SmartMotorController indexerController;
 
@@ -115,7 +118,7 @@ public class FuelSubsystem extends SubsystemBase {
                 .withSimFeedforward(new SimpleMotorFeedforward(0, 0.187))
                 .withControlMode(ControlMode.CLOSED_LOOP)
                 .withMotorInverted(true)
-                .withTelemetry("LauncherMotor", TelemetryVerbosity.HIGH);
+                .withTelemetry("LauncherMotorLeft", TelemetryVerbosity.MID);
         final var followerIntakeLauncherSMCConfig = new SmartMotorControllerConfig(this)
                 .withVendorConfig(new SparkMaxConfig().apply(intakeLauncherBaseSparkMaxConfig))
                 .withGearing(FuelConstants.INTAKE_LAUNCHER_GEARING)
@@ -124,12 +127,13 @@ public class FuelSubsystem extends SubsystemBase {
                 .withVoltageCompensation(FuelConstants.INTAKE_LAUNCHER_VOLTAGE_COMP)
                 .withIdleMode(FuelConstants.INTAKE_LAUNCHER_MOTOR_MODE)
                 .withStatorCurrentLimit(FuelConstants.INTAKE_LAUNCHER_CURRENT_LIMIT)
-                .withControlMode(ControlMode.OPEN_LOOP);
+                .withControlMode(ControlMode.OPEN_LOOP)
+                .withTelemetry("LauncherMotorRight", TelemetryVerbosity.MID);
         final var indexerSMCConfig = new SmartMotorControllerConfig(this)
                 .withFeedforward(new SimpleMotorFeedforward(0.03, 0.23))
                 .withClosedLoopController(new PIDController(0.002, 0.0, 0.0))
                 .withControlMode(ControlMode.CLOSED_LOOP)
-                .withTelemetry("IndexerMotor", TelemetryVerbosity.HIGH)
+                .withTelemetry("IndexerMotor", TelemetryVerbosity.MID)
                 .withGearing(FuelConstants.INDEXER_GEARING)
                 .withOpenLoopRampRate(FuelConstants.INDEXER_RAMP_RATE)
                 .withMotorInverted(FuelConstants.INDEXER_INVERTED)
@@ -156,11 +160,11 @@ public class FuelSubsystem extends SubsystemBase {
         intakeLauncher = new FlyWheel(new FlyWheelConfig(intakeLauncherController)
                 .withDiameter(FuelConstants.FLYWHEEL_RADIUS.times(2))
                 .withMOI(KilogramSquareMeters.of(0.002849))
-                .withTelemetry("LauncherMotor", TelemetryVerbosity.HIGH));
+                .withTelemetry("YAMS/Intake-Launcher", TelemetryVerbosity.MID));
         indexer = new FlyWheel(new FlyWheelConfig(indexerController)
                 .withDiameter(FuelConstants.FLYWHEEL_RADIUS.times(2))
                 .withMOI(KilogramSquareMeters.of(0.0003368))
-                .withTelemetry("IndexerMotor", TelemetryVerbosity.HIGH));
+                .withTelemetry("YAMS/Indexer", TelemetryVerbosity.MID));
 
         setDefaultCommand(Commands.defer(
                 () -> {
@@ -201,6 +205,11 @@ public class FuelSubsystem extends SubsystemBase {
                                 || shooterCalculator.calculateShotData().isReady();
                 })
                 .debounce(0.1, DebounceType.kRising);
+
+        intakeLauncherStallAlertTrigger = getStallAlertTrigger(
+                intakeLauncherController::getStatorCurrent, FuelConstants.INTAKE_LAUNCHER_CURRENT_LIMIT);
+        indexerStallAlertTrigger =
+                getStallAlertTrigger(indexerController::getStatorCurrent, FuelConstants.INDEXER_CURRENT_LIMIT);
 
         motorInfo.addMotor(intakeLauncherLeftSparkMax, "Intake-Launcher Left");
         motorInfo.addMotor(intakeLauncherRightSparkMax, "Intake-Launcher Right");
@@ -244,10 +253,6 @@ public class FuelSubsystem extends SubsystemBase {
                 "Indexer PID", new PIDSendable(indexerController, PIDSendable.Type.PID | PIDSendable.Type.BASE_FF));
         SmartDashboard.putData("Fuel Subsystem", (builder) -> {
             builder.addStringProperty("Current State", () -> currentState.toString(), null);
-            final var intakeLauncherStallAlertTrigger = getStallAlertTrigger(
-                    intakeLauncherController::getStatorCurrent, FuelConstants.INTAKE_LAUNCHER_CURRENT_LIMIT);
-            final var indexerStallAlertTrigger =
-                    getStallAlertTrigger(indexerController::getStatorCurrent, FuelConstants.INDEXER_CURRENT_LIMIT);
             builder.addStringProperty(
                     "Intake-Launcher Stall Alert",
                     () -> (intakeLauncherStallAlertTrigger.getAsBoolean() ? Color.kRed : Color.kBlack).toHexString(),

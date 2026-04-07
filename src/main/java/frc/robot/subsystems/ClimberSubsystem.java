@@ -61,7 +61,7 @@ public class ClimberSubsystem extends SubsystemBase {
                 .withGearing(ClimberConstants.CLIMBER_GEARING)
                 .withStatorCurrentLimit(ClimberConstants.CURRENT_LIMIT)
                 .withOpenLoopRampRate(ClimberConstants.RAMP_RATE)
-                .withTelemetry("ClimberMotor", TelemetryVerbosity.HIGH)
+                .withTelemetry("ClimberMotor", TelemetryVerbosity.MID)
                 .withSoftLimit(Degrees.of(-360), Degrees.of(360)) // no soft limit because no absolute encoder
                 .withVoltageCompensation(ClimberConstants.VOLTAGE_COMPENSATION);
         final var sparkMaxMotor = new SparkMax(ClimberConstants.CLIMBER_MOTOR_ID, MotorType.kBrushless);
@@ -71,7 +71,7 @@ public class ClimberSubsystem extends SubsystemBase {
                 .withMOI(KilogramSquareMeters.of(11.151))
                 .withLength(Inches.of(6))
                 .withHardLimit(ClimberConstants.MINIMUM_ANGLE, ClimberConstants.MAXIMUM_ANGLE)
-                .withTelemetry("ClimberArm", TelemetryVerbosity.HIGH));
+                .withTelemetry("ClimberArm", TelemetryVerbosity.MID));
         /*SparkMaxConfig config = new SparkMaxConfig();
         config.smartCurrentLimit(80);
         sparkMaxMotor.configure(config, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);*/
