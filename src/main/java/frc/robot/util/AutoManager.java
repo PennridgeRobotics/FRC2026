@@ -211,10 +211,10 @@ public class AutoManager {
         return Commands.defer(
                 () -> {
                     final var currentPose = swerveDrive.getRobotPose();
-                    final var leadInDistance = Meters.of(0.5);
+                    final var leadInDistance = Meters.of(0);
                     final var leadInMeters = leadInDistance.in(Meters);
                     final var currentDiff = leadInTo.getTranslation().minus(currentPose.getTranslation());
-                    if (MathUtil.isNear(0.0, currentDiff.getNorm(), 0.6)) {
+                    if (MathUtil.isNear(0.0, currentDiff.getNorm(), 0.1)) {
                         return Commands.none();
                     }
                     final var clampedDiff = new Translation2d(
