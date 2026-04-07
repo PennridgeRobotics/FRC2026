@@ -179,7 +179,14 @@ public class AutoManager {
         var startAutoLoc = autoOptions.startLocation();
         var isLeftSide = autoOptions.startLocation().isLeftSide();
         if (autoOptions.shootAtStart1()) {
-            autoCommand = shootAutoCommand(autoOptions.startLocation(), Seconds.of(4), true);
+            autoCommand = shootAutoCommand(
+                    switch (autoOptions.startLocation()) {
+                        case LEFT_INNER_BUMP -> AutoShootLocation.LEFT_BUMP;
+                        case LEFT_HUB -> AutoShootLocation.CENTER;
+                        case RIGHT_INNER_BUMP -> AutoShootLocation.RIGHT_BUMP;
+                    },
+                    Seconds.of(4),
+                    autoOptions.startLocation());
             startAutoLoc = null;
         }
         if (autoOptions.collectFromMid2()) {
@@ -263,7 +270,7 @@ public class AutoManager {
         return fuelSubsystem
                 .intakeCommand()
                 .withDeadline(getPathCommandWithLeadIn(depotPath, false, true, resetToLoc, MetersPerSecond.of(1.6)))
-                .andThen(shootAutoCommand(AutoStartLocation.LEFT_INNER_BUMP, Seconds.of(4), false));
+                .andThen(shootAutoCommand(AutoShootLocation.FAR_LEFT, Seconds.of(6), null));
     }
 
     private Command pathInFrontOfHubAndShoot(@Nullable AutoStartLocation resetToLoc) {
@@ -354,36 +361,26 @@ public class AutoManager {
                                                 null),
                                         goOverBump(leftSide, false, false, null))),
                         shootAutoCommand(
-                                leftSide ? AutoStartLocation.LEFT_INNER_BUMP : AutoStartLocation.RIGHT_INNER_BUMP,
+                                leftSide ? AutoShootLocation.LEFT_BUMP : AutoShootLocation.RIGHT_BUMP,
                                 Seconds.of(15),
-                                false)),
+                                null)),
                 Set.of(swerveDrive, fuelSubsystem));
     }
 
-    public Command shootAutoCommand(AutoStartLocation location, Time launchDuration, boolean isStart) {
+    public Command shootAutoCommand(
+            AutoShootLocation location, Time launchDuration, @Nullable AutoStartLocation resetToLoc) {
         return Commands.sequence(
                 fuelSubsystem
                         .windUpCommand()
                         .withDeadline(Commands.defer(
                                 () -> {
-                                    final Path originalPath =
-                                            switch (location) {
-                                                case LEFT_INNER_BUMP -> startLeftInnerBumpShootPath;
-                                                case LEFT_HUB -> startLeftHubShootPath;
-                                                case RIGHT_INNER_BUMP -> startRightInnerBumpShootPath;
-                                            };
-                                    final Pair<Path.PathElement, Path.PathElementConstraint> lastPathWithConstraint =
-                                            getLastPathWithConstraint(originalPath);
                                     final var path = new Path(
-                                            lastPathWithConstraint.getFirst().copy());
-                                    final var constraints =
-                                            (Path.WaypointConstraint) lastPathWithConstraint.getSecond();
-                                    path.setPathConstraints(copyConstraintsFrom(
-                                                    new Path.PathConstraints(), constraints, 0, 0)
-                                            .setEndTranslationToleranceMeters(
-                                                    originalPath.getEndTranslationToleranceMeters())
-                                            .setEndRotationToleranceDeg(originalPath.getEndRotationToleranceDeg()));
-                                    return getPathCommand(path, true, true, isStart ? location : null);
+                                            new Path.PathConstraints()
+                                                    .setMaxVelocityMetersPerSec(2.4)
+                                                    .setEndTranslationToleranceMeters(0.2)
+                                                    .setEndRotationToleranceDeg(1.0),
+                                            new Path.Waypoint(location.getPose(), 0.2, true));
+                                    return getPathCommand(path, true, true, resetToLoc);
                                 },
                                 Set.of(swerveDrive))),
                 fuelSubsystem
@@ -583,6 +580,32 @@ public class AutoManager {
         } else {
             throw new IllegalArgumentException("Unknown Path.PathElementConstraint type: "
                     + constraintsToCopyFrom.getClass().getName());
+        }
+    }
+
+    public enum AutoShootLocation {
+        LEFT_BUMP(Meters.of(1.5), Rotation2d.fromDegrees(-38)),
+        RIGHT_BUMP(Meters.of(1.5), Rotation2d.fromDegrees(38)),
+        CENTER(Meters.of(1.5), Rotation2d.kZero),
+        FAR_LEFT(Meters.of(2.5), Rotation2d.fromDegrees(-38)),
+        FAR_RIGHT(Meters.of(2.5), Rotation2d.fromDegrees(38)),
+        ;
+
+        private final Distance distanceFromHub;
+        private final Rotation2d angleFromHorizontal;
+
+        AutoShootLocation(Distance distanceFromHub, Rotation2d rotation) {
+            this.distanceFromHub = distanceFromHub;
+            this.angleFromHorizontal = rotation;
+        }
+
+        public Pose2d getPose() {
+            final boolean isRed = DriverStation.getAlliance().orElse(null) == Alliance.Red;
+            final Translation2d hub = isRed ? FieldConstants.HUB_RED : FieldConstants.HUB_BLUE;
+            final Pose2d pose = new Pose2d(hub, angleFromHorizontal.plus(isRed ? Rotation2d.k180deg : Rotation2d.kZero))
+                    .plus(new Transform2d(distanceFromHub.unaryMinus(), Meters.zero(), Rotation2d.kZero));
+            System.out.println("hub: " + hub + ", result: " + pose);
+            return pose;
         }
     }
 
