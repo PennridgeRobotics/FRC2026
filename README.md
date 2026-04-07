@@ -61,6 +61,7 @@ X   B
 | R Stick Pressed    | Toggle force normal drive mode           |
 | L Stick Left/Right | Increase/decrease manual launch velocity |
 
+
 ## LED Signals
 Note: Ordered by priority
 

@@ -34,7 +34,7 @@
       "type": "waypoint",
       "translation_target": {
         "x_meters": 0.47,
-        "y_meters": 7.2,
+        "y_meters": 7.5,
         "intermediate_handoff_radius_meters": 0.2
       },
       "rotation_target": {
@@ -45,8 +45,8 @@
     {
       "type": "waypoint",
       "translation_target": {
-        "x_meters": 1.1448363752775617,
-        "y_meters": 7.113468724614134,
+        "x_meters": 1.0308477481451488,
+        "y_meters": 7.355694557270511,
         "intermediate_handoff_radius_meters": 0.25
       },
       "rotation_target": {

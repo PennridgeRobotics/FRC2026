@@ -54,8 +54,8 @@ public class AutoManager {
     private final Path toOutpostPath = new Path("to_outpost");
     private final Path alignClimbPath = new Path("align_climb");
     private final Path depotPath = new Path("depot");
-    private final Path collectMidFromLeftPath = new Path("collect_mid_from_left");
-    private final Path collectMidFromRightPath = new Path("collect_mid_from_right");
+    private final Path collectMidFromLeftPath = new Path("collect_mid_from_left_old");
+    private final Path collectMidFromRightPath = new Path("collect_mid_from_right_old");
     private final Supplier<Distance> distanceSupplier =
             new LoggedNetworkUnit<>("Auto/Move from hub & shoot distance (m)", Meters.of(1.8));
 
@@ -346,13 +346,13 @@ public class AutoManager {
                         fuelSubsystem
                                 .intakeCommand()
                                 .withDeadline(Commands.sequence(
-                                        goOverBump(leftSide, true, false, resetToLoc),
+                                        goOverBump(leftSide, true, false, resetToLoc, true),
                                         getPathCommand(
                                                 leftSide ? collectMidFromLeftPath : collectMidFromRightPath,
                                                 false,
                                                 true,
                                                 null),
-                                        goOverBump(leftSide, false, false, null))),
+                                        goOverBump(leftSide, false, false, null, false))),
                         shootAutoCommand(
                                 leftSide ? AutoStartLocation.LEFT_INNER_BUMP : AutoStartLocation.RIGHT_INNER_BUMP,
                                 Seconds.of(15),
@@ -368,9 +368,10 @@ public class AutoManager {
                                 () -> {
                                     final Path originalPath =
                                             switch (location) {
-                                                case LEFT_INNER_BUMP -> startLeftInnerBumpShootPath;
+                                                case LEFT_INNER_BUMP, LEFT_INNER_BUMP_NZ -> startLeftInnerBumpShootPath;
                                                 case LEFT_HUB -> startLeftHubShootPath;
-                                                case RIGHT_INNER_BUMP -> startRightInnerBumpShootPath;
+                                                case RIGHT_INNER_BUMP, RIGHT_INNER_BUMP_NZ ->
+                                                    startRightInnerBumpShootPath;
                                             };
                                     final Pair<Path.PathElement, Path.PathElementConstraint> lastPathWithConstraint =
                                             getLastPathWithConstraint(originalPath);
@@ -393,7 +394,11 @@ public class AutoManager {
     }
 
     public Command goOverBump(
-            boolean leftSide, boolean intoCenter, boolean stopAfter, @Nullable AutoStartLocation resetToLoc) {
+            boolean leftSide,
+            boolean intoCenter,
+            boolean stopAfter,
+            @Nullable AutoStartLocation resetToLoc,
+            boolean leadIn) {
         return Commands.defer(
                 () -> {
                     final var isRed = DriverStation.getAlliance().orElse(null) == Alliance.Red;
@@ -414,7 +419,12 @@ public class AutoManager {
                     path.setPathConstraints(new Path.PathConstraints()
                             .setEndTranslationToleranceMeters(0.5)
                             .setEndRotationToleranceDeg(30));
-                    return getPathCommand(path, stopAfter, false, resetToLoc);
+                    return getPathCommandWithLeadIn(
+                            path,
+                            stopAfter,
+                            false,
+                            resetToLoc,
+                            leadIn ? MetersPerSecond.of(2) : MetersPerSecond.zero());
                 },
                 Set.of(swerveDrive));
     }
@@ -590,6 +600,8 @@ public class AutoManager {
         LEFT_INNER_BUMP(new Pose2d(Meters.of(3.563), Meters.of(5.111), Rotation2d.k180deg)),
         LEFT_HUB(new Pose2d(Meters.of(3.708), Meters.of(4.157), Rotation2d.k180deg)),
         RIGHT_INNER_BUMP(new Pose2d(Meters.of(3.563), Meters.of(2.958), Rotation2d.k180deg)),
+        LEFT_INNER_BUMP_NZ(new Pose2d(Meters.of(3.563), Meters.of(5.111), Rotation2d.kZero)),
+        RIGHT_INNER_BUMP_NZ(new Pose2d(Meters.of(3.563), Meters.of(2.958), Rotation2d.kZero)),
         ;
 
         private final Pose2d pose;
