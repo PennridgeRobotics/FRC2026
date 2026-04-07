@@ -292,7 +292,7 @@ public class RobotContainer {
                     .whileTrue(shooterCalculator.decreaseVelocityOffset());
             new Trigger(() -> operatorController.getRightX() > 0.5)
                     .whileTrue(shooterCalculator.increaseVelocityOffset());
-            operatorController.back().whileTrue(fuelSubsystem.temporarilyUseMaxPower());
+            operatorController.back().whileTrue(fuelSubsystem.temporarilyUseMaxPowerAll());
         }
         if (climberSubsystem != null) {
             operatorController
