@@ -78,7 +78,7 @@
     "end_rotation_tolerance_deg": 50.0,
     "max_velocity_meters_per_sec": [
       {
-        "value": 1.3,
+        "value": 1.4,
         "start_ordinal": 2,
         "end_ordinal": 4
       },
