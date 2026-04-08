@@ -48,10 +48,7 @@ import frc.robot.util.enums.Constants.ShootOnTheMoveConstants;
 import frc.robot.util.lib.frcfirecontrol.FuelPhysicsSim;
 import frc.robot.util.lib.frcfirecontrol.ProjectileSimulator;
 import frc.robot.util.lib.frcfirecontrol.ShotCalculator;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.BooleanSupplier;
 import org.jspecify.annotations.NullMarked;
@@ -318,20 +315,23 @@ public class ShooterCalculator {
                 sotmSimulator,
                 ShootOnTheMoveConstants.HEADING_SPEED_SCALAR,
                 ShootOnTheMoveConstants.HEADING_REFERENCE_DISTANCE);
-        final var tests = Map.of(
-                2.0, 47.0,
-                2.5, 50.0,
-                3.2, 52.8,
-                4.0, 58.0);
+        calculator.addRpmCorrection(3.6, 0.0);
+        calculator.addRpmCorrection(4.0, 4.3 * 60);
+        calculator.addRpmCorrection(5.0, 6.0 * 60);
+        final var tests = new TreeMap<>(Map.of(
+                2.0, 46.0,
+                2.5, 48.8,
+                3.2, 52.3,
+                4.0, 61.0));
         double totalError = 0.0;
         for (var entry : tests.entrySet()) {
             final var distance = entry.getKey();
             final var velocity = entry.getValue();
-            final var percentError = Math.abs(calculator.getBaseRPM(distance) / 60.0 - velocity) / velocity;
+            final var percentError = Math.abs(calculator.effectiveRPM(distance) / 60.0 - velocity) / velocity;
             totalError += percentError;
             System.out.printf(
                     "Expected for %.1fm: %.1f; got %.1f (%.1f%% error)\n",
-                    distance, velocity, calculator.getBaseRPM(distance) / 60.0, percentError * 100);
+                    distance, velocity, calculator.effectiveRPM(distance) / 60.0, percentError * 100);
         }
         System.out.printf("Average error: %.1f%%\n", totalError / tests.size() * 100);
         return calculator;
