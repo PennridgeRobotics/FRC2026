@@ -120,7 +120,6 @@ public class SwerveSubsystem extends SubsystemBase {
 
         bumpLockOverridden = new Trigger(() -> currentDriveMode == DriveMode.BUMP_LOCK && forceNormalDriveMode);
 
-        
         setupVisionManager();
         pathBuilder = setupBLine();
         autoManager = new AutoManager(this, pathBuilder);
