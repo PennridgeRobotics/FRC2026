@@ -1,8 +1,8 @@
 import os
 
-print("--- BLine Auto Path Flipper ---\n")
+print("")
 
-cmds = ["flip", "auto", "ls", "info", "re", "del", "exit"]
+cmds = ["flip", "auto", "ls", "info", "cls", "re", "del", "exit"]
 
 while True:
 
@@ -10,7 +10,7 @@ while True:
     valid = False
 
     while not valid:
-            cmd = input("[flip/auto/ls/info/re/del/exit]: ").lower()
+            cmd = input("[flip/auto/ls/info/cls/re/del/exit]: ").lower()
             if cmd in cmds:
                 valid = True
             else:
@@ -87,20 +87,39 @@ while True:
             os.rename(file, new_file)
             print(f'File renamed: "{file}" -> "{new_file}"')
 
+    elif cmd == "cls":
+        if os.name == "nt":
+            os.system("cls")
+        else:
+            os.system("clear")
+
     elif cmd == "info":
         print("--- BLine Auto Path Flipper ---\n")
+        print("File Naming:")
+        print("    Name json files like this for compatibility with flip_path.py: file_name_{blue/red}_{a/b}")
+        print("    blue/red are horizontal flips (correlates to their respective sides) and a/b are vertical flips (a is top half, b is bottom half)")
+        print('    These symbols cannot be in the filename: \\ / : * ? " < > | ')
+        print("    'cancel' and ' ' cannot be in the filename either.\n")
         print("Syntax:")
-        print("When listing jsons (auto paths) use a space if you want to specify multiple files.")
-        print("Use '*' to specify all jsons.")
-        print("Type 'cancel' to back out of an operation.\n")
+        print("    When listing jsons (auto paths) use a space if you want to specify multiple files.")
+        print("    Use '*' to specify all jsons.")
+        print("    Type 'cancel' to back out of an operation.\n")
         print("Commands:")
-        print("flip - Flips the inputted json(s) as specified. v - flips vertically; h - flips horizontally; d - flips both horizontally and vertically at once.")
-        print("auto - Flips the inputted json(s) automatically in every possible way.")
-        print("ls - Lists all  jsons in the current working directory.")
-        print("info - Shows list of commands and instructions... but you know that.")
-        print("re - Renames the inputted json. Only works with one at a time.")
-        print("del - Deletes the inputted json(s). Cannot use '*' to avoid deleting all by acident.")
-        print("exit - Closes the program.")
+        print("    flip - Flips the inputted json(s) as specified. v - flips vertically; h - flips horizontally; d - flips horizontally and vertically together.")
+        print("    auto - Flips the inputted json(s) automatically in every possible way.")
+        print("    ls - Lists all  jsons in the current working directory.")
+        print("    info - Shows list of commands, instructions, and credits... but you know that.")
+        print("    cls - Clears the screen")
+        print("    re - Renames the inputted json. Only works with one at a time.")
+        print("    del - Deletes the inputted json(s). Cannot use '*' to avoid deleting all by acident.")
+        print("    exit - Closes the program.")
+        print("Credits:")
+        print("    A program by CatsCanCoder.")
+        print("    Help Obtained From:")
+        print("         - https://www.geeksforgeeks.org/python/how-to-replace-values-in-a-list-in-python/")
+        print("         - https://www.geeksforgeeks.org/python/python-os-rename-method/")
+        print("         - https://www.geeksforgeeks.org/python/python-break-statement/")
+        print("         - https://www.geeksforgeeks.org/python/clear-screen-python/")
             
     elif cmd == "ls":
         print("Jsons:")
