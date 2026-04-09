@@ -13,11 +13,7 @@ import static edu.wpi.first.units.Units.RotationsPerSecond;
 import static edu.wpi.first.units.Units.RotationsPerSecondPerSecond;
 import static edu.wpi.first.units.Units.Seconds;
 
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Transform2d;
-import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.math.geometry.*;
 import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.units.AngleUnit;
@@ -504,12 +500,12 @@ public class ShooterCalculator {
                                 ShootOnTheMoveConstants.LAUNCHER_OFFSET.getMeasureX(),
                                 ShootOnTheMoveConstants.LAUNCHER_OFFSET.getMeasureY(),
                                 ShootOnTheMoveConstants.EXIT_HEIGHT)
-                        .rotateBy(swerveDrive.getGyroRotation3d()));
+                        .rotateBy(new Rotation3d(swerveDrive.getOdometryHeading())));
 
         final var launchAngleRadians = loggedLaunchAngle.get().in(Radians);
         final var ballVelocityWhileStill = new Translation3d(
                         -ballSpeed * Math.cos(launchAngleRadians), 0.0, ballSpeed * Math.sin(launchAngleRadians))
-                .rotateBy(swerveDrive.getGyroRotation3d());
+                .rotateBy(new Rotation3d(swerveDrive.getOdometryHeading()));
 
         // see ShotCalculator#calculate
         final var cosH = swerveDrive.getPose().getRotation().getCos();

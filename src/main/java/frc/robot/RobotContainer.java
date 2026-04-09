@@ -30,7 +30,6 @@ import frc.robot.util.dashboard.LoggedNetworkInput;
 import frc.robot.util.dashboard.LoggedNetworkSendable;
 import frc.robot.util.dashboard.LoggedNetworkStructArray;
 import frc.robot.util.dashboard.MultiMotorInfoSendable;
-import frc.robot.util.dashboard.Pigeon2Sendable;
 import frc.robot.util.enums.Constants.ClimberConstants;
 import frc.robot.util.enums.Constants.ControllerConstants;
 import frc.robot.util.enums.Constants.FuelConstants;
@@ -72,13 +71,17 @@ public class RobotContainer {
 
     private final SendableChooser<AutoManager.AutoStartLocation> autoStartLocationChooser;
     private final LoggedNetworkBoolean autoShootAtStart1 = new LoggedNetworkBoolean("/Auto/1. Shoot at Start", true);
-    private final LoggedNetworkBoolean autoCollectFromMid2 =
-            new LoggedNetworkBoolean("/Auto/2. Collect From Mid", true);
-    private final LoggedNetworkBoolean autoCollectFromMid3 =
-            new LoggedNetworkBoolean("/Auto/3. Collect From Mid", true);
-    private final LoggedNetworkBoolean autoDepot4 = new LoggedNetworkBoolean("/Auto/4. Auto Depot", false);
-    private final LoggedNetworkBoolean autoOutpost5 = new LoggedNetworkBoolean("/Auto/5. Auto Outpost", false);
-    private final LoggedNetworkBoolean autoClimb6 = new LoggedNetworkBoolean("/Auto/6. Auto Climb", false);
+    private final LoggedNetworkBoolean autoCollectFromMidFast2 =
+            new LoggedNetworkBoolean("/Auto/2. Collect From Mid (Fast)", false);
+    private final LoggedNetworkBoolean autoCollectFromMidSlow3 =
+            new LoggedNetworkBoolean("/Auto/3. Collect From Mid (Slow)", true);
+    private final LoggedNetworkBoolean autoCollectFromMidSlow4 =
+            new LoggedNetworkBoolean("/Auto/4. Collect From Mid (Slow)", true);
+    private final LoggedNetworkBoolean autoDepot5 = new LoggedNetworkBoolean("/Auto/5. Auto Depot", false);
+    private final LoggedNetworkBoolean autoOutpost6 = new LoggedNetworkBoolean("/Auto/6. Auto Outpost", false);
+    private final LoggedNetworkBoolean autoCollectFromMidSlow7 =
+            new LoggedNetworkBoolean("/Auto/7. Collect From Mid (Slow)", true);
+    private final LoggedNetworkBoolean autoClimb8 = new LoggedNetworkBoolean("/Auto/8. Auto Climb", false);
 
     private final LoggedNetworkBoolean useOdometry = new LoggedNetworkBoolean("/Misc/Use Odometry", true);
     private final Trigger useOdometryTrigger = new Trigger(useOdometry);
@@ -143,11 +146,13 @@ public class RobotContainer {
                 ? autoManager.getAutoCommand(new AutoManager.AutoOptions(
                         autoStartLocationChooser.getSelected(),
                         autoShootAtStart1.getAsBoolean(),
-                        autoCollectFromMid2.getAsBoolean(),
-                        autoCollectFromMid3.getAsBoolean(),
-                        autoDepot4.getAsBoolean(),
-                        autoOutpost5.getAsBoolean(),
-                        autoClimb6.getAsBoolean()))
+                        autoCollectFromMidFast2.getAsBoolean(),
+                        autoCollectFromMidSlow3.getAsBoolean(),
+                        autoCollectFromMidSlow4.getAsBoolean(),
+                        autoDepot5.getAsBoolean(),
+                        autoOutpost6.getAsBoolean(),
+                        autoCollectFromMidSlow7.getAsBoolean(),
+                        autoClimb8.getAsBoolean()))
                 : null;
     }
 
@@ -298,11 +303,13 @@ public class RobotContainer {
             operatorController
                     .y()
                     .whileTrue(climberSubsystem.climbCommand(
-                            operatorController.start().negate(), operatorController.back()));
+                            operatorController.start().negate(), operatorController.back()))
+                    .whileTrue(swerveSubsystem.straightenWheelsCommand());
             operatorController
                     .x()
                     .whileTrue(climberSubsystem.armCommand(
-                            operatorController.start().negate(), operatorController.back()));
+                            operatorController.start().negate(), operatorController.back()))
+                    .whileTrue(swerveSubsystem.straightenWheelsCommand());
         }
         /*if (autoManager != null) {
             operatorController.back().whileTrue(autoManager.testAuto());
@@ -313,7 +320,7 @@ public class RobotContainer {
         new LoggedNetworkSendable<>("/Auto/Start Location Chooser", autoStartLocationChooser);
         new LoggedNetworkSendable<>("/Misc/Power Distribution", powerDistribution);
         new LoggedNetworkSendable<>("/Misc/Motor Info", motorInfo);
-        new LoggedNetworkSendable<>("/Pigeon2", new Pigeon2Sendable(swerveSubsystem.getPigeon2()));
+        // new LoggedNetworkSendable<>("/Pigeon2", new Pigeon2Sendable(swerveSubsystem.getPigeon2()));
         /*final var emptyPoseArray = new Pose2d[0];
         new LoggedNetworkStructArray<>("/Misc/BLine Completed Poses", Pose2d.struct, () -> {
             if (autoManager == null) return emptyPoseArray;

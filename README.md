@@ -4,6 +4,8 @@ Welcome to Ridge Robotics' repository for the FRC 2026 season!
 ## Controls
 Layout:
 ```
+Back  Start
+
   Y
 X   B
   A
@@ -42,11 +44,11 @@ X   B
 | R Stick Left/Right | Increase/decrease calculator velocity    |
 | R Stick Pressed    | Toggle force normal drive mode           |
 | Y                  | Climb                                    |
-| Y + Start          | Climb (ignore limit)                     |
-| Y + Back           | Climb (fast)                             |
+| Y + Start (RB)     | Climb (ignore limit)                     |
+| Y + Back  (LB)     | Climb (fast)                             |
 | X                  | Lower climber                            |
-| X + Start          | Lower climber (ignore limit)             |
-| X + Back           | Lower climber (fast)                     |
+| X + Start (RB)     | Lower climber (ignore limit)             |
+| X + Back  (LB)     | Lower climber (fast)                     |
 
 | Button             | Action                                   |
 |--------------------|------------------------------------------|

@@ -182,23 +182,33 @@ public class AutoManager {
             autoCommand = shootAutoCommand(autoOptions.startLocation(), Seconds.of(4), true);
             startAutoLoc = null;
         }
-        if (autoOptions.collectFromMid2()) {
-            autoCommand = autoCommand.andThen(collectFromMidAndShoot(isLeftSide, startAutoLoc));
+        if (autoOptions.collectFromMidFast2()) {
+            autoCommand = autoCommand.andThen(collectFromMidAndShoot(isLeftSide, false, startAutoLoc));
             startAutoLoc = null;
         }
-        if (autoOptions.collectFromMid3()) {
-            autoCommand = autoCommand.andThen(collectFromMidAndShoot(isLeftSide, startAutoLoc));
+        if (autoOptions.collectFromMidSlow3()) {
+            autoCommand = autoCommand.andThen(collectFromMidAndShoot(isLeftSide, true, startAutoLoc));
             startAutoLoc = null;
         }
-        if (autoOptions.depot4()) {
+        if (autoOptions.collectFromMidSlow4()) {
+            autoCommand = autoCommand.andThen(collectFromMidAndShoot(isLeftSide, true, startAutoLoc));
+            startAutoLoc = null;
+        }
+        if (autoOptions.depot5()) {
             autoCommand = autoCommand.andThen(depotIntakeAndShootAutoCommand(startAutoLoc));
             startAutoLoc = null;
+            isLeftSide = true;
         }
-        if (autoOptions.outpost5()) {
+        if (autoOptions.outpost6()) {
             autoCommand = autoCommand.andThen(outpostAndShootAutoCommand(startAutoLoc));
             startAutoLoc = null;
+            isLeftSide = false;
         }
-        if (autoOptions.climb6() && climberSubsystem != null) {
+        if (autoOptions.collectFromMidSlow7()) {
+            autoCommand = autoCommand.andThen(collectFromMidAndShoot(isLeftSide, true, startAutoLoc));
+            startAutoLoc = null;
+        }
+        if (autoOptions.climb8() && climberSubsystem != null) {
             autoCommand = climberSubsystem
                     .armCommand(() -> true, () -> true)
                     .withDeadline(autoCommand.andThen(climbAutoCommand(startAutoLoc)));
@@ -239,16 +249,22 @@ public class AutoManager {
 
     private Command climbAutoCommand(@Nullable AutoStartLocation resetToLoc) {
         if (climberSubsystem == null) return Commands.none();
-        return climberSubsystem
-                .armCommand(() -> true, () -> true)
-                .withDeadline(getPathCommand(alignClimbPath, false, true, resetToLoc)
-                        .andThen(swerveDrive
-                                .driveFieldOrientedCommand(
-                                        () -> MetersPerSecond.of(0.2 * (shouldFlip() ? -1 : 1)),
-                                        MetersPerSecond::zero,
-                                        DegreesPerSecond::zero)
-                                .withTimeout(Seconds.of(1.0))))
-                .andThen(climberSubsystem.climbCommand(() -> true, () -> false));
+        return Commands.defer(
+                () -> Commands.sequence(
+                        climberSubsystem
+                                .armCommand(() -> true, () -> true)
+                                .withDeadline(Commands.parallel(
+                                        getPathCommand(alignClimbPath, false, true, resetToLoc),
+                                        swerveDrive
+                                                .driveFieldOrientedCommand(
+                                                        () -> MetersPerSecond.of(0.2 * (shouldFlip() ? -1 : 1)),
+                                                        MetersPerSecond::zero,
+                                                        DegreesPerSecond::zero)
+                                                .withTimeout(Seconds.of(1.0)))),
+                        Commands.parallel(
+                                climberSubsystem.climbCommand(() -> true, () -> false),
+                                swerveDrive.straightenWheelsCommand())),
+                Set.of(swerveDrive, climberSubsystem));
     }
 
     private Command outpostAndShootAutoCommand(@Nullable AutoStartLocation resetToLoc) {
@@ -256,7 +272,7 @@ public class AutoManager {
                 .idleCommand()
                 .withDeadline(
                         getPathCommand(toOutpostPath, true, true, resetToLoc).andThen(Commands.waitTime(Seconds.of(3))))
-                .andThen(pathInFrontOfHubAndShoot(null));
+                .andThen(shootAutoCommand(AutoStartLocation.RIGHT_INNER_BUMP, Seconds.of(4), false));
     }
 
     private Command depotIntakeAndShootAutoCommand(@Nullable AutoStartLocation resetToLoc) {
@@ -340,19 +356,20 @@ public class AutoManager {
                 Set.of(swerveDrive, fuelSubsystem));
     }
 
-    public Command collectFromMidAndShoot(boolean leftSide, @Nullable AutoStartLocation resetToLoc) {
+    public Command collectFromMidAndShoot(
+            boolean leftSide, boolean slowOverBump, @Nullable AutoStartLocation resetToLoc) {
         return Commands.defer(
                 () -> Commands.sequence(
                         fuelSubsystem
                                 .intakeCommand()
                                 .withDeadline(Commands.sequence(
-                                        goOverBump(leftSide, true, false, resetToLoc, true),
+                                        goOverBump(leftSide, true, slowOverBump, false, resetToLoc, true),
                                         getPathCommand(
                                                 leftSide ? collectMidFromLeftPath : collectMidFromRightPath,
                                                 false,
                                                 true,
                                                 null),
-                                        goOverBump(leftSide, false, false, null, false))),
+                                        goOverBump(leftSide, false, false, false, null, false))),
                         shootAutoCommand(
                                 leftSide ? AutoStartLocation.LEFT_INNER_BUMP : AutoStartLocation.RIGHT_INNER_BUMP,
                                 Seconds.of(15),
@@ -396,6 +413,7 @@ public class AutoManager {
     public Command goOverBump(
             boolean leftSide,
             boolean intoCenter,
+            boolean slow,
             boolean stopAfter,
             @Nullable AutoStartLocation resetToLoc,
             boolean leadIn) {
@@ -416,9 +434,13 @@ public class AutoManager {
                     final Pose2d pose1 = new Pose2d(x1, y, angle);
                     final Pose2d pose2 = new Pose2d(x2, y, angle);
                     final Path path = new Path(new Path.Waypoint(pose1, 0.5), new Path.Waypoint(pose2));
-                    path.setPathConstraints(new Path.PathConstraints()
+                    final var constraints = new Path.PathConstraints()
                             .setEndTranslationToleranceMeters(0.5)
-                            .setEndRotationToleranceDeg(30));
+                            .setEndRotationToleranceDeg(30);
+                    if (slow) {
+                        constraints.setMaxVelocityMetersPerSec(1.0);
+                    }
+                    path.setPathConstraints(constraints);
                     return getPathCommandWithLeadIn(
                             path,
                             stopAfter,
@@ -631,9 +653,11 @@ public class AutoManager {
     public record AutoOptions(
             AutoStartLocation startLocation,
             boolean shootAtStart1,
-            boolean collectFromMid2,
-            boolean collectFromMid3,
-            boolean depot4,
-            boolean outpost5,
-            boolean climb6) {}
+            boolean collectFromMidFast2,
+            boolean collectFromMidSlow3,
+            boolean collectFromMidSlow4,
+            boolean depot5,
+            boolean outpost6,
+            boolean collectFromMidSlow7,
+            boolean climb8) {}
 }

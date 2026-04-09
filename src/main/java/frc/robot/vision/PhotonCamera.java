@@ -89,7 +89,7 @@ public class PhotonCamera extends Camera implements AutoCloseable {
             Rotation3d robotToCamRotation,
             boolean useInPoseEstimationDefault) {
         super(name, useInPoseEstimationDefault);
-        camera = new org.photonvision.PhotonCamera(name);
+        camera = new org.photonvision.PhotonCamera(getNetworkTableInstance(), name);
         final var topicPrefix = "Vision/" + name + "/";
         posePublisher = NetworkTableInstance.getDefault()
                 .getStructTopic(topicPrefix + "Estimated Pose", Pose2d.struct)

@@ -71,7 +71,7 @@ public class ClimberSubsystem extends SubsystemBase {
                 .withMOI(KilogramSquareMeters.of(11.151))
                 .withLength(Inches.of(6))
                 .withHardLimit(ClimberConstants.MINIMUM_ANGLE, ClimberConstants.MAXIMUM_ANGLE)
-                .withTelemetry("ClimberArm", TelemetryVerbosity.MID));
+                .withTelemetry("YAMS/ClimberArm", TelemetryVerbosity.MID));
         /*SparkMaxConfig config = new SparkMaxConfig();
         config.smartCurrentLimit(80);
         sparkMaxMotor.configure(config, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);*/

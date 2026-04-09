@@ -19,6 +19,7 @@ import org.jspecify.annotations.Nullable;
 @NullMarked
 public abstract class Camera {
 
+    private static final NetworkTableInstance networkTableInstance = NetworkTableInstance.create();
     private static final DoublePublisher stdDevsPublisher = NetworkTableInstance.getDefault()
             .getDoubleTopic("Vision/All Standard Deviations")
             .publish();
@@ -73,5 +74,9 @@ public abstract class Camera {
 
     public String getCameraName() {
         return cameraName;
+    }
+
+    protected static NetworkTableInstance getNetworkTableInstance() {
+        return networkTableInstance;
     }
 }
