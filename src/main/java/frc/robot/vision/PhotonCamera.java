@@ -8,7 +8,6 @@ import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform3d;
-import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
@@ -72,7 +71,6 @@ public class PhotonCamera extends Camera implements AutoCloseable {
     // Telemetry publishers
     private final StructPublisher<Pose2d> posePublisher;
     private final StructArrayPublisher<Pose3d> trackedTargetsPublisher;
-    private final StructArrayPublisher<Translation2d> trackedCornersPublisher;
     private final DoublePublisher stdDevsPublisher;
     private final DoublePublisher confidencePublisher;
     private final LoggedNetworkBoolean loggedPermanentlyDisabled;
@@ -91,16 +89,13 @@ public class PhotonCamera extends Camera implements AutoCloseable {
             Rotation3d robotToCamRotation,
             boolean useInPoseEstimationDefault) {
         super(name, useInPoseEstimationDefault);
-        camera = new org.photonvision.PhotonCamera(name);
+        camera = new org.photonvision.PhotonCamera(getNetworkTableInstance(), name);
         final var topicPrefix = "Vision/" + name + "/";
         posePublisher = NetworkTableInstance.getDefault()
                 .getStructTopic(topicPrefix + "Estimated Pose", Pose2d.struct)
                 .publish();
         trackedTargetsPublisher = NetworkTableInstance.getDefault()
                 .getStructArrayTopic(topicPrefix + "Tracked Targets", Pose3d.struct)
-                .publish();
-        trackedCornersPublisher = NetworkTableInstance.getDefault()
-                .getStructArrayTopic(topicPrefix + "Corners", Translation2d.struct)
                 .publish();
         stdDevsPublisher = NetworkTableInstance.getDefault()
                 .getDoubleTopic(topicPrefix + "Standard Deviations")
@@ -195,28 +190,18 @@ public class PhotonCamera extends Camera implements AutoCloseable {
         // Publish telemetry for visible tags
         if (!latestResult.hasTargets()) {
             trackedTargetsPublisher.set(new Pose3d[0]);
-            trackedCornersPublisher.set(new Translation2d[0]);
             return estimatedPose;
         }
 
         Pose3d[] posesArray = new Pose3d[latestResult.targets.size()];
-        Translation2d[] corners = new Translation2d[latestResult.targets.size() * 4];
-        int cornerIndex = 0;
 
         for (int i = 0; i < posesArray.length; i++) {
             PhotonTrackedTarget target = latestResult.targets.get(i);
             posesArray[i] =
                     FieldConstants.APRIL_TAGS.getTagPose(target.getFiducialId()).orElse(new Pose3d());
-
-            // Flatten each tag's 4 detected corners
-            for (int j = 0; j < 4; j++) {
-                var pt = target.getDetectedCorners().get(j);
-                corners[cornerIndex++] = new Translation2d(pt.x, pt.y);
-            }
         }
 
         trackedTargetsPublisher.set(posesArray);
-        trackedCornersPublisher.set(corners);
 
         return estimatedPose;
     }

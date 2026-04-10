@@ -82,13 +82,11 @@ public class SwerveSubsystem extends SubsystemBase {
     private @Nullable Trigger isShootingTrigger;
 
     private final PIDController bLineTranslationPID =
-            Robot.isReal() ? new PIDController(5.0, 0, 1.4) : new PIDController(1.9, 0.1, 0.4);
+            Robot.isReal() ? new PIDController(4.0, 0, 1.8) : new PIDController(1.9, 0.1, 0.4);
     private final PIDController bLineRotationPID =
-            Robot.isReal() ? new PIDController(5.0, 0, 0.85) : new PIDController(5.0, 0.2, 0.6);
+            Robot.isReal() ? new PIDController(4.0, 0.3, 0.8) : new PIDController(5.0, 0.2, 0.6);
     private final PIDController bLineCrossTrackPID = new PIDController(2.0, 0, 0);
     private final FollowPath.Builder pathBuilder;
-    private final LoggedNetworkStruct<ChassisSpeeds> loggedBLineRobotRelativeChassisSpeeds;
-    private final LoggedNetworkStruct<ChassisSpeeds> loggedBLineFieldRelativeChassisSpeeds;
 
     private final SlewRateLimiter2d linearDriveLimiter =
             new SlewRateLimiter2d(DriveConstants.MAX_LINEAR_ACCELERATION.in(MetersPerSecondPerSecond));
@@ -156,16 +154,8 @@ public class SwerveSubsystem extends SubsystemBase {
                         SOTMHubLockType::fromDashboardName,
                         SOTMHubLockType::getDashboardName));
         loggedLockPoseWhenShooting = new LoggedNetworkBoolean("Swerve/Lock Pose when Shooting", true);
-        new LoggedNetworkStructArray<>("/Swerve/Module States", SwerveModuleState.struct, swerveDrive::getStates);
         loggedRobotRelativeYaw =
                 new LoggedNetworkStruct<>("/Swerve/Robot Relative Yaw", Rotation2d.struct, Rotation2d.kZero);
-
-        loggedBLineRobotRelativeChassisSpeeds = new LoggedNetworkStruct<>(
-                "/Misc/BLine/Robot Relative Chassis Speeds", ChassisSpeeds.struct, new ChassisSpeeds());
-        loggedBLineFieldRelativeChassisSpeeds = new LoggedNetworkStruct<>(
-                "/Misc/BLine/Field Relative Chassis Speeds", ChassisSpeeds.struct, new ChassisSpeeds());
-
-        SwerveDriveTelemetry.verbosity = SwerveDriveTelemetry.TelemetryVerbosity.INFO;
 
         setupVisionManager();
         pathBuilder = setupBLine();
@@ -450,7 +440,8 @@ public class SwerveSubsystem extends SubsystemBase {
                 && loggedLockPoseWhenShooting.getAsBoolean()
                 && isShootingTrigger != null
                 && isShootingTrigger.getAsBoolean()) {
-            if (limitedLinearVelocity.getNorm() < 0.001 && finalAngularVelocity.lt(DegreesPerSecond.of(0.01))) {
+            if (limitedLinearVelocity.getNorm() < 0.001
+                    && finalAngularVelocity.isNear(DegreesPerSecond.zero(), DegreesPerSecond.of(0.01))) {
                 swerveDrive.lockPose();
                 return;
             }
@@ -706,12 +697,7 @@ public class SwerveSubsystem extends SubsystemBase {
                         this,
                         this::getRobotPose,
                         swerveDrive::getRobotVelocity,
-                        chassisSpeeds -> {
-                            loggedBLineRobotRelativeChassisSpeeds.set(chassisSpeeds);
-                            loggedBLineFieldRelativeChassisSpeeds.set(
-                                    ChassisSpeeds.fromRobotRelativeSpeeds(chassisSpeeds, getHeading()));
-                            driveRobotOriented(chassisSpeeds);
-                        },
+                        this::driveRobotOriented,
                         bLineTranslationPID,
                         bLineRotationPID,
                         bLineCrossTrackPID)

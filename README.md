@@ -4,6 +4,8 @@ Welcome to Ridge Robotics' repository for the FRC 2026 season!
 ## Controls
 Layout:
 ```
+Back  Start
+
   Y
 X   B
   A
@@ -42,11 +44,25 @@ X   B
 | R Stick Left/Right | Increase/decrease calculator velocity    |
 | R Stick Pressed    | Toggle force normal drive mode           |
 | Y                  | Climb                                    |
-| Y + Start          | Climb (ignore limit)                     |
-| Y + Back           | Climb (fast)                             |
+| Y + Start (RB)     | Climb (ignore limit)                     |
+| Y + Back  (LB)     | Climb (fast)                             |
 | X                  | Lower climber                            |
-| X + Start          | Lower climber (ignore limit)             |
-| X + Back           | Lower climber (fast)                     |
+| X + Start (RB)     | Lower climber (ignore limit)             |
+| X + Back  (LB)     | Lower climber (fast)                     |
+
+| Button             | Action                                   |
+|--------------------|------------------------------------------|
+| Back + other       | Enable MAX POWER for fuel                |
+| L Trigger          | Disable driver fuel controls             |
+| Both Triggers      | Shoot (no wind up)                       |
+| B                  | Un-shoot                                 |
+| L Bumper           | Eject                                    |
+| R Trigger          | Wind up & shoot                          |
+| A                  | Intake                                   |
+| L Stick Pressed    | Enable manual launch                     |
+| R Stick Pressed    | Toggle force normal drive mode           |
+| L Stick Left/Right | Increase/decrease manual launch velocity |
+
 
 ## LED Signals
 Note: Ordered by priority
@@ -133,3 +149,5 @@ so you must use `@Nullable` explicitly for any nullable types
 so it is important to add this annotation to every class that you create
 
 Please check our document for more details: https://docs.google.com/document/d/1nnzGnt42i6uPzOHwAwAfORLo0D7Oy1VpVn8Up7hVth0/edit?tab=t.deskc5r0e8y9#heading=h.8nrizm8intq2
+
+[BLine Path Inverter](https://pl.kotl.in/CLk4nuEjr)
