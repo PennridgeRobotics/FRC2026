@@ -12,6 +12,7 @@ import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.FieldObject2d;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
@@ -83,6 +84,8 @@ public class RobotContainer {
             new LoggedNetworkBoolean("/Auto/7. Collect From Mid (Slow)", true);
     private final LoggedNetworkBoolean autoClimb8 = new LoggedNetworkBoolean("/Auto/8. Auto Climb", false);
 
+    private final LoggedNetworkBoolean invertDriveControls =
+            new LoggedNetworkBoolean("/Misc/Invert Drive Controls", false);
     private final LoggedNetworkBoolean useOdometry = new LoggedNetworkBoolean("/Misc/Use Odometry", true);
     private final Trigger useOdometryTrigger = new Trigger(useOdometry);
     private final Field2d field2d = new Field2d();
@@ -203,9 +206,9 @@ public class RobotContainer {
         if (fieldOriented) {
             if (forceRobotOrientedRotation) {
                 swerveSubsystem.setDefaultCommand(swerveSubsystem.driveFieldAndRobotOrientedCommand(
-                        () -> -driverController.getLeftY(),
-                        () -> -driverController.getLeftX(),
-                        () -> -driverController.getRightX(),
+                        () -> (invertDriveControls.getAsBoolean() ? 1 : -1) * driverController.getLeftY(),
+                        () -> (invertDriveControls.getAsBoolean() ? 1 : -1) * driverController.getLeftX(),
+                        () -> (invertDriveControls.getAsBoolean() ? 1 : -1) * driverController.getRightX(),
                         () -> /*-operatorController.getLeftX()*/ 0,
                         () -> /*-operatorController.getLeftY()*/ 0));
                 driverController.rightStick().whileTrue(swerveSubsystem.lockYawTowardsVelocity());
@@ -231,6 +234,10 @@ public class RobotContainer {
                 .onTrue(swerveSubsystem.setSpeedMultiplierCommand(SpeedMultiplier.NORMAL));
         driverController.rightTrigger().onTrue(swerveSubsystem.setSpeedMultiplierCommand(SpeedMultiplier.FAST));
         driverController.start().onTrue(new InstantCommand(swerveSubsystem::zeroGyroWithAlliance));
+        driverController
+                .start()
+                .multiPress(3, 1.0)
+                .onTrue(Commands.runOnce(() -> invertDriveControls.set(!invertDriveControls.getAsBoolean())));
         driverController.y().whileTrue(swerveSubsystem.faceTowardsHubCommand());
         driverController.x().whileTrue(swerveSubsystem.lockPoseCommand());
         if (fuelSubsystem != null) {

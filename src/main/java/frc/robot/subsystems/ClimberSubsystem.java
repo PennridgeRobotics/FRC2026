@@ -12,16 +12,15 @@ import static edu.wpi.first.units.Units.Volts;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 import edu.wpi.first.math.filter.Debouncer;
+import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.system.plant.DCMotor;
+import edu.wpi.first.units.AngleUnit;
+import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
-import frc.robot.util.dashboard.LoggedNetworkBoolean;
-import frc.robot.util.dashboard.LoggedNetworkButton;
-import frc.robot.util.dashboard.LoggedNetworkDouble;
-import frc.robot.util.dashboard.LoggedNetworkSendable;
-import frc.robot.util.dashboard.MultiMotorInfoSendable;
+import frc.robot.util.dashboard.*;
 import frc.robot.util.enums.Constants.ClimberConstants;
 import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
@@ -51,6 +50,9 @@ public class ClimberSubsystem extends SubsystemBase {
             new LoggedNetworkDouble("/Climber/Lower Value", ClimberConstants.LOWER_VALUE);
     private final DoubleSupplier lowerFastValue =
             new LoggedNetworkDouble("/Climber/Lower Fast Value", ClimberConstants.LOWER_FAST_VALUE);
+    private final LoggedNetworkUnit<AngleUnit, Angle> climbAngle =
+            new LoggedNetworkUnit<>("/Climber/Climb Angle", ClimberConstants.CLIMBED_ANGLE);
+    private final SlewRateLimiter climberRateLimiter = new SlewRateLimiter(1.0 / 0.2);
 
     public ClimberSubsystem(MultiMotorInfoSendable motorInfo) {
         final var motorConfig = new SmartMotorControllerConfig()
@@ -110,7 +112,7 @@ public class ClimberSubsystem extends SubsystemBase {
         return Commands.sequence(
                         Commands.runOnce(() -> isClimbing.set(true)),
                         Commands.either(
-                                climber.run(ClimberConstants.CLIMBED_ANGLE),
+                                climber.run(climbAngle.get()),
                                 setDutyCycle(() ->
                                         fast.getAsBoolean() ? climbFastValue.getAsDouble() : climbValue.getAsDouble()),
                                 () -> false))
@@ -128,9 +130,15 @@ public class ClimberSubsystem extends SubsystemBase {
 
     private Command setDutyCycle(DoubleSupplier dutyCycleSupplier) {
         return startRun(
-                        () -> System.out.println("CLIMBER VALUE: " + dutyCycleSupplier.getAsDouble()),
-                        () -> climber.getMotor().setDutyCycle(dutyCycleSupplier.getAsDouble()))
-                .finallyDo(() -> motorController.setDutyCycle(0));
+                        () -> {
+                            // System.out.println("CLIMBER VALUE: " + dutyCycleSupplier.getAsDouble());
+                        },
+                        () -> {
+                            final var value = climberRateLimiter.calculate(dutyCycleSupplier.getAsDouble());
+                            System.out.println("CLIMBER VALUE: " + value);
+                            climber.getMotor().setDutyCycle(value);
+                        })
+                .finallyDo(() -> motorController.setDutyCycle(climberRateLimiter.calculate(0.0)));
     }
 
     public Command setClimberEncoderToVertical() {
