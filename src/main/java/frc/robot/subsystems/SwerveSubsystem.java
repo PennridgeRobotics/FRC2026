@@ -100,6 +100,7 @@ public class SwerveSubsystem extends SubsystemBase {
     private final LoggedNetworkBoolean loggedUsingSOTMHubLock;
     private final LoggedNetworkBoolean loggedLockPoseWhenShooting;
     private final LoggedNetworkBoolean loggedForceNormalDriveMode;
+    private final LoggedNetworkBoolean loggedStraightenWheels;
     private final LoggedNetworkStruct<Rotation2d> loggedRobotRelativeYaw;
 
     private SOTMHubLockType sotmHubLockType = SOTMHubLockType.ANGLE_LOCK_AND_VELOCITY_FF;
@@ -154,6 +155,7 @@ public class SwerveSubsystem extends SubsystemBase {
                         SOTMHubLockType::fromDashboardName,
                         SOTMHubLockType::getDashboardName));
         loggedLockPoseWhenShooting = new LoggedNetworkBoolean("Swerve/Lock Pose when Shooting", true);
+        loggedStraightenWheels = new LoggedNetworkBoolean("Swerve/Straighten Wheels", false);
         loggedRobotRelativeYaw =
                 new LoggedNetworkStruct<>("/Swerve/Robot Relative Yaw", Rotation2d.struct, Rotation2d.kZero);
 
@@ -436,12 +438,15 @@ public class SwerveSubsystem extends SubsystemBase {
                         ? DegreesPerSecond.zero()
                         : determinedAngularVelocity);
 
-        if (!loggedForceNormalDriveMode.getAsBoolean()
-                && loggedLockPoseWhenShooting.getAsBoolean()
-                && isShootingTrigger != null
-                && isShootingTrigger.getAsBoolean()) {
-            if (limitedLinearVelocity.getNorm() < 0.001
-                    && finalAngularVelocity.isNear(DegreesPerSecond.zero(), DegreesPerSecond.of(0.01))) {
+        final boolean isStill = limitedLinearVelocity.getNorm() < 0.001
+                && finalAngularVelocity.isNear(DegreesPerSecond.zero(), DegreesPerSecond.of(0.01));
+        if (isStill && !loggedForceNormalDriveMode.getAsBoolean()) {
+            if (loggedStraightenWheels.getAsBoolean()) {
+                straightenWheels();
+                return;
+            } else if (loggedLockPoseWhenShooting.getAsBoolean()
+                    && isShootingTrigger != null
+                    && isShootingTrigger.getAsBoolean()) {
                 swerveDrive.lockPose();
                 return;
             }
@@ -543,8 +548,12 @@ public class SwerveSubsystem extends SubsystemBase {
         return getShooterCalculator().calculateShotData().heading();
     }
 
+    private void straightenWheels() {
+        setModuleOrientations(Rotation2d.kZero);
+    }
+
     public Command straightenWheelsCommand() {
-        return Commands.run(() -> setModuleOrientations(Rotation2d.kZero));
+        return Commands.startEnd(() -> loggedStraightenWheels.set(true), () -> loggedStraightenWheels.set(false));
     }
 
     public Command lockYawTowardsVelocity() {
