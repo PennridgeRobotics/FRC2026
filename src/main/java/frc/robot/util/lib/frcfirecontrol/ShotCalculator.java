@@ -175,7 +175,7 @@ public class ShotCalculator {
 
     private final InterpolatingDoubleTreeMap rpmMap = new InterpolatingDoubleTreeMap();
     private final InterpolatingDoubleTreeMap tofMap = new InterpolatingDoubleTreeMap();
-    private final InterpolatingDoubleTreeMap correctionRpmMap = new InterpolatingDoubleTreeMap();
+    public final InterpolatingDoubleTreeMap correctionRpmMap = new InterpolatingDoubleTreeMap();
     private final InterpolatingDoubleTreeMap correctionTofMap = new InterpolatingDoubleTreeMap();
 
     // If set via loadShotLUT(), base RPM/TOF/angle come from here instead of the
@@ -211,7 +211,7 @@ public class ShotCalculator {
     }
 
     // LUT lookup: base value + any corrections + copilot RPM offset
-    double effectiveRPM(double distance) {
+    public double effectiveRPM(double distance) {
         double base = shotLUT != null ? shotLUT.getRPM(distance) : rpmMap.get(distance);
         Double correction = correctionRpmMap.get(distance);
         return base + (correction != null ? correction : 0.0) + rpmOffset;

@@ -325,7 +325,7 @@ public class FuelSubsystem extends SubsystemBase {
                     }
                 },
                 () -> {
-                    if (--useMaxPowerIntakeLauncher == 0) {
+                    if (--useMaxPowerIndexer == 0) {
                         intakeLauncherController.startClosedLoopController();
                     }
                 });

@@ -214,9 +214,9 @@ public final class Constants {
         public static final Voltage VOLTAGE_COMPENSATION = Volts.of(12.0);
 
         // open loop
-        public static final double CLIMB_VALUE = 0.5;
-        public static final double CLIMB_FAST_VALUE = 1.0;
-        public static final double LOWER_VALUE = -0.5;
+        public static final double CLIMB_VALUE = 0.15;
+        public static final double CLIMB_FAST_VALUE = 0.5;
+        public static final double LOWER_VALUE = -0.3;
         public static final double LOWER_FAST_VALUE = -1.0;
 
         public static final Angle MINIMUM_ANGLE = Degrees.of(-53.5);
@@ -224,7 +224,7 @@ public final class Constants {
         public static final Angle HORIZONTAL_ANGLE = Degrees.of(0);
         public static final Angle VERTICAL_ANGLE = Degrees.of(90);
         public static final Angle ARMED_ANGLE = Degrees.of(-16);
-        public static final Angle CLIMBED_ANGLE = Degrees.of(70);
+        public static final Angle CLIMBED_ANGLE = Degrees.of(80);
 
         public static final Angle TOLERANCE_ANGLE = Degrees.of(1);
     }
@@ -235,7 +235,7 @@ public final class Constants {
         public static final int JOYSTICK_CONTROLLER_PORT = -1;
         public static final boolean USING_JOYSTICK = JOYSTICK_CONTROLLER_PORT >= 0;
 
-        public static final double DRIVE_MIN_INPUT = USING_JOYSTICK ? 0.06 : 0.01; // deadband
+        public static final double DRIVE_MIN_INPUT = 0.06; // deadband
         public static final double DRIVE_MAX_INPUT = 0.98;
 
         public static final double LINEAR_DRIVE_POWER_SCALE = USING_JOYSTICK ? 2 : 3;
