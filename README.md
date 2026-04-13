@@ -24,31 +24,33 @@ X   B
 | Y                   | Face towards hub          |
 | B                   | Wind up & launch          |
 ### Operator
-| Button             | Action                                   |
-|--------------------|------------------------------------------|
-| L Trigger          | Disable driver fuel controls             |
-| L Bumper + Start   | Auto test                                |
-| R Bumper + Start   | Straighten wheels                        |
-| L Bumper           | Eject                                    |
-| R Bumper           | Wind up                                  |
-| L Trigger + Start  | Toggle Back Camera                       |
-| R Trigger + Start  | Toggle Front Camera                      |
-| R Trigger          | Wind up & shoot                          |
-| Both Triggers      | Shoot (no wind up)                       |
-| A                  | Intake                                   |
-| B                  | Unjam                                    |
-| Back + other       | Enable MAX POWER for fuel                |
-| L Stick Up/Down    | Spin with absolute rotation              |
-| L Stick Left/Right | Increase/decrease manual launch velocity |
-| L Stick Pressed    | Enable manual launch                     |
-| R Stick Left/Right | Increase/decrease calculator velocity    |
-| R Stick Pressed    | Toggle force normal drive mode           |
-| Y                  | Climb                                    |
-| Y + Start (RB)     | Climb (ignore limit)                     |
-| Y + Back  (LB)     | Climb (fast)                             |
-| X                  | Lower climber                            |
-| X + Start (RB)     | Lower climber (ignore limit)             |
-| X + Back  (LB)     | Lower climber (fast)                     |
+| Button                | Action                                   |
+|-----------------------|------------------------------------------|
+| L Trigger             | Disable driver fuel controls             |
+| L Bumper + Start      | Auto test                                |
+| R Bumper + Start      | Straighten wheels                        |
+| L Bumper              | Eject                                    |
+| R Bumper              | Wind up                                  |
+| ~~L Trigger + Start~~ | ~~Toggle Back Camera~~                   |
+| ~~R Trigger + Start~~ | ~~Toggle Front Camera~~                  |
+| R Trigger             | Wind up & shoot                          |
+| Both Triggers         | Shoot (no wind up)                       |
+| A                     | Intake                                   |
+| B                     | Unjam                                    |
+| Back + other          | Enable MAX POWER for fuel                |
+| L Trigger + Start     | Smart Unjam                              |
+| L Stick Up/Down       | Spin with absolute rotation              |
+| L Stick Left/Right    | Increase/decrease manual launch velocity |
+| L Stick Pressed       | Enable manual launch                     |
+| R Stick Left/Right    | Increase/decrease calculator velocity    |
+| R Stick Pressed       | Toggle force normal drive mode           |
+| Y                     | Climb                                    |
+| Y + Start (RB)        | Climb (ignore limit)                     |
+| Y + Back  (LB)        | Climb (fast)                             |
+| X                     | Lower climber                            |
+| X + Start (RB)        | Lower climber (ignore limit)             |
+| X + Back  (LB)        | Lower climber (fast)                     |
+| Rumble                | Motors stalled OR smart unjam ready      |
 
 | Button             | Action                                   |
 |--------------------|------------------------------------------|
