@@ -3,12 +3,7 @@ package frc.robot.util.dashboard;
 import edu.wpi.first.util.sendable.Sendable;
 import edu.wpi.first.util.sendable.SendableBuilder;
 import frc.robot.util.StringUtils;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -49,14 +44,17 @@ public class SplitButtonChooser<T> implements Sendable {
             final @Nullable Set<Consumer<T>> listeners,
             final @Nullable T defaultOption,
             final Class<T> enumClass) {
-        //noinspection NullableProblems
+        final Map<String, T> stringToEnumMap = new HashMap<>();
+        for (T value : enumClass.getEnumConstants()) {
+            stringToEnumMap.put(StringUtils.capitalizeFully(value.name()), value);
+        }
         return new SplitButtonChooser<>(
                 active,
                 Arrays.stream(enumClass.getEnumConstants()).toList(),
                 listeners,
                 defaultOption,
-                str -> Enum.valueOf(enumClass, str.toUpperCase().replace(' ', '_')),
-                obj -> StringUtils.capitalizeFully(obj.name()));
+                stringToEnumMap::get,
+                obj -> StringUtils.capitalizeFully(Objects.requireNonNull(obj).name()));
     }
 
     public static SplitButtonChooser<String> withStrings(

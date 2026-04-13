@@ -13,6 +13,7 @@ import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.FieldObject2d;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
@@ -28,12 +29,7 @@ import frc.robot.util.ShooterCalculator;
 import frc.robot.util.StringUtils;
 import frc.robot.util.UnjamManager;
 import frc.robot.util.controller.CommandJoystickController;
-import frc.robot.util.dashboard.LoggedNetworkBoolean;
-import frc.robot.util.dashboard.LoggedNetworkDouble;
-import frc.robot.util.dashboard.LoggedNetworkInput;
-import frc.robot.util.dashboard.LoggedNetworkSendable;
-import frc.robot.util.dashboard.LoggedNetworkStructArray;
-import frc.robot.util.dashboard.MultiMotorInfoSendable;
+import frc.robot.util.dashboard.*;
 import frc.robot.util.enums.Constants.ClimberConstants;
 import frc.robot.util.enums.Constants.ControllerConstants;
 import frc.robot.util.enums.Constants.FuelConstants;
@@ -43,6 +39,7 @@ import frc.robot.util.enums.SpeedMultiplier;
 import frc.robot.vision.VisionManager;
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
@@ -98,6 +95,9 @@ public class RobotContainer {
     private final LoggedNetworkStructArray<Pose2d> loggedBLineTrajectory =
             new LoggedNetworkStructArray<>("/Misc/BLine Trajectory", Pose2d.struct, new Pose2d[0]);
     private final LoggedNetworkDouble loggedRumbleMaxValue = new LoggedNetworkDouble("Misc/Rumble Max Value", 0.5);
+    private RumbleType rumbleType = RumbleType.kBothRumble;
+    private double operatorRumbleValue = 0.0;
+    private @Nullable Command operatorRumbleCommand;
 
     /** The container for the robot. Contains subsystems, I/O devices, and commands. */
     public RobotContainer() {
@@ -142,6 +142,16 @@ public class RobotContainer {
         behindRobotPose = NetworkTableInstance.getDefault()
                 .getStructTopic("Robot Pose Behind", Pose2d.struct)
                 .publish();
+        new LoggedNetworkSendable<>(
+                "Misc/Rumble Type",
+                SplitButtonChooser.withEnum(
+                        () -> rumbleType,
+                        Set.of(v -> {
+                            operatorController.setRumble(rumbleType, 0.0);
+                            rumbleType = v;
+                        }),
+                        rumbleType,
+                        RumbleType.class));
 
         configureBindings();
 
@@ -319,31 +329,18 @@ public class RobotContainer {
                     .whileTrue(unjamManager.smartUnjamCommand());
             unjamManager
                     .isUsingSmartUnjamTrigger()
-                    .negate()
-                    .whileTrue(Commands.runEnd(
-                            () -> {
-                                final var intakeLauncherStalled = unjamManager
-                                        .intakeLauncherStalledTrigger()
-                                        .getAsBoolean();
-                                final var indexerStalled =
-                                        unjamManager.indexerStalledTrigger().getAsBoolean();
-                                final var totalStalled =
-                                        intakeLauncherStalled ? (indexerStalled ? 2 : 1) : (indexerStalled ? 1 : 0);
-                                operatorController.setRumble(
-                                        RumbleType.kBothRumble, loggedRumbleMaxValue.getAsDouble() * totalStalled);
-                            },
-                            () -> operatorController.setRumble(RumbleType.kBothRumble, 0.0)));
+                    .whileTrue(Commands.startEnd(() -> System.out.println("1"), () -> System.out.println("2")));
             unjamManager
-                    .isReadyTrigger()
-                    .whileTrue(Commands.startEnd(
-                            () -> operatorController.setRumble(
-                                    RumbleType.kBothRumble, loggedRumbleMaxValue.getAsDouble()),
+                    .isUsingSmartUnjamTrigger()
+                    .whileFalse(Commands.startEnd(() -> System.out.println("3"), () -> System.out.println("4")));
+            new Trigger(() -> operatorRumbleValue > 0.01)
+                    .whileTrue(Commands.runEnd(
+                            () -> operatorController.setRumble(RumbleType.kRightRumble, operatorRumbleValue),
                             () -> operatorController.setRumble(RumbleType.kBothRumble, 0.0)));
             /*operatorController
             .start()
             .whileTrue(Commands.startEnd(
-                    () -> operatorController.setRumble(
-                            RumbleType.kBothRumble, loggedRumbleMaxValue.getAsDouble()),
+                    () -> operatorController.setRumble(rumbleType, loggedRumbleMaxValue.getAsDouble()),
                     () -> operatorController.setRumble(RumbleType.kBothRumble, 0.0)));*/
         }
         if (climberSubsystem != null) {
@@ -416,6 +413,29 @@ public class RobotContainer {
         if (autoManager != null) {
             autoManager.teleopInit();
         }
+        setupOperatorCommand();
+    }
+
+    private void setupOperatorCommand() {
+        if (operatorRumbleCommand != null) CommandScheduler.getInstance().cancel(operatorRumbleCommand);
+        if (unjamManager == null) return;
+        operatorRumbleCommand = Commands.run(() -> {
+            final var intakeLauncherStalled =
+                    unjamManager.intakeLauncherStalledTrigger().getAsBoolean();
+            final var indexerStalled = unjamManager.indexerStalledTrigger().getAsBoolean();
+            final var totalStalled = intakeLauncherStalled ? (indexerStalled ? 2 : 1) : (indexerStalled ? 1 : 0);
+            final boolean usingSmartUnjam =
+                    unjamManager.isUsingSmartUnjamTrigger().getAsBoolean();
+            final boolean isReady = unjamManager.isReadyTrigger().getAsBoolean();
+            operatorRumbleValue = usingSmartUnjam
+                    ? (isReady ? 0.3 : 0)
+                    : switch (totalStalled) {
+                        case 0 -> 0;
+                        case 1 -> 0.2;
+                        default -> 1.0;
+                    };
+        });
+        CommandScheduler.getInstance().schedule(operatorRumbleCommand);
     }
 
     public void simulationInit() {
