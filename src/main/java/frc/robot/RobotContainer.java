@@ -7,6 +7,7 @@ import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StructPublisher;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.GenericHID.RumbleType;
 import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.FieldObject2d;
@@ -25,8 +26,10 @@ import frc.robot.util.AutoManager;
 import frc.robot.util.HubTracker;
 import frc.robot.util.ShooterCalculator;
 import frc.robot.util.StringUtils;
+import frc.robot.util.UnjamManager;
 import frc.robot.util.controller.CommandJoystickController;
 import frc.robot.util.dashboard.LoggedNetworkBoolean;
+import frc.robot.util.dashboard.LoggedNetworkDouble;
 import frc.robot.util.dashboard.LoggedNetworkInput;
 import frc.robot.util.dashboard.LoggedNetworkSendable;
 import frc.robot.util.dashboard.LoggedNetworkStructArray;
@@ -57,6 +60,7 @@ public class RobotContainer {
     private final VisionManager visionManager;
     private final MultiMotorInfoSendable motorInfo = new MultiMotorInfoSendable();
     private final @Nullable AutoManager autoManager;
+    private final @Nullable UnjamManager unjamManager;
 
     private final StructPublisher<Pose2d> aheadRobotPose;
     private final StructPublisher<Pose2d> behindRobotPose;
@@ -93,6 +97,7 @@ public class RobotContainer {
 
     private final LoggedNetworkStructArray<Pose2d> loggedBLineTrajectory =
             new LoggedNetworkStructArray<>("/Misc/BLine Trajectory", Pose2d.struct, new Pose2d[0]);
+    private final LoggedNetworkDouble loggedRumbleMaxValue = new LoggedNetworkDouble("Misc/Rumble Max Value", 0.5);
 
     /** The container for the robot. Contains subsystems, I/O devices, and commands. */
     public RobotContainer() {
@@ -129,6 +134,7 @@ public class RobotContainer {
         autoManager = (fuelSubsystem != null)
                 ? new AutoManager(swerveSubsystem, swerveSubsystem.getPathBuilder(), fuelSubsystem, climberSubsystem)
                 : null;
+        unjamManager = fuelSubsystem != null ? fuelSubsystem.getUnjamManager() : null;
 
         aheadRobotPose = NetworkTableInstance.getDefault()
                 .getStructTopic("Robot Pose Ahead", Pose2d.struct)
@@ -240,15 +246,17 @@ public class RobotContainer {
                 .onTrue(Commands.runOnce(() -> invertDriveControls.set(!invertDriveControls.getAsBoolean())));
         driverController.y().whileTrue(swerveSubsystem.faceTowardsHubCommand());
         driverController.x().whileTrue(swerveSubsystem.lockPoseCommand());
-        if (fuelSubsystem != null) {
+        if (fuelSubsystem != null && unjamManager != null) {
             driverController
                     .b()
                     .and(operatorController.leftTrigger().negate()) // let operator override
+                    .and(unjamManager.isUsingSmartUnjamTrigger().negate()) // let smart unjam override
                     .whileTrue(fuelSubsystem.launchCommand(true))
                     .whileTrue(swerveSubsystem.faceTowardsHubCommand());
             driverController
                     .leftTrigger()
                     .and(operatorController.leftTrigger().negate()) // let operator override
+                    .and(unjamManager.isUsingSmartUnjamTrigger().negate()) // let smart unjam override
                     .whileTrue(fuelSubsystem.intakeCommand());
         }
         /*driverController
@@ -260,14 +268,14 @@ public class RobotContainer {
                 .rightBumper()
                 .and(operatorController.start())
                 .whileTrue(swerveSubsystem.straightenWheelsCommand());
-        operatorController
+        /*operatorController
                 .leftTrigger()
                 .and(operatorController.start())
                 .onTrue(swerveSubsystem.toggleUseBackCameraInPoseEstimation());
         operatorController
                 .rightTrigger()
                 .and(operatorController.start())
-                .onTrue(swerveSubsystem.toggleUseFrontCameraInPoseEstimation());
+                .onTrue(swerveSubsystem.toggleUseFrontCameraInPoseEstimation());*/
 
         operatorController.rightStick().onTrue(swerveSubsystem.toggleForceNormalDriveMode());
 
@@ -275,7 +283,7 @@ public class RobotContainer {
             operatorController.leftBumper().and(operatorController.start()).whileTrue(autoManager.testOnePointPath());
         }
 
-        if (fuelSubsystem != null) {
+        if (fuelSubsystem != null && unjamManager != null) {
             operatorController
                     .rightBumper()
                     .and(operatorController.start().negate())
@@ -304,7 +312,39 @@ public class RobotContainer {
                     .whileTrue(shooterCalculator.decreaseVelocityOffset());
             new Trigger(() -> operatorController.getRightX() > 0.5)
                     .whileTrue(shooterCalculator.increaseVelocityOffset());
-            operatorController.back().whileTrue(fuelSubsystem.temporarilyUseMaxPowerAll());
+            operatorController.back().whileTrue(unjamManager.temporarilyUseMaxPowerAll());
+            operatorController
+                    .leftTrigger()
+                    .and(operatorController.start())
+                    .whileTrue(unjamManager.smartUnjamCommand());
+            unjamManager
+                    .isUsingSmartUnjamTrigger()
+                    .negate()
+                    .whileTrue(Commands.runEnd(
+                            () -> {
+                                final var intakeLauncherStalled = unjamManager
+                                        .intakeLauncherStalledTrigger()
+                                        .getAsBoolean();
+                                final var indexerStalled =
+                                        unjamManager.indexerStalledTrigger().getAsBoolean();
+                                final var totalStalled =
+                                        intakeLauncherStalled ? (indexerStalled ? 2 : 1) : (indexerStalled ? 1 : 0);
+                                operatorController.setRumble(
+                                        RumbleType.kBothRumble, loggedRumbleMaxValue.getAsDouble() * totalStalled);
+                            },
+                            () -> operatorController.setRumble(RumbleType.kBothRumble, 0.0)));
+            unjamManager
+                    .isReadyTrigger()
+                    .whileTrue(Commands.startEnd(
+                            () -> operatorController.setRumble(
+                                    RumbleType.kBothRumble, loggedRumbleMaxValue.getAsDouble()),
+                            () -> operatorController.setRumble(RumbleType.kBothRumble, 0.0)));
+            /*operatorController
+            .start()
+            .whileTrue(Commands.startEnd(
+                    () -> operatorController.setRumble(
+                            RumbleType.kBothRumble, loggedRumbleMaxValue.getAsDouble()),
+                    () -> operatorController.setRumble(RumbleType.kBothRumble, 0.0)));*/
         }
         if (climberSubsystem != null) {
             operatorController
@@ -384,5 +424,9 @@ public class RobotContainer {
 
     public void simulationPeriodic() {
         shooterCalculator.simulationPeriodic();
+    }
+
+    public void disabledInit() {
+        operatorController.setRumble(RumbleType.kBothRumble, 0.0);
     }
 }

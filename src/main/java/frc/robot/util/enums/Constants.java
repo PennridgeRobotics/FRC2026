@@ -190,8 +190,8 @@ public final class Constants {
 
         public static final AngularVelocity INTAKE_VELOCITY_INTAKE_LAUNCHER = RotationsPerSecond.of(20);
         public static final AngularVelocity INTAKE_VELOCITY_INDEXER = RotationsPerSecond.of(-16);
-        public static final AngularVelocity UNJAM_VELOCITY_INTAKE_LAUNCHER = RotationsPerSecond.of(-10);
-        public static final AngularVelocity UNJAM_VELOCITY_INDEXER = RotationsPerSecond.of(-10);
+        public static final AngularVelocity UNJAM_VELOCITY_INTAKE_LAUNCHER = RotationsPerSecond.of(-30);
+        public static final AngularVelocity UNJAM_VELOCITY_INDEXER = RotationsPerSecond.of(-18);
         public static final AngularVelocity EJECT_VELOCITY_INTAKE_LAUNCHER = RotationsPerSecond.of(-10);
         public static final AngularVelocity EJECT_VELOCITY_INDEXER = RotationsPerSecond.of(10);
         public static final AngularVelocity LAUNCH_VELOCITY_INDEXER = RotationsPerSecond.of(10);
@@ -199,6 +199,14 @@ public final class Constants {
         // calculated velocity + LAUNCH_VELOCITY_TOLERANCE = velocity needed to finish winding up
         public static final AngularVelocity LAUNCH_VELOCITY_TOLERANCE = RotationsPerSecond.of(-0.5);
         public static final Voltage MAX_POWER_VOLTAGE = Volts.of(12.0);
+
+        public static final Time SMART_UNJAM_INDEXER_REVERSE_LAUNCH_TIME = Seconds.of(0.42);
+        public static final Time SMART_UNJAM_BOTH_REVERSE_PULSE_TIME = Seconds.of(0.20);
+        public static final Time SMART_UNJAM_FORCE_LAUNCH_TIME = Seconds.of(0.28);
+        public static final Time SMART_UNJAM_EJECT_TIME = Milliseconds.of(500);
+        public static final AngularVelocity SMART_UNJAM_MIN_LAUNCHER_SPEED = RotationsPerSecond.of(1);
+        public static final AngularVelocity SMART_UNJAM_MIN_INDEXER_SPEED = RotationsPerSecond.of(1);
+        public static final AngularVelocity SMART_UNJAM_READY_MIN_LAUNCHER_SPEED = RotationsPerSecond.of(5);
     }
 
     public static final class ClimberConstants {

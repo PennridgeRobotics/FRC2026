@@ -6,6 +6,7 @@ package frc.robot.subsystems;
 import static edu.wpi.first.units.Units.KilogramSquareMeters;
 import static edu.wpi.first.units.Units.Meters;
 import static edu.wpi.first.units.Units.MetersPerSecond;
+import static edu.wpi.first.units.Units.RPM;
 import static edu.wpi.first.units.Units.RotationsPerSecond;
 
 import com.revrobotics.PersistMode;
@@ -100,6 +101,9 @@ public class FuelSubsystem extends SubsystemBase {
                 .encoder
                 .uvwMeasurementPeriod(intakeLauncherUVWMeasurementPeriod.getAsInt())
                 .uvwAverageDepth(intakeLauncherUVWAverageDepth.getAsInt());
+
+        final var indexerBaseSparkMaxConfig = new SparkMaxConfig();
+        indexerBaseSparkMaxConfig.encoder.uvwMeasurementPeriod(16).uvwAverageDepth(4);
         final var intakeLauncherLeftSMCConfig = new SmartMotorControllerConfig(this)
                 .withVendorConfig(new SparkMaxConfig().apply(intakeLauncherBaseSparkMaxConfig))
                 .withGearing(FuelConstants.INTAKE_LAUNCHER_GEARING)
@@ -126,6 +130,7 @@ public class FuelSubsystem extends SubsystemBase {
                 .withControlMode(ControlMode.OPEN_LOOP)
                 .withTelemetry("LauncherMotorRight", TelemetryVerbosity.MID);
         final var indexerSMCConfig = new SmartMotorControllerConfig(this)
+                .withVendorConfig(new SparkMaxConfig().apply(indexerBaseSparkMaxConfig))
                 .withFeedforward(new SimpleMotorFeedforward(0.03, 0.23))
                 .withClosedLoopController(new PIDController(0.002, 0.0, 0.0))
                 .withControlMode(ControlMode.CLOSED_LOOP)
@@ -202,7 +207,7 @@ public class FuelSubsystem extends SubsystemBase {
                 })
                 .debounce(0.1, DebounceType.kRising);
 
-        unjamManager = new UnjamManager(this);
+        unjamManager = new UnjamManager(this, shooterCalculator, intakeLauncherController, indexerController);
 
         motorInfo.addMotor(intakeLauncherLeftSparkMax, "Intake-Launcher Left");
         motorInfo.addMotor(intakeLauncherRightSparkMax, "Intake-Launcher Right");
@@ -276,9 +281,9 @@ public class FuelSubsystem extends SubsystemBase {
         setVelocityOrMaxPower(indexerController, angularVelocity, unjamManager.useMaxPowerIndexer());
     }
 
-    private void setVelocityOrMaxPower(
+    public void setVelocityOrMaxPower(
             SmartMotorController motorController, AngularVelocity angularVelocity, boolean useMaxPower) {
-        if (useMaxPower && motorController.getMechanismVelocity().lt(angularVelocity)) {
+        if (useMaxPower && motorController.getMechanismVelocity().abs(RPM) < angularVelocity.abs(RPM)) {
             motorController.setVoltage(
                     maxPowerVoltage.get().times(Math.signum(angularVelocity.in(RotationsPerSecond))));
         } else if (motorController
@@ -287,6 +292,10 @@ public class FuelSubsystem extends SubsystemBase {
                 .orElse(true)) {
             motorController.setVelocity(angularVelocity);
         }
+    }
+
+    public UnjamManager getUnjamManager() {
+        return unjamManager;
     }
 
     public Command idleCommand() {
@@ -302,34 +311,40 @@ public class FuelSubsystem extends SubsystemBase {
     }
 
     public Command ejectCommand() {
-        return run(() -> {
-            currentState = FuelAction.EJECT;
-            setVelocityOrMaxPowerIntakeLauncher(ejectVelocityIntakeLauncher.get());
-            setVelocityOrMaxPowerIndexer(ejectVelocityIndexer.get());
-        });
+        return run(this::eject);
+    }
+
+    private void eject() {
+        currentState = FuelAction.EJECT;
+        setVelocityOrMaxPowerIntakeLauncher(ejectVelocityIntakeLauncher.get());
+        setVelocityOrMaxPowerIndexer(ejectVelocityIndexer.get());
     }
 
     public Command intakeCommand() {
-        return run(() -> {
-            currentState = FuelAction.INTAKE;
-            setVelocityOrMaxPowerIntakeLauncher(intakeVelocityIntakeLauncher.get());
-            setVelocityOrMaxPowerIndexer(intakeVelocityIndexer.get());
-        });
+        return run(this::intake);
+    }
+
+    private void intake() {
+        currentState = FuelAction.INTAKE;
+        setVelocityOrMaxPowerIntakeLauncher(intakeVelocityIntakeLauncher.get());
+        setVelocityOrMaxPowerIndexer(intakeVelocityIndexer.get());
     }
 
     public Command launchCommand(boolean onlyWhileReady) {
-        return run(() -> {
-            if (onlyWhileReady && !readyToLaunchTrigger.getAsBoolean()) {
-                windUp();
-                return;
-            }
-            currentState = FuelAction.LAUNCH;
-            setVelocityOrMaxPowerIntakeLauncher(getShooterVelocity());
-            setVelocityOrMaxPowerIndexer(
-                    launchVelocityIndexer.get().gt(getShooterVelocity())
-                            ? getShooterVelocity()
-                            : launchVelocityIndexer.get());
-        });
+        return run(() -> launch(onlyWhileReady));
+    }
+
+    public void launch(boolean onlyWhileReady) {
+        if (onlyWhileReady && !readyToLaunchTrigger.getAsBoolean()) {
+            windUp();
+            return;
+        }
+        currentState = FuelAction.LAUNCH;
+        setVelocityOrMaxPowerIntakeLauncher(getShooterVelocity());
+        setVelocityOrMaxPowerIndexer(
+                launchVelocityIndexer.get().gt(getShooterVelocity())
+                        ? getShooterVelocity()
+                        : launchVelocityIndexer.get());
     }
 
     public Command windUpCommand() {
@@ -343,11 +358,13 @@ public class FuelSubsystem extends SubsystemBase {
     }
 
     public Command unjamCommand() {
-        return run(() -> {
-            currentState = FuelAction.UNJAM;
-            setVelocityOrMaxPowerIntakeLauncher(unJamVelocityIntakeLauncher.get());
-            setVelocityOrMaxPowerIndexer(unJamVelocityIndexer.get());
-        });
+        return run(this::unjam);
+    }
+
+    private void unjam() {
+        currentState = FuelAction.UNJAM;
+        setVelocityOrMaxPowerIntakeLauncher(unJamVelocityIntakeLauncher.get());
+        setVelocityOrMaxPowerIndexer(unJamVelocityIndexer.get());
     }
 
     private AngularVelocity getShooterVelocity() {
