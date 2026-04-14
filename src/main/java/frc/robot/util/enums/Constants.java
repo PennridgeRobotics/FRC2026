@@ -203,7 +203,7 @@ public final class Constants {
         public static final Time SMART_UNJAM_INDEXER_REVERSE_LAUNCH_TIME = Seconds.of(0.42);
         public static final Time SMART_UNJAM_BOTH_REVERSE_PULSE_TIME = Seconds.of(0.20);
         public static final Time SMART_UNJAM_FORCE_LAUNCH_TIME = Seconds.of(0.28);
-        public static final Time SMART_UNJAM_EJECT_TIME = Milliseconds.of(500);
+        public static final Time SMART_UNJAM_EJECT_TIME = Seconds.of(0.35);
         public static final AngularVelocity SMART_UNJAM_MIN_LAUNCHER_SPEED = RotationsPerSecond.of(1);
         public static final AngularVelocity SMART_UNJAM_MIN_INDEXER_SPEED = RotationsPerSecond.of(1);
         public static final AngularVelocity SMART_UNJAM_READY_MIN_LAUNCHER_SPEED = RotationsPerSecond.of(5);
