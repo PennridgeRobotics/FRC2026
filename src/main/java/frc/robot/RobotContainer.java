@@ -1,5 +1,7 @@
 package frc.robot;
 
+import static edu.wpi.first.units.Units.Seconds;
+
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -12,10 +14,7 @@ import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.FieldObject2d;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
-import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.CommandScheduler;
-import edu.wpi.first.wpilibj2.command.Commands;
-import edu.wpi.first.wpilibj2.command.InstantCommand;
+import edu.wpi.first.wpilibj2.command.*;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.subsystems.ClimberSubsystem;
@@ -269,6 +268,14 @@ public class RobotContainer {
                     .and(unjamManager.isUsingSmartUnjamTrigger().negate()) // let smart unjam override
                     .whileTrue(fuelSubsystem.intakeCommand());
         }
+        new Trigger(() -> {
+                    final var timeLeft = HubTracker.timeRemainingInCurrentShift();
+                    return timeLeft != null && HubTracker.isActiveNext() && timeLeft.isEquivalent(Seconds.of(5));
+                })
+                .onTrue(Commands.sequence(
+                        rumbleCommand(driverController, 0.3).withTimeout(Seconds.of(0.2)),
+                        Commands.waitSeconds(0.2),
+                        rumbleCommand(driverController, 0.3).withTimeout(Seconds.of(0.2))));
         /*driverController
         .a()
         .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
@@ -378,6 +385,12 @@ public class RobotContainer {
             if (posesToComplete == null) return emptyPoseArray;
             return posesToComplete.toArray(new Pose2d[0]);
         });*/
+    }
+
+    private Command rumbleCommand(CommandXboxController controller, double strength) {
+        return Commands.runEnd(
+                () -> controller.setRumble(RumbleType.kRightRumble, strength),
+                () -> controller.setRumble(RumbleType.kBothRumble, 0.0));
     }
 
     private void updateField() {
