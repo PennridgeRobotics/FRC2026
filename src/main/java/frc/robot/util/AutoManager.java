@@ -20,6 +20,7 @@ import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
+import edu.wpi.first.wpilibj2.command.WaitCommand;
 import frc.robot.lib.BLine.FlippingUtil;
 import frc.robot.lib.BLine.FollowPath;
 import frc.robot.lib.BLine.Path;
@@ -214,7 +215,7 @@ public class AutoManager {
                     .withDeadline(autoCommand.andThen(climbAutoCommand(startAutoLoc)));
             startAutoLoc = null;
         }
-        return autoCommand;
+        return new WaitCommand(autoOptions.startDelaySecs()).andThen(autoCommand);
     }
 
     private Command autoLeadIn(LinearVelocity maxVelocity, Pose2d leadInTo, @Nullable AutoStartLocation resetToLoc) {
@@ -652,6 +653,7 @@ public class AutoManager {
 
     public record AutoOptions(
             AutoStartLocation startLocation,
+            double startDelaySecs,
             boolean shootAtStart1,
             boolean collectFromMidFast2,
             boolean collectFromMidSlow3,

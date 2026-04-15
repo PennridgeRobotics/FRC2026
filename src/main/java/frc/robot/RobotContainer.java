@@ -71,6 +71,7 @@ public class RobotContainer {
             : null;
 
     private final SendableChooser<AutoManager.AutoStartLocation> autoStartLocationChooser;
+    private final LoggedNetworkDouble autoStartDelaySecs = new LoggedNetworkDouble("/Auto/Start Delay", 0.0);
     private final LoggedNetworkBoolean autoShootAtStart1 = new LoggedNetworkBoolean("/Auto/1. Shoot at Start", true);
     private final LoggedNetworkBoolean autoCollectFromMidFast2 =
             new LoggedNetworkBoolean("/Auto/2. Collect From Mid (Fast)", false);
@@ -163,6 +164,7 @@ public class RobotContainer {
         return autoManager != null
                 ? autoManager.getAutoCommand(new AutoManager.AutoOptions(
                         autoStartLocationChooser.getSelected(),
+                        autoStartDelaySecs.getAsDouble(),
                         autoShootAtStart1.getAsBoolean(),
                         autoCollectFromMidFast2.getAsBoolean(),
                         autoCollectFromMidSlow3.getAsBoolean(),
