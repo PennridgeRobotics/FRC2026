@@ -385,9 +385,6 @@ public class SwerveSubsystem extends SubsystemBase {
                         .times(loggedMaxVelocityWhileShooting.get().in(MetersPerSecond));
             }
         }
-        if (DriverStation.getAlliance().orElse(null) == DriverStation.Alliance.Red) { // flip if red
-            linearVelocity = linearVelocity.unaryMinus();
-        }
         final Translation2d limitedLinearVelocity = linearDriveLimiter.calculate(linearVelocity);
         final AngularVelocity determinedAngularVelocity;
         boolean usingSOTMHubLock = false;
@@ -669,7 +666,11 @@ public class SwerveSubsystem extends SubsystemBase {
                 MathUtil.applyDeadband(input, ControllerConstants.DRIVE_MIN_INPUT, ControllerConstants.DRIVE_MAX_INPUT);
         final var scaled = Math.abs(Math.pow(withDeadband, ControllerConstants.LINEAR_DRIVE_POWER_SCALE))
                 * Math.signum(withDeadband);
-        return getMaximumChassisVelocity().times(scaled).times(speedMultiplier.getMultiplier());
+        final var allianceSign = DriverStation.getAlliance().orElse(null) == Alliance.Red ? -1 : 1;
+        return getMaximumChassisVelocity()
+                .times(scaled)
+                .times(speedMultiplier.getMultiplier())
+                .times(allianceSign);
     }
 
     private AngularVelocity joystickToAngularVelocity(final double input) {

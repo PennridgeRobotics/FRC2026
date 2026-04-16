@@ -134,11 +134,11 @@ public class ClimberSubsystem extends SubsystemBase {
                             // System.out.println("CLIMBER VALUE: " + dutyCycleSupplier.getAsDouble());
                         },
                         () -> {
-                            final var value = climberRateLimiter.calculate(dutyCycleSupplier.getAsDouble());
+                            final var value = dutyCycleSupplier.getAsDouble();
                             System.out.println("CLIMBER VALUE: " + value);
                             climber.getMotor().setDutyCycle(value);
                         })
-                .finallyDo(() -> motorController.setDutyCycle(climberRateLimiter.calculate(0.0)));
+                .finallyDo(() -> motorController.setDutyCycle(0.0));
     }
 
     public Command setClimberEncoderToVertical() {

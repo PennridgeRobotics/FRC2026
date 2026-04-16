@@ -131,7 +131,12 @@ public class AutoManager {
             @Nullable LinearVelocity leadInMaxVelocity) {
         if (leadInMaxVelocity == null) return getPathCommand(path, stopAfter, isFromGUI, resetToLoc);
         return Commands.sequence(
-                autoLeadIn(leadInMaxVelocity, path.getStartPose(), resetToLoc),
+                autoLeadIn(
+                        leadInMaxVelocity,
+                        (isFromGUI && shouldFlip())
+                                ? FlippingUtil.flipFieldPose(path.getStartPose())
+                                : path.getStartPose(),
+                        resetToLoc),
                 getPathCommand(path, stopAfter, isFromGUI, null));
     }
 
@@ -259,7 +264,7 @@ public class AutoManager {
                                         getPathCommand(alignClimbPath, false, true, resetToLoc),
                                         swerveDrive
                                                 .driveFieldOrientedCommand(
-                                                        () -> MetersPerSecond.of(0.2 * (shouldFlip() ? -1 : 1)),
+                                                        () -> MetersPerSecond.of(-0.2 * (shouldFlip() ? -1 : 1)),
                                                         MetersPerSecond::zero,
                                                         DegreesPerSecond::zero)
                                                 .withTimeout(Seconds.of(1.0)))),
