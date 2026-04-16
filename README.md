@@ -90,7 +90,6 @@ angle (90 degrees)
 
 ### Match start checklist:
 - Bring charger!!
-- Connect ethernet
 - Check joysticks (driver: 0, operator: 1)
 - Set auto start location (Left Hub = center; just means left side of robot is flush with left side of hub)
   - Nz = intake is facing neutral zone
