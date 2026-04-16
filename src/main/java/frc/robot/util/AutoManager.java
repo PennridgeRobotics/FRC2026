@@ -212,7 +212,8 @@ public class AutoManager {
         if (autoOptions.climb8() && climberSubsystem != null) {
             autoCommand = climberSubsystem
                     .armCommand(() -> true, () -> true)
-                    .withDeadline(autoCommand.andThen(climbAutoCommand(startAutoLoc)));
+                    .withDeadline(autoCommand)
+                    .andThen(climbAutoCommand(startAutoLoc));
             startAutoLoc = null;
         }
         return new WaitCommand(autoOptions.startDelaySecs()).andThen(autoCommand);
@@ -254,7 +255,7 @@ public class AutoManager {
                 () -> Commands.sequence(
                         climberSubsystem
                                 .armCommand(() -> true, () -> true)
-                                .withDeadline(Commands.parallel(
+                                .withDeadline(Commands.sequence(
                                         getPathCommand(alignClimbPath, false, true, resetToLoc),
                                         swerveDrive
                                                 .driveFieldOrientedCommand(
@@ -280,7 +281,7 @@ public class AutoManager {
         return fuelSubsystem
                 .intakeCommand()
                 .withDeadline(getPathCommandWithLeadIn(depotPath, false, true, resetToLoc, MetersPerSecond.of(1.6)))
-                .andThen(shootAutoCommand(AutoStartLocation.LEFT_INNER_BUMP, Seconds.of(4), false));
+                .andThen(shootAutoCommand(AutoStartLocation.LEFT_INNER_BUMP, Seconds.of(6), false));
     }
 
     private Command pathInFrontOfHubAndShoot(@Nullable AutoStartLocation resetToLoc) {
