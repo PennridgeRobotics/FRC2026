@@ -56,6 +56,7 @@ X   B
 |--------------------|------------------------------------------|
 | Back + other       | Enable MAX POWER for fuel                |
 | L Trigger          | Disable driver fuel controls             |
+| L Trigger + Start  | Smart Unjam                              |
 | Both Triggers      | Shoot (no wind up)                       |
 | B                  | Un-shoot                                 |
 | L Bumper           | Eject                                    |
@@ -64,7 +65,37 @@ X   B
 | L Stick Pressed    | Enable manual launch                     |
 | R Stick Pressed    | Toggle force normal drive mode           |
 | L Stick Left/Right | Increase/decrease manual launch velocity |
+| Y                  | Climb                                    |
+| Y + Start (RB)     | Climb (ignore limit)                     |
+| Y + Back  (LB)     | Climb (fast)                             |
+| X                  | Lower climber                            |
+| X + Start (RB)     | Lower climber (ignore limit)             |
+| X + Back  (LB)     | Lower climber (fast)                     |
+| Rumble             | Motors stalled OR smart unjam ready      |
+### Notes
+- The "ignore limit" climb commands probably should never be used unless the climber was not started at a vertical
+angle (90 degrees)
+- The "fast" climber command should be used when:
+  - Climbing
+  - Lowering the climber when NOT currently climbing
+- Lower the climber right away (no point in waiting or else you could forget)
+- Controller vibrating: launcher is jammed! (for at least 0.3s)
+  - Automatically applies max power (12V) after 0.6s total, or Back to manually activate 12V
+  - First, try Smart Unjam (L Trigger + Start)
+    - Will vibrate again when unjammed; however, keep holding until hopper is empty
+  - If Smart Unjam doesn't work after ~6s, you can try L Trigger + commands manually
+    - If it still doesn't work, try driving over the bump or something to help dislodge the fuel
+- Driver controller will vibrate 5s before shifts that we can shoot in
+  - Configurable in RobotContainer line 275
 
+### Match start checklist:
+- Bring charger!!
+- Check joysticks (driver: 0, operator: 1)
+- Set auto start location (Left Hub = center; just means left side of robot is flush with left side of hub)
+  - Nz = intake is facing neutral zone
+- Collect from mid *fast* should only be used if Shoot at Start is deactivated
+- Make sure WiFi is off
+- Make sure wheels are straightened
 
 ## LED Signals
 Note: Ordered by priority

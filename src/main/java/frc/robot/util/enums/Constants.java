@@ -232,7 +232,7 @@ public final class Constants {
         public static final Angle HORIZONTAL_ANGLE = Degrees.of(0);
         public static final Angle VERTICAL_ANGLE = Degrees.of(90);
         public static final Angle ARMED_ANGLE = Degrees.of(-16);
-        public static final Angle CLIMBED_ANGLE = Degrees.of(90);
+        public static final Angle CLIMBED_ANGLE = Degrees.of(70);
 
         public static final Angle TOLERANCE_ANGLE = Degrees.of(1);
     }
