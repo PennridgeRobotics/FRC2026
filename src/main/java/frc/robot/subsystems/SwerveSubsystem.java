@@ -549,8 +549,11 @@ public class SwerveSubsystem extends SubsystemBase {
         setModuleOrientations(Rotation2d.kZero);
     }
 
-    public Command straightenWheelsCommand() {
-        return Commands.startEnd(() -> loggedStraightenWheels.set(true), () -> loggedStraightenWheels.set(false));
+    public Command straightenWheelsCommand(boolean force) {
+        return Commands.startRun(() -> loggedStraightenWheels.set(true), () -> {
+                    if (force) straightenWheels();
+                })
+                .finallyDo(() -> loggedStraightenWheels.set(false));
     }
 
     public Command lockYawTowardsVelocity() {

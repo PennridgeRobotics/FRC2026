@@ -286,7 +286,7 @@ public class RobotContainer {
         operatorController
                 .rightBumper()
                 .and(operatorController.start())
-                .whileTrue(swerveSubsystem.straightenWheelsCommand());
+                .whileTrue(swerveSubsystem.straightenWheelsCommand(false));
         /*operatorController
                 .leftTrigger()
                 .and(operatorController.start())
@@ -357,12 +357,12 @@ public class RobotContainer {
                     .y()
                     .whileTrue(climberSubsystem.climbCommand(
                             operatorController.start().negate(), operatorController.back()))
-                    .whileTrue(swerveSubsystem.straightenWheelsCommand());
+                    .whileTrue(swerveSubsystem.straightenWheelsCommand(false));
             operatorController
                     .x()
                     .whileTrue(climberSubsystem.armCommand(
                             operatorController.start().negate(), operatorController.back()))
-                    .whileTrue(swerveSubsystem.straightenWheelsCommand());
+                    .whileTrue(swerveSubsystem.straightenWheelsCommand(false));
         }
         /*if (autoManager != null) {
             operatorController.back().whileTrue(autoManager.testAuto());

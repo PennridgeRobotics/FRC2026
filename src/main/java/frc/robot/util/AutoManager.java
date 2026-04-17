@@ -270,7 +270,7 @@ public class AutoManager {
                                                 .withTimeout(Seconds.of(1.0)))),
                         Commands.parallel(
                                 climberSubsystem.climbCommand(() -> true, () -> false),
-                                swerveDrive.straightenWheelsCommand())),
+                                swerveDrive.straightenWheelsCommand(true))),
                 Set.of(swerveDrive, climberSubsystem));
     }
 
