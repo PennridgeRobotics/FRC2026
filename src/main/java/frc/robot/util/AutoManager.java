@@ -266,10 +266,10 @@ public class AutoManager {
                                         Commands.waitUntil(climberSubsystem.getArmedTrigger()),
                                         swerveDrive
                                                 .driveFieldOrientedCommand(
-                                                        () -> MetersPerSecond.of(-0.1 * (shouldFlip() ? -1 : 1)),
+                                                        () -> MetersPerSecond.of(-0.2 * (shouldFlip() ? -1 : 1)),
                                                         MetersPerSecond::zero,
                                                         DegreesPerSecond::zero)
-                                                .withTimeout(Seconds.of(1.5)))),
+                                                .withTimeout(Seconds.of(1)))),
                         Commands.race(
                                 climberSubsystem.climbCommand(() -> true, () -> false),
                                 swerveDrive.straightenWheelsCommand(true))),
