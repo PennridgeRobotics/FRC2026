@@ -302,7 +302,7 @@ public class FuelSubsystem extends SubsystemBase {
         return run(this::reset); // System.out.println("SET VELOCITY TO 0");
     }
 
-    private void reset() {
+    public void reset() {
         currentState = FuelAction.IDLE;
         intakeLauncherController.setDutyCycle(0);
         indexerController.setDutyCycle(0);

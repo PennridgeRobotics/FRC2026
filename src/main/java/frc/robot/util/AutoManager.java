@@ -258,17 +258,19 @@ public class AutoManager {
         if (climberSubsystem == null) return Commands.none();
         return Commands.defer(
                 () -> Commands.sequence(
-                        climberSubsystem
-                                .armCommand(() -> true, () -> true)
-                                .withDeadline(Commands.sequence(
-                                        getPathCommand(alignClimbPath, false, true, resetToLoc),
+                        Commands.parallel(
+                                climberSubsystem.armCommand(() -> true, () -> true),
+                                Commands.sequence(
+                                        getPathCommandWithLeadIn(
+                                                alignClimbPath, true, true, resetToLoc, MetersPerSecond.of(1.6)),
+                                        Commands.waitUntil(climberSubsystem.getArmedTrigger()),
                                         swerveDrive
                                                 .driveFieldOrientedCommand(
-                                                        () -> MetersPerSecond.of(-0.2 * (shouldFlip() ? -1 : 1)),
+                                                        () -> MetersPerSecond.of(-0.1 * (shouldFlip() ? -1 : 1)),
                                                         MetersPerSecond::zero,
                                                         DegreesPerSecond::zero)
-                                                .withTimeout(Seconds.of(1.0)))),
-                        Commands.parallel(
+                                                .withTimeout(Seconds.of(1.5)))),
+                        Commands.race(
                                 climberSubsystem.climbCommand(() -> true, () -> false),
                                 swerveDrive.straightenWheelsCommand(true))),
                 Set.of(swerveDrive, climberSubsystem));
@@ -414,7 +416,8 @@ public class AutoManager {
                 fuelSubsystem
                         .launchCommand(true)
                         .withDeadline(Commands.waitUntil(fuelSubsystem.isReadyToLaunchTrigger())
-                                .andThen(Commands.waitTime(launchDuration))));
+                                .andThen(Commands.waitTime(launchDuration)))
+                        .finallyDo(fuelSubsystem::reset));
     }
 
     public Command goOverBump(

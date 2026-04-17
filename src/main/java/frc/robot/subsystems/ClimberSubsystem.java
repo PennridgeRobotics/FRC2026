@@ -39,6 +39,7 @@ public class ClimberSubsystem extends SubsystemBase {
     private final Arm climber;
 
     private final LoggedNetworkBoolean isClimbing = new LoggedNetworkBoolean("/Climber/Climbing", false);
+    private final LoggedNetworkBoolean isArming = new LoggedNetworkBoolean("/Climber/Arming", false);
     private final Trigger climbingTrigger = new Trigger(isClimbing);
     private final Trigger isClimbed;
     private final Trigger isArmed;
@@ -83,12 +84,14 @@ public class ClimberSubsystem extends SubsystemBase {
         isArmed = new Trigger(
                 () -> climber.getAngle().lte(ClimberConstants.ARMED_ANGLE.plus(ClimberConstants.TOLERANCE_ANGLE)));
 
+        new LoggedNetworkBoolean("/Climber/Climbed", isClimbed);
+        new LoggedNetworkBoolean("/Climber/Armed", isArmed);
+
         motorInfo.addMotor(sparkMaxMotor, "Climber");
 
         setupSmartDashboard();
 
-        setDefaultCommand(startRun(() -> System.out.println("CLIMBER VALUE: 0.0"), () -> climber.getMotor()
-                .setDutyCycle(0.0)));
+        setDefaultCommand(run(() -> climber.getMotor().setDutyCycle(0.0)));
     }
 
     private void setupSmartDashboard() {
@@ -116,16 +119,20 @@ public class ClimberSubsystem extends SubsystemBase {
                                 setDutyCycle(() ->
                                         fast.getAsBoolean() ? climbFastValue.getAsDouble() : climbValue.getAsDouble()),
                                 () -> false))
-                .until(isClimbed.and(autoStop));
+                .until(isClimbed.and(autoStop))
+                .finallyDo(() -> isClimbing.set(false));
     }
 
     public Command armCommand(BooleanSupplier autoStop, BooleanSupplier fast) {
-        return Commands.either(
-                        climber.run(ClimberConstants.ARMED_ANGLE),
-                        setDutyCycle(
-                                () -> fast.getAsBoolean() ? lowerFastValue.getAsDouble() : lowerValue.getAsDouble()),
-                        () -> false)
-                .until(isArmed.and(autoStop));
+        return Commands.sequence(
+                        Commands.runOnce(() -> isArming.set(true)),
+                        Commands.either(
+                                climber.run(ClimberConstants.ARMED_ANGLE),
+                                setDutyCycle(() ->
+                                        fast.getAsBoolean() ? lowerFastValue.getAsDouble() : lowerValue.getAsDouble()),
+                                () -> false))
+                .until(isArmed.and(autoStop))
+                .finallyDo(() -> isArming.set(false));
     }
 
     private Command setDutyCycle(DoubleSupplier dutyCycleSupplier) {
@@ -135,7 +142,6 @@ public class ClimberSubsystem extends SubsystemBase {
                         },
                         () -> {
                             final var value = dutyCycleSupplier.getAsDouble();
-                            System.out.println("CLIMBER VALUE: " + value);
                             climber.getMotor().setDutyCycle(value);
                         })
                 .finallyDo(() -> motorController.setDutyCycle(0.0));
@@ -178,5 +184,13 @@ public class ClimberSubsystem extends SubsystemBase {
 
     public Trigger getClimbingTrigger() {
         return climbingTrigger;
+    }
+
+    public Trigger getArmedTrigger() {
+        return isArmed;
+    }
+
+    public Trigger getClimbedTrigger() {
+        return isClimbed;
     }
 }
