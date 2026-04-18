@@ -333,7 +333,11 @@ public class RobotContainer {
                     .whileTrue(shooterCalculator.decreaseVelocityOffset());
             new Trigger(() -> operatorController.getRightX() > 0.5)
                     .whileTrue(shooterCalculator.increaseVelocityOffset());
-            operatorController.back().whileTrue(unjamManager.temporarilyUseMaxPowerAll());
+            operatorController
+                    .back()
+                    .and(operatorController.x().negate())
+                    .and(operatorController.y().negate())
+                    .whileTrue(unjamManager.temporarilyUseMaxPowerAll());
             operatorController
                     .leftTrigger()
                     .and(operatorController.start())
@@ -442,7 +446,7 @@ public class RobotContainer {
             autoManager.teleopInit();
         }
         setupOperatorCommand();
-        if (climberSubsystem != null && DriverStation.isFMSAttached()) {
+        if (climberSubsystem != null && DriverStation.isFMSAttached() && autoClimb8.getAsBoolean()) {
             CommandScheduler.getInstance().schedule(climberSubsystem.armCommand(() -> true, () -> false));
         }
     }
