@@ -11,6 +11,7 @@ import edu.wpi.first.networktables.StructPublisher;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.GenericHID.RumbleType;
 import edu.wpi.first.wpilibj.PowerDistribution;
+import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.FieldObject2d;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
@@ -25,6 +26,7 @@ import frc.robot.subsystems.SwerveSubsystem;
 import frc.robot.util.AutoManager;
 import frc.robot.util.HubTracker;
 import frc.robot.util.ShooterCalculator;
+import frc.robot.util.Stopwatch;
 import frc.robot.util.StringUtils;
 import frc.robot.util.UnjamManager;
 import frc.robot.util.controller.CommandJoystickController;
@@ -162,18 +164,22 @@ public class RobotContainer {
 
     public @Nullable Command getAutonomousCommand() {
         return autoManager != null
-                ? autoManager.getAutoCommand(new AutoManager.AutoOptions(
-                        autoStartLocationChooser.getSelected(),
-                        autoStartDelaySecs.getAsDouble(),
-                        autoShootAtStart1.getAsBoolean(),
-                        autoCollectFromMidFast2.getAsBoolean(),
-                        autoCollectFromMidSlow3.getAsBoolean(),
-                        autoCollectFromMidSlow4.getAsBoolean(),
-                        autoDepot5.getAsBoolean(),
-                        autoOutpost6.getAsBoolean(),
-                        autoCollectFromMidSlow7.getAsBoolean(),
-                        autoClimb8.getAsBoolean()))
+                ? autoManager.getCachedAutoCommand(getAutoOptions())
                 : null;
+    }
+
+    private AutoManager.AutoOptions getAutoOptions() {
+        return new AutoManager.AutoOptions(
+            autoStartLocationChooser.getSelected(),
+            autoStartDelaySecs.getAsDouble(),
+            autoShootAtStart1.getAsBoolean(),
+            autoCollectFromMidFast2.getAsBoolean(),
+            autoCollectFromMidSlow3.getAsBoolean(),
+            autoCollectFromMidSlow4.getAsBoolean(),
+            autoDepot5.getAsBoolean(),
+            autoOutpost6.getAsBoolean(),
+            autoCollectFromMidSlow7.getAsBoolean(),
+            autoClimb8.getAsBoolean());
     }
 
     public void periodic() {
@@ -373,6 +379,17 @@ public class RobotContainer {
         new LoggedNetworkSendable<>("/Auto/Start Location Chooser", autoStartLocationChooser);
         new LoggedNetworkSendable<>("/Misc/Power Distribution", powerDistribution);
         new LoggedNetworkSendable<>("/Misc/Motor Info", motorInfo);
+        final var loggedGenerateAuto = new LoggedNetworkBoolean("/Auto/Generate Auto", () -> {
+            if (DriverStation.isEnabled()) return false;
+            if (autoManager != null) return autoManager.isCachedAutoUsable(getAutoOptions());
+            return false;
+        });
+        loggedGenerateAuto.addListener(v -> {
+            if (autoManager == null) return;
+            if (v) autoManager.setAutoCache(getAutoOptions());
+            else autoManager.clearAutoCache();
+        });
+
         // new LoggedNetworkSendable<>("/Pigeon2", new Pigeon2Sendable(swerveSubsystem.getPigeon2()));
         /*final var emptyPoseArray = new Pose2d[0];
         new LoggedNetworkStructArray<>("/Misc/BLine Completed Poses", Pose2d.struct, () -> {

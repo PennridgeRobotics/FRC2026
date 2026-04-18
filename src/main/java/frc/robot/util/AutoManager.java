@@ -60,6 +60,8 @@ public class AutoManager {
     private final Supplier<Distance> distanceSupplier =
             new LoggedNetworkUnit<>("Auto/Move from hub & shoot distance (m)", Meters.of(1.8));
 
+    private @Nullable AutoCache autoCache;
+
     private @Nullable Pair<FollowPath, Path> currentPath;
     private @Nullable Pose2d pathStart;
 
@@ -222,6 +224,23 @@ public class AutoManager {
             startAutoLoc = null;
         }
         return new WaitCommand(autoOptions.startDelaySecs()).andThen(autoCommand);
+    }
+
+    public Command getCachedAutoCommand(AutoOptions autoOptions) {
+        if (autoCache != null && autoCache.isUsable(autoOptions)) return autoCache.autoCommand();
+        return getAutoCommand(autoOptions);
+    }
+
+    public boolean isCachedAutoUsable(AutoOptions autoOptions) {
+        return autoCache != null && autoCache.isUsable(autoOptions);
+    }
+
+    public void setAutoCache(AutoOptions autoOptions) {
+        autoCache = new AutoCache(autoOptions, DriverStation.getAlliance().orElse(null), getAutoCommand(autoOptions));
+    }
+
+    public void clearAutoCache() {
+        autoCache = null;
     }
 
     private Command autoLeadIn(LinearVelocity maxVelocity, Pose2d leadInTo, @Nullable AutoStartLocation resetToLoc) {
@@ -671,4 +690,14 @@ public class AutoManager {
             boolean outpost6,
             boolean collectFromMidSlow7,
             boolean climb8) {}
+
+    public record AutoCache(
+        AutoOptions autoOptions,
+        @Nullable Alliance alliance,
+        Command autoCommand
+    ) {
+        public boolean isUsable(AutoOptions autoOptions) {
+            return this.autoOptions.equals(autoOptions) && this.alliance == DriverStation.getAlliance().orElse(null);
+        }
+    }
 }
