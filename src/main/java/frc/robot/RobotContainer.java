@@ -277,9 +277,9 @@ public class RobotContainer {
                     return timeLeft != null && HubTracker.isActiveNext() && timeLeft.isEquivalent(Seconds.of(5));
                 })
                 .onTrue(Commands.sequence(
-                        rumbleCommand(driverController, 0.3).withTimeout(Seconds.of(0.2)),
+                        rumbleCommand(driverController, 0.6).withTimeout(Seconds.of(0.2)),
                         Commands.waitSeconds(0.2),
-                        rumbleCommand(driverController, 0.3).withTimeout(Seconds.of(0.2))));
+                        rumbleCommand(driverController, 0.6).withTimeout(Seconds.of(0.2))));
         /*driverController
         .a()
         .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
