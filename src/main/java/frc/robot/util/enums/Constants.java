@@ -222,7 +222,7 @@ public final class Constants {
         public static final Voltage VOLTAGE_COMPENSATION = Volts.of(12.0);
 
         // open loop
-        public static final double CLIMB_VALUE = 0.15;
+        public static final double CLIMB_VALUE = 0.5;
         public static final double CLIMB_FAST_VALUE = 0.5;
         public static final double LOWER_VALUE = -0.3;
         public static final double LOWER_FAST_VALUE = -1.0;

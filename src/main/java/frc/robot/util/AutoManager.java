@@ -692,12 +692,10 @@ public class AutoManager {
             boolean climb8) {}
 
     public record AutoCache(
-        AutoOptions autoOptions,
-        @Nullable Alliance alliance,
-        Command autoCommand
-    ) {
+            AutoOptions autoOptions, @Nullable Alliance alliance, Command autoCommand) {
         public boolean isUsable(AutoOptions autoOptions) {
-            return this.autoOptions.equals(autoOptions) && this.alliance == DriverStation.getAlliance().orElse(null);
+            return this.autoOptions.equals(autoOptions)
+                    && this.alliance == DriverStation.getAlliance().orElse(null);
         }
     }
 }
