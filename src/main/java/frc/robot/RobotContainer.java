@@ -58,6 +58,7 @@ public class RobotContainer {
     private final @Nullable AutoManager autoManager;
     private final @Nullable UnjamManager unjamManager;
 
+    private final StructPublisher<Pose2d> realRobotPose; // realRobotPose returns direction in Radians to be utilised in AdvantageScope
     private final StructPublisher<Pose2d> aheadRobotPose;
     private final StructPublisher<Pose2d> behindRobotPose;
 
@@ -135,6 +136,9 @@ public class RobotContainer {
                 : null;
         unjamManager = fuelSubsystem != null ? fuelSubsystem.getUnjamManager() : null;
 
+        realRobotPose = NetworkTableInstance.getDefault()
+                .getStructTopic("Real Robot Pose", Pose2d.struct)
+                .publish();
         aheadRobotPose = NetworkTableInstance.getDefault()
                 .getStructTopic("Robot Pose Ahead", Pose2d.struct)
                 .publish();
@@ -180,6 +184,7 @@ public class RobotContainer {
     }
 
     private void updateAheadRobotPose() {
+        realRobotPose.set(swerveSubsystem.getRobotPose());
         aheadRobotPose.set(swerveSubsystem.getRobotPose().plus(new Transform2d(100.0, 0, Rotation2d.kZero)));
         behindRobotPose.set(swerveSubsystem.getRobotPose().plus(new Transform2d(-100.0, 0, Rotation2d.kZero)));
     }
