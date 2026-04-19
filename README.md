@@ -23,6 +23,10 @@ X   B
 | X                   | Lock mode                 |
 | Y                   | Face towards hub          |
 | B                   | Wind up & launch          |
+| D-Pad Up            | Snap to 0° (away)         |
+| D-Pad Down          | Snap to 180° (towards)    |
+| D-Pad Right         | Snap to 90° (right)       |
+| D-Pad Left          | Snap to 270° (left)       |
 ### Operator
 | Button                | Action                                   |
 |-----------------------|------------------------------------------|
