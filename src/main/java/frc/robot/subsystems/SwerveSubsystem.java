@@ -74,6 +74,8 @@ public class SwerveSubsystem extends SubsystemBase {
 
     private boolean lockYawTowardsVelocity = false;
     private boolean faceTowardsHub = false;
+    private boolean snapToAngle = false;
+    private Rotation2d snapTargetAngle = Rotation2d.kZero;
     private SpeedMultiplier speedMultiplier = SpeedMultiplier.NORMAL;
     private final BooleanSupplier headingCorrectionSupplier;
     private final DoubleSupplier headingCorrectionDeadband;
@@ -416,6 +418,8 @@ public class SwerveSubsystem extends SubsystemBase {
             determinedAngularVelocity = getTargetAngularVelocity(getVelocityAngle(
                     MetersPerSecond.of(limitedLinearVelocity.getX()),
                     MetersPerSecond.of(limitedLinearVelocity.getY())));
+        } else if(snapToAngle) {
+            determinedAngularVelocity = getTargetAngularVelocity(snapTargetAngle);
         } else if (bumpManager.isBumpLockEnabledTrigger().getAsBoolean()) {
             determinedAngularVelocity = getTargetAngularVelocity(bumpManager.getBumpLockAngle());
         } else {
@@ -542,6 +546,20 @@ public class SwerveSubsystem extends SubsystemBase {
 
     public Command faceTowardsHubCommand() {
         return Commands.runEnd(() -> faceTowardsHub = true, () -> faceTowardsHub = false);
+    }
+
+    /**
+     * Snaps the robot's heading to the specified angle.
+     * @param angle The angle to snap to.
+     * @return A command that snaps the robot's heading to the specified angle.
+     */
+    public Command snapToAngleCommand(Rotation2d angle) {
+        return Commands.runEnd(() -> {snapToAngle = true; 
+            if (DriverStation.getAlliance().orElse(null) == Alliance.Red) {
+                snapTargetAngle = angle.plus(Rotation2d.fromDegrees(180));
+            } else {
+                snapTargetAngle = angle;
+        }}, () -> snapToAngle = false);
     }
 
     public Rotation2d getAngleToHub() {

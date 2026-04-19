@@ -255,6 +255,10 @@ public class RobotContainer {
                 .onTrue(Commands.runOnce(() -> invertDriveControls.set(!invertDriveControls.getAsBoolean())));
         driverController.y().whileTrue(swerveSubsystem.faceTowardsHubCommand());
         driverController.x().whileTrue(swerveSubsystem.lockPoseCommand());
+        driverController.povDown().whileTrue(swerveSubsystem.snapToAngleCommand(Rotation2d.kZero));
+        driverController.povRight().whileTrue(swerveSubsystem.snapToAngleCommand(Rotation2d.fromDegrees(90)));
+        driverController.povUp().whileTrue(swerveSubsystem.snapToAngleCommand(Rotation2d.fromDegrees(180)));
+        driverController.povLeft().whileTrue(swerveSubsystem.snapToAngleCommand(Rotation2d.fromDegrees(270))); 
         if (fuelSubsystem != null && unjamManager != null) {
             driverController
                     .b()
