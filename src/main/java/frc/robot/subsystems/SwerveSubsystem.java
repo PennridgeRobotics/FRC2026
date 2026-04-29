@@ -233,7 +233,9 @@ public class SwerveSubsystem extends SubsystemBase {
             final Supplier<LinearVelocity> xVelocity,
             final Supplier<LinearVelocity> yVelocity,
             final Supplier<AngularVelocity> angularVelocity) {
-        return run(() -> driveFieldOriented(xVelocity.get(), yVelocity.get(), angularVelocity.get()));
+        return runEnd(
+                () -> driveFieldOriented(xVelocity.get(), yVelocity.get(), angularVelocity.get()),
+                () -> driveFieldOriented(MetersPerSecond.zero(), MetersPerSecond.zero(), DegreesPerSecond.zero()));
     }
 
     /**
@@ -260,8 +262,10 @@ public class SwerveSubsystem extends SubsystemBase {
             final Supplier<LinearVelocity> yVelocity,
             final DoubleSupplier headingX,
             final DoubleSupplier headingY) {
-        return run(() ->
-                driveFieldOriented(xVelocity.get(), yVelocity.get(), headingX.getAsDouble(), headingY.getAsDouble()));
+        return runEnd(
+                () -> driveFieldOriented(
+                        xVelocity.get(), yVelocity.get(), headingX.getAsDouble(), headingY.getAsDouble()),
+                () -> driveFieldOriented(MetersPerSecond.zero(), MetersPerSecond.zero(), DegreesPerSecond.zero()));
     }
 
     /**
@@ -290,7 +294,9 @@ public class SwerveSubsystem extends SubsystemBase {
             final Supplier<LinearVelocity> xVelocity,
             final Supplier<LinearVelocity> yVelocity,
             final Supplier<Rotation2d> heading) {
-        return run(() -> driveFieldOriented(xVelocity.get(), yVelocity.get(), getTargetAngularVelocity(heading.get())));
+        return runEnd(
+                () -> driveFieldOriented(xVelocity.get(), yVelocity.get(), getTargetAngularVelocity(heading.get())),
+                () -> driveFieldOriented(MetersPerSecond.zero(), MetersPerSecond.zero(), DegreesPerSecond.zero()));
     }
 
     /**
@@ -303,28 +309,30 @@ public class SwerveSubsystem extends SubsystemBase {
      */
     public Command driveRobotOrientedCommand(
             DoubleSupplier translationX, DoubleSupplier translationY, DoubleSupplier angularRotationX) {
-        return run(() -> {
-            // Make the robot move
-            final var chassisSpeeds = new ChassisSpeeds(
-                    translationX.getAsDouble() * swerveDrive.getMaximumChassisVelocity(),
-                    translationY.getAsDouble() * swerveDrive.getMaximumChassisVelocity(),
-                    angularRotationX.getAsDouble() * swerveDrive.getMaximumChassisAngularVelocity());
+        return runEnd(
+                () -> {
+                    // Make the robot move
+                    final var chassisSpeeds = new ChassisSpeeds(
+                            translationX.getAsDouble() * swerveDrive.getMaximumChassisVelocity(),
+                            translationY.getAsDouble() * swerveDrive.getMaximumChassisVelocity(),
+                            angularRotationX.getAsDouble() * swerveDrive.getMaximumChassisAngularVelocity());
 
-            final var fieldOriented = ChassisSpeeds.fromRobotRelativeSpeeds(
-                    chassisSpeeds, getRobotPose().getRotation());
-            driveFieldOriented(
-                    MetersPerSecond.of(fieldOriented.vxMetersPerSecond),
-                    MetersPerSecond.of(fieldOriented.vyMetersPerSecond),
-                    RadiansPerSecond.of(fieldOriented.omegaRadiansPerSecond));
+                    final var fieldOriented = ChassisSpeeds.fromRobotRelativeSpeeds(
+                            chassisSpeeds, getRobotPose().getRotation());
+                    driveFieldOriented(
+                            MetersPerSecond.of(fieldOriented.vxMetersPerSecond),
+                            MetersPerSecond.of(fieldOriented.vyMetersPerSecond),
+                            RadiansPerSecond.of(fieldOriented.omegaRadiansPerSecond));
 
-            /*if (lockYawTowardsVelocity && !forceNormalDriveMode) {
-                chassisSpeeds.omegaRadiansPerSecond = getVelocityAngle(
-                                MetersPerSecond.of(chassisSpeeds.vxMetersPerSecond),
-                                MetersPerSecond.of(chassisSpeeds.vyMetersPerSecond))
-                        .getRadians();
-            }
-            swerveDrive.drive(chassisSpeeds, false, new Translation2d());*/
-        });
+                    /*if (lockYawTowardsVelocity && !forceNormalDriveMode) {
+                        chassisSpeeds.omegaRadiansPerSecond = getVelocityAngle(
+                                        MetersPerSecond.of(chassisSpeeds.vxMetersPerSecond),
+                                        MetersPerSecond.of(chassisSpeeds.vyMetersPerSecond))
+                                .getRadians();
+                    }
+                    swerveDrive.drive(chassisSpeeds, false, new Translation2d());*/
+                },
+                () -> driveFieldOriented(MetersPerSecond.zero(), MetersPerSecond.zero(), DegreesPerSecond.zero()));
     }
 
     /**
@@ -340,18 +348,20 @@ public class SwerveSubsystem extends SubsystemBase {
             final DoubleSupplier angularInput,
             final DoubleSupplier headingX,
             final DoubleSupplier headingY) {
-        return run(() -> {
-            final var xVelocity = joystickToLinearVelocity(xInput.getAsDouble());
-            final var yVelocity = joystickToLinearVelocity(yInput.getAsDouble());
-            final var headingXValue = headingX.getAsDouble();
-            final var headingYValue = headingY.getAsDouble();
-            if (!swerveDrive.swerveController.withinHypotDeadband(headingXValue, headingYValue)) {
-                driveFieldOriented(xVelocity, yVelocity, headingXValue, headingYValue);
-                return;
-            }
-            final var angularVelocity = joystickToAngularVelocity(angularInput.getAsDouble());
-            driveFieldOriented(xVelocity, yVelocity, angularVelocity);
-        });
+        return runEnd(
+                () -> {
+                    final var xVelocity = joystickToLinearVelocity(xInput.getAsDouble());
+                    final var yVelocity = joystickToLinearVelocity(yInput.getAsDouble());
+                    final var headingXValue = headingX.getAsDouble();
+                    final var headingYValue = headingY.getAsDouble();
+                    if (!swerveDrive.swerveController.withinHypotDeadband(headingXValue, headingYValue)) {
+                        driveFieldOriented(xVelocity, yVelocity, headingXValue, headingYValue);
+                        return;
+                    }
+                    final var angularVelocity = joystickToAngularVelocity(angularInput.getAsDouble());
+                    driveFieldOriented(xVelocity, yVelocity, angularVelocity);
+                },
+                () -> driveFieldOriented(MetersPerSecond.zero(), MetersPerSecond.zero(), DegreesPerSecond.zero()));
     }
 
     private void driveFieldOriented(
@@ -384,9 +394,6 @@ public class SwerveSubsystem extends SubsystemBase {
                         .div(linearVelocity.getNorm())
                         .times(loggedMaxVelocityWhileShooting.get().in(MetersPerSecond));
             }
-        }
-        if (DriverStation.getAlliance().orElse(null) == DriverStation.Alliance.Red) { // flip if red
-            linearVelocity = linearVelocity.unaryMinus();
         }
         final Translation2d limitedLinearVelocity = linearDriveLimiter.calculate(linearVelocity);
         final AngularVelocity determinedAngularVelocity;
@@ -552,8 +559,11 @@ public class SwerveSubsystem extends SubsystemBase {
         setModuleOrientations(Rotation2d.kZero);
     }
 
-    public Command straightenWheelsCommand() {
-        return Commands.startEnd(() -> loggedStraightenWheels.set(true), () -> loggedStraightenWheels.set(false));
+    public Command straightenWheelsCommand(boolean force) {
+        return Commands.startRun(() -> loggedStraightenWheels.set(true), () -> {
+                    if (force) straightenWheels();
+                })
+                .finallyDo(() -> loggedStraightenWheels.set(false));
     }
 
     public Command lockYawTowardsVelocity() {
@@ -669,7 +679,11 @@ public class SwerveSubsystem extends SubsystemBase {
                 MathUtil.applyDeadband(input, ControllerConstants.DRIVE_MIN_INPUT, ControllerConstants.DRIVE_MAX_INPUT);
         final var scaled = Math.abs(Math.pow(withDeadband, ControllerConstants.LINEAR_DRIVE_POWER_SCALE))
                 * Math.signum(withDeadband);
-        return getMaximumChassisVelocity().times(scaled).times(speedMultiplier.getMultiplier());
+        final var allianceSign = DriverStation.getAlliance().orElse(null) == Alliance.Red ? -1 : 1;
+        return getMaximumChassisVelocity()
+                .times(scaled)
+                .times(speedMultiplier.getMultiplier())
+                .times(allianceSign);
     }
 
     private AngularVelocity joystickToAngularVelocity(final double input) {

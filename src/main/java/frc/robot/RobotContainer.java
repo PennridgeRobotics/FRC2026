@@ -71,6 +71,7 @@ public class RobotContainer {
             : null;
 
     private final SendableChooser<AutoManager.AutoStartLocation> autoStartLocationChooser;
+    private final LoggedNetworkDouble autoStartDelaySecs = new LoggedNetworkDouble("/Auto/Start Delay", 0.0);
     private final LoggedNetworkBoolean autoShootAtStart1 = new LoggedNetworkBoolean("/Auto/1. Shoot at Start", true);
     private final LoggedNetworkBoolean autoCollectFromMidFast2 =
             new LoggedNetworkBoolean("/Auto/2. Collect From Mid (Fast)", false);
@@ -160,18 +161,21 @@ public class RobotContainer {
     }
 
     public @Nullable Command getAutonomousCommand() {
-        return autoManager != null
-                ? autoManager.getAutoCommand(new AutoManager.AutoOptions(
-                        autoStartLocationChooser.getSelected(),
-                        autoShootAtStart1.getAsBoolean(),
-                        autoCollectFromMidFast2.getAsBoolean(),
-                        autoCollectFromMidSlow3.getAsBoolean(),
-                        autoCollectFromMidSlow4.getAsBoolean(),
-                        autoDepot5.getAsBoolean(),
-                        autoOutpost6.getAsBoolean(),
-                        autoCollectFromMidSlow7.getAsBoolean(),
-                        autoClimb8.getAsBoolean()))
-                : null;
+        return autoManager != null ? autoManager.getCachedAutoCommand(getAutoOptions()) : null;
+    }
+
+    private AutoManager.AutoOptions getAutoOptions() {
+        return new AutoManager.AutoOptions(
+                autoStartLocationChooser.getSelected(),
+                autoStartDelaySecs.getAsDouble(),
+                autoShootAtStart1.getAsBoolean(),
+                autoCollectFromMidFast2.getAsBoolean(),
+                autoCollectFromMidSlow3.getAsBoolean(),
+                autoCollectFromMidSlow4.getAsBoolean(),
+                autoDepot5.getAsBoolean(),
+                autoOutpost6.getAsBoolean(),
+                autoCollectFromMidSlow7.getAsBoolean(),
+                autoClimb8.getAsBoolean());
     }
 
     public void periodic() {
@@ -273,9 +277,9 @@ public class RobotContainer {
                     return timeLeft != null && HubTracker.isActiveNext() && timeLeft.isEquivalent(Seconds.of(5));
                 })
                 .onTrue(Commands.sequence(
-                        rumbleCommand(driverController, 0.3).withTimeout(Seconds.of(0.2)),
+                        rumbleCommand(driverController, 0.6).withTimeout(Seconds.of(0.2)),
                         Commands.waitSeconds(0.2),
-                        rumbleCommand(driverController, 0.3).withTimeout(Seconds.of(0.2))));
+                        rumbleCommand(driverController, 0.6).withTimeout(Seconds.of(0.2))));
         /*driverController
         .a()
         .whileTrue(swerveSubsystem.resetPoseFromCalibrationPosition(
@@ -284,7 +288,7 @@ public class RobotContainer {
         operatorController
                 .rightBumper()
                 .and(operatorController.start())
-                .whileTrue(swerveSubsystem.straightenWheelsCommand());
+                .whileTrue(swerveSubsystem.straightenWheelsCommand(false));
         /*operatorController
                 .leftTrigger()
                 .and(operatorController.start())
@@ -329,7 +333,11 @@ public class RobotContainer {
                     .whileTrue(shooterCalculator.decreaseVelocityOffset());
             new Trigger(() -> operatorController.getRightX() > 0.5)
                     .whileTrue(shooterCalculator.increaseVelocityOffset());
-            operatorController.back().whileTrue(unjamManager.temporarilyUseMaxPowerAll());
+            operatorController
+                    .back()
+                    .and(operatorController.x().negate())
+                    .and(operatorController.y().negate())
+                    .whileTrue(unjamManager.temporarilyUseMaxPowerAll());
             operatorController
                     .leftTrigger()
                     .and(operatorController.start())
@@ -355,12 +363,12 @@ public class RobotContainer {
                     .y()
                     .whileTrue(climberSubsystem.climbCommand(
                             operatorController.start().negate(), operatorController.back()))
-                    .whileTrue(swerveSubsystem.straightenWheelsCommand());
+                    .whileTrue(swerveSubsystem.straightenWheelsCommand(false));
             operatorController
                     .x()
                     .whileTrue(climberSubsystem.armCommand(
                             operatorController.start().negate(), operatorController.back()))
-                    .whileTrue(swerveSubsystem.straightenWheelsCommand());
+                    .whileTrue(swerveSubsystem.straightenWheelsCommand(false));
         }
         /*if (autoManager != null) {
             operatorController.back().whileTrue(autoManager.testAuto());
@@ -371,6 +379,17 @@ public class RobotContainer {
         new LoggedNetworkSendable<>("/Auto/Start Location Chooser", autoStartLocationChooser);
         new LoggedNetworkSendable<>("/Misc/Power Distribution", powerDistribution);
         new LoggedNetworkSendable<>("/Misc/Motor Info", motorInfo);
+        final var loggedGenerateAuto = new LoggedNetworkBoolean("/Auto/Generate Auto", () -> {
+            if (DriverStation.isEnabled()) return false;
+            if (autoManager != null) return autoManager.isCachedAutoUsable(getAutoOptions());
+            return false;
+        });
+        loggedGenerateAuto.addListener(v -> {
+            if (autoManager == null) return;
+            if (v) autoManager.setAutoCache(getAutoOptions());
+            else autoManager.clearAutoCache();
+        });
+
         // new LoggedNetworkSendable<>("/Pigeon2", new Pigeon2Sendable(swerveSubsystem.getPigeon2()));
         /*final var emptyPoseArray = new Pose2d[0];
         new LoggedNetworkStructArray<>("/Misc/BLine Completed Poses", Pose2d.struct, () -> {
@@ -427,6 +446,9 @@ public class RobotContainer {
             autoManager.teleopInit();
         }
         setupOperatorCommand();
+        if (climberSubsystem != null && DriverStation.isFMSAttached() && autoClimb8.getAsBoolean()) {
+            CommandScheduler.getInstance().schedule(climberSubsystem.armCommand(() -> true, () -> false));
+        }
     }
 
     private void setupOperatorCommand() {

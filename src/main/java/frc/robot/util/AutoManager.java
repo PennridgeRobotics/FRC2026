@@ -20,6 +20,7 @@ import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
+import edu.wpi.first.wpilibj2.command.WaitCommand;
 import frc.robot.lib.BLine.FlippingUtil;
 import frc.robot.lib.BLine.FollowPath;
 import frc.robot.lib.BLine.Path;
@@ -58,6 +59,8 @@ public class AutoManager {
     private final Path collectMidFromRightPath = new Path("collect_mid_from_right_old");
     private final Supplier<Distance> distanceSupplier =
             new LoggedNetworkUnit<>("Auto/Move from hub & shoot distance (m)", Meters.of(1.8));
+
+    private @Nullable AutoCache autoCache;
 
     private @Nullable Pair<FollowPath, Path> currentPath;
     private @Nullable Pose2d pathStart;
@@ -130,7 +133,12 @@ public class AutoManager {
             @Nullable LinearVelocity leadInMaxVelocity) {
         if (leadInMaxVelocity == null) return getPathCommand(path, stopAfter, isFromGUI, resetToLoc);
         return Commands.sequence(
-                autoLeadIn(leadInMaxVelocity, path.getStartPose(), resetToLoc),
+                autoLeadIn(
+                        leadInMaxVelocity,
+                        (isFromGUI && shouldFlip())
+                                ? FlippingUtil.flipFieldPose(path.getStartPose())
+                                : path.getStartPose(),
+                        resetToLoc),
                 getPathCommand(path, stopAfter, isFromGUI, null));
     }
 
@@ -211,10 +219,28 @@ public class AutoManager {
         if (autoOptions.climb8() && climberSubsystem != null) {
             autoCommand = climberSubsystem
                     .armCommand(() -> true, () -> true)
-                    .withDeadline(autoCommand.andThen(climbAutoCommand(startAutoLoc)));
+                    .withDeadline(autoCommand)
+                    .andThen(climbAutoCommand(startAutoLoc));
             startAutoLoc = null;
         }
-        return autoCommand;
+        return new WaitCommand(autoOptions.startDelaySecs()).andThen(autoCommand);
+    }
+
+    public Command getCachedAutoCommand(AutoOptions autoOptions) {
+        if (autoCache != null && autoCache.isUsable(autoOptions)) return autoCache.autoCommand();
+        return getAutoCommand(autoOptions);
+    }
+
+    public boolean isCachedAutoUsable(AutoOptions autoOptions) {
+        return autoCache != null && autoCache.isUsable(autoOptions);
+    }
+
+    public void setAutoCache(AutoOptions autoOptions) {
+        autoCache = new AutoCache(autoOptions, DriverStation.getAlliance().orElse(null), getAutoCommand(autoOptions));
+    }
+
+    public void clearAutoCache() {
+        autoCache = null;
     }
 
     private Command autoLeadIn(LinearVelocity maxVelocity, Pose2d leadInTo, @Nullable AutoStartLocation resetToLoc) {
@@ -251,19 +277,21 @@ public class AutoManager {
         if (climberSubsystem == null) return Commands.none();
         return Commands.defer(
                 () -> Commands.sequence(
-                        climberSubsystem
-                                .armCommand(() -> true, () -> true)
-                                .withDeadline(Commands.parallel(
-                                        getPathCommand(alignClimbPath, false, true, resetToLoc),
+                        Commands.parallel(
+                                climberSubsystem.armCommand(() -> true, () -> true),
+                                Commands.sequence(
+                                        getPathCommandWithLeadIn(
+                                                alignClimbPath, true, true, resetToLoc, MetersPerSecond.of(1.6)),
+                                        Commands.waitUntil(climberSubsystem.getArmedTrigger()),
                                         swerveDrive
                                                 .driveFieldOrientedCommand(
-                                                        () -> MetersPerSecond.of(0.2 * (shouldFlip() ? -1 : 1)),
+                                                        () -> MetersPerSecond.of(-0.2 * (shouldFlip() ? -1 : 1)),
                                                         MetersPerSecond::zero,
                                                         DegreesPerSecond::zero)
-                                                .withTimeout(Seconds.of(1.0)))),
-                        Commands.parallel(
+                                                .withTimeout(Seconds.of(1)))),
+                        Commands.race(
                                 climberSubsystem.climbCommand(() -> true, () -> false),
-                                swerveDrive.straightenWheelsCommand())),
+                                swerveDrive.straightenWheelsCommand(true))),
                 Set.of(swerveDrive, climberSubsystem));
     }
 
@@ -279,7 +307,7 @@ public class AutoManager {
         return fuelSubsystem
                 .intakeCommand()
                 .withDeadline(getPathCommandWithLeadIn(depotPath, false, true, resetToLoc, MetersPerSecond.of(1.6)))
-                .andThen(shootAutoCommand(AutoStartLocation.LEFT_INNER_BUMP, Seconds.of(4), false));
+                .andThen(shootAutoCommand(AutoStartLocation.LEFT_INNER_BUMP, Seconds.of(6), false));
     }
 
     private Command pathInFrontOfHubAndShoot(@Nullable AutoStartLocation resetToLoc) {
@@ -407,7 +435,8 @@ public class AutoManager {
                 fuelSubsystem
                         .launchCommand(true)
                         .withDeadline(Commands.waitUntil(fuelSubsystem.isReadyToLaunchTrigger())
-                                .andThen(Commands.waitTime(launchDuration))));
+                                .andThen(Commands.waitTime(launchDuration)))
+                        .finallyDo(fuelSubsystem::reset));
     }
 
     public Command goOverBump(
@@ -652,6 +681,7 @@ public class AutoManager {
 
     public record AutoOptions(
             AutoStartLocation startLocation,
+            double startDelaySecs,
             boolean shootAtStart1,
             boolean collectFromMidFast2,
             boolean collectFromMidSlow3,
@@ -660,4 +690,12 @@ public class AutoManager {
             boolean outpost6,
             boolean collectFromMidSlow7,
             boolean climb8) {}
+
+    public record AutoCache(
+            AutoOptions autoOptions, @Nullable Alliance alliance, Command autoCommand) {
+        public boolean isUsable(AutoOptions autoOptions) {
+            return this.autoOptions.equals(autoOptions)
+                    && this.alliance == DriverStation.getAlliance().orElse(null);
+        }
+    }
 }

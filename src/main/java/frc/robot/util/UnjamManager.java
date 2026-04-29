@@ -63,7 +63,7 @@ public class UnjamManager extends Command {
                 getStallAlertTrigger(indexerController::getStatorCurrent, FuelConstants.INDEXER_CURRENT_LIMIT);
 
         intakeLauncherAutoStallActionTrigger = intakeLauncherStallAlertTrigger
-                .debounce(0.3, DebounceType.kRising)
+                .debounce(0.2, DebounceType.kRising)
                 .whileTrue(temporarilyUseMaxPowerIntakeLauncher());
         indexerAutoStallActionTrigger = indexerStallAlertTrigger.whileTrue(temporarilyUseMaxPowerIndexer());
 
@@ -325,7 +325,7 @@ public class UnjamManager extends Command {
 
     private Trigger getStallAlertTrigger(Supplier<Current> statorCurrentSupplier, Current statorCurrentLimit) {
         return new Trigger(() -> statorCurrentLimit.isNear(statorCurrentSupplier.get(), Amps.of(1.0)))
-                .debounce(0.3, DebounceType.kRising)
+                .debounce(0.2, DebounceType.kRising)
                 .debounce(0.08, DebounceType.kFalling);
     }
 
