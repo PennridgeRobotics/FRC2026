@@ -9,7 +9,7 @@ gversion = "1.10.3"
 jspecify = "1.0.0"
 junit = "6.1.0"
 null-away = "0.13.4"
-spotless = "8.5.0"
+spotless = "8.5.1"
 
 [plugins]
 error-prone = { id = "net.ltgt.errorprone", version.ref = "error-prone-plugin" }
