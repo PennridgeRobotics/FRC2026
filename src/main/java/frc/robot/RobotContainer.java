@@ -297,6 +297,8 @@ public class RobotContainer {
                 .rightTrigger()
                 .and(operatorController.start())
                 .onTrue(swerveSubsystem.toggleUseFrontCameraInPoseEstimation());*/
+        new Trigger(() -> operatorController.getLeftY() < -0.5).whileTrue(swerveSubsystem.temporarilyForceSlowRobot());
+        new Trigger(() -> operatorController.getLeftY() > 0.5).whileTrue(swerveSubsystem.temporarilyForceStopRobot());
 
         operatorController.rightStick().onTrue(swerveSubsystem.toggleForceNormalDriveMode());
 

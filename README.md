@@ -39,7 +39,9 @@ X   B
 | B                     | Unjam                                    |
 | Back + other          | Enable MAX POWER for fuel                |
 | L Trigger + Start     | Smart Unjam                              |
-| L Stick Up/Down       | Spin with absolute rotation              |
+| ~~L Stick Up/Down~~   | ~~Spin with absolute rotation~~          |
+| L Stick Up            | Force slow robot                         |
+| L Stick Down          | Force stop robot (drive)                 |
 | L Stick Left/Right    | Increase/decrease manual launch velocity |
 | L Stick Pressed       | Enable manual launch                     |
 | R Stick Left/Right    | Increase/decrease calculator velocity    |

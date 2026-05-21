@@ -103,6 +103,9 @@ public class SwerveSubsystem extends SubsystemBase {
     private final LoggedNetworkBoolean loggedStraightenWheels;
     private final LoggedNetworkStruct<Rotation2d> loggedRobotRelativeYaw;
 
+    private boolean forceSlowRobot;
+    private boolean forceStopRobot;
+
     private SOTMHubLockType sotmHubLockType = SOTMHubLockType.ANGLE_LOCK_AND_VELOCITY_FF;
     private @Nullable Camera backCamera;
     // private @Nullable Camera frontCamera;
@@ -172,6 +175,14 @@ public class SwerveSubsystem extends SubsystemBase {
                 linearVelocity.in(MetersPerSecond), swerveDrive.getMaximumChassisAngularVelocity());
         swerveDrive.setMaximumAttainableSpeeds(
                 linearVelocity.in(MetersPerSecond), swerveDrive.getMaximumChassisAngularVelocity());
+    }
+
+    public Command temporarilyForceSlowRobot() {
+        return Commands.runOnce(() -> forceSlowRobot = true).finallyDo(() -> forceSlowRobot = false);
+    }
+
+    public Command temporarilyForceStopRobot() {
+        return Commands.runOnce(() -> forceStopRobot = true).finallyDo(() -> forceStopRobot = false);
     }
 
     private void initSmartDashboard() {
@@ -692,7 +703,8 @@ public class SwerveSubsystem extends SubsystemBase {
         final var allianceSign = DriverStation.getAlliance().orElse(null) == Alliance.Red ? -1 : 1;
         return getMaximumChassisVelocity()
                 .times(scaled)
-                .times(speedMultiplier.getMultiplier())
+                .times((forceSlowRobot ? SpeedMultiplier.SLOW : speedMultiplier).getMultiplier())
+                .times(forceStopRobot ? 0 : 1)
                 .times(allianceSign);
     }
 
