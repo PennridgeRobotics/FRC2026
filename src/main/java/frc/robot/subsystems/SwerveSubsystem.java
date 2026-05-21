@@ -126,7 +126,7 @@ public class SwerveSubsystem extends SubsystemBase {
         swerveDrive.setModuleEncoderAutoSynchronize(false, 1); // can set to true, but I want to test
         // swerveDrive.setMotorIdleMode(true);
 
-        loggedForceNormalDriveMode = new LoggedNetworkBoolean("Swerve/Force Normal Drive Mode", false);
+        loggedForceNormalDriveMode = new LoggedNetworkBoolean("Swerve/Force Normal Drive Mode", true);
         forceNormalDriveModeTrigger = new Trigger(loggedForceNormalDriveMode);
 
         bumpManager = new BumpManager(

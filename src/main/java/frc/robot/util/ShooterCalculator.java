@@ -115,7 +115,7 @@ public class ShooterCalculator {
 
         final var topicPrefix = "Shooter Calculator/";
         final var rootTopicPrefix = "/" + topicPrefix;
-        loggedManualMode = new LoggedNetworkBoolean(topicPrefix + "Manual Mode", false);
+        loggedManualMode = new LoggedNetworkBoolean(topicPrefix + "Manual Mode", true);
         new LoggedNetworkString(
                 rootTopicPrefix + "Manual Mode Text", () -> loggedManualMode.getAsBoolean() ? "Custom" : "Calculator");
         passingAllowed = new LoggedNetworkBoolean(rootTopicPrefix + "Passing Allowed", true);
