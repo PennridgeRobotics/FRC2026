@@ -158,10 +158,20 @@ public class SwerveSubsystem extends SubsystemBase {
         loggedStraightenWheels = new LoggedNetworkBoolean("Swerve/Straighten Wheels", false);
         loggedRobotRelativeYaw =
                 new LoggedNetworkStruct<>("/Swerve/Robot Relative Yaw", Rotation2d.struct, Rotation2d.kZero);
+        new LoggedNetworkUnit<LinearVelocityUnit, LinearVelocity>(
+                        "Swerve/Max Velocity", () -> MetersPerSecond.of(swerveDrive.getMaximumChassisVelocity()))
+                .addListener(this::setMaximumLinearVelocity);
 
         setupVisionManager();
         pathBuilder = setupBLine();
         initSmartDashboard();
+    }
+
+    private void setMaximumLinearVelocity(LinearVelocity linearVelocity) {
+        swerveDrive.setMaximumAllowableSpeeds(
+                linearVelocity.in(MetersPerSecond), swerveDrive.getMaximumChassisAngularVelocity());
+        swerveDrive.setMaximumAttainableSpeeds(
+                linearVelocity.in(MetersPerSecond), swerveDrive.getMaximumChassisAngularVelocity());
     }
 
     private void initSmartDashboard() {
